@@ -1,0 +1,3 @@
+H = BpodHiFi('COM3');
+
+
