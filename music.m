@@ -98,8 +98,8 @@ function music_player_gui
         notes.hE = 659.25;     % High E
         notes.hF = 698.46;
 
-        % melody
-        melody_notes = [notes.A, notes.B, notes.hC, notes.B, notes.hC, notes.hE, notes.B, 0, ...
+        % melody in Eb
+        melody_notes = 0.8409*[notes.A, notes.B, notes.hC, notes.B, notes.hC, notes.hE, notes.B, 0, ...
                        notes.E, notes.A, notes.G, notes.A, notes.hC, notes.G,0,  ...
                        notes.E, notes.E, notes.F, notes.E, notes.F, notes.hC, notes.E,0,  ...
                        notes.hC, notes.B, notes.F, notes.F, notes.B, notes.B,0,  ...
@@ -160,7 +160,7 @@ function music_player_gui
         melody = [];
         
         % base duration
-        base_duration = 0.8;
+        base_duration = 1;
         
         % generate each note
         for i = 1:length(note_freqs)
