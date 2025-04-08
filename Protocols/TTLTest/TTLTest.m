@@ -1,83 +1,68 @@
 function TTLTest
 global BpodSystem
 
-%% 设置部分
-% 定义参数和试验结构
+%% Setup
 S = BpodSystem.ProtocolSettings;
 
-% 设置默认参数
 if isempty(fieldnames(S))
-    % 在这里定义默认设置
-    S.GUI.TrialDuration = 10;  % 每个试验的持续时间(秒)
-    S.GUI.ITI = 2;  % 试验间隔时间(秒)
+    S.GUI.DetectionDuration = 3;  % Detection duration (seconds)
 end
 
-% 初始化参数GUI
 BpodParameterGUI('init', S);
 
-%% 主循环
-maxTrials = 100;  % 最大试验次数
-for currentTrial = 1:maxTrials
-    % 同步参数
+
+%% Main loop
+for currentTrial = 1:100  % Run 100 trials maximum
     S = BpodParameterGUI('sync', S);
     
-    % 创建状态机
     sma = NewStateMachine();
     
-    % 添加等待状态
-    sma = AddState(sma, 'Name', 'WaitForTTL', ...
-        'Timer', S.GUI.TrialDuration, ...
-        'StateChangeConditions', {'Tup', 'ITI', 'Wire1High', 'RecordTTL'}, ...
-        'OutputActions', {});
+    % State 1: Wait for touch (signal goes HIGH)
+    sma = AddState(sma, 'Name', 'WaitForTouch', ...
+        'Timer', S.GUI.DetectionDuration, ...
+        'StateChangeConditions', {'BNC1High', 'TouchDetected', 'Tup', 'exit'}, ...
+        'OutputActions', {'PWM1', 0, 'SoftCode', 1}); % LED off while waiting
+        
+    % State 2: Touch detected (signal is HIGH)
+    sma = AddState(sma, 'Name', 'TouchDetected', ...
+        'Timer', 0.5, ...
+        'StateChangeConditions', {'Tup', 'WaitForTouch'}, ... % Stay in this state until touch released
+        'OutputActions', {'PWM1', 255, 'SoftCode', 2}); % LED on when touched
     
-    % 添加记录TTL状态
-    sma = AddState(sma, 'Name', 'RecordTTL', ...
-        'Timer', 0, ...
-        'StateChangeConditions', {'Tup', 'WaitForTTL'}, ...
-        'OutputActions', {});
-    
-    % 添加ITI状态
-    sma = AddState(sma, 'Name', 'ITI', ...
-        'Timer', S.GUI.ITI, ...
-        'StateChangeConditions', {'Tup', 'exit'}, ...
-        'OutputActions', {});
-    
-    % 发送状态机并运行
+    % Send state machine and run
     SendStateMachine(sma);
+
+    disp(['Trial ', num2str(currentTrial), ': Detection duration: ', num2str(S.GUI.DetectionDuration), ' seconds']);
     RawEvents = RunStateMachine;
     
-    % 保存数据
-    if ~isempty(fieldnames(RawEvents))
-        BpodSystem.Data = AddTrialEvents(BpodSystem.Data, RawEvents);
-        BpodSystem.Data.TrialSettings(currentTrial) = S;
-        
-        % 记录TTL事件
-        if isfield(RawEvents, 'Events')
-            if isfield(RawEvents.Events, 'Wire1High')
-                BpodSystem.Data.TTLEvents(currentTrial) = RawEvents.Events.Wire1High;
-            else
-                BpodSystem.Data.TTLEvents(currentTrial) = [];
-            end
-        end
-        
-        SaveBpodSessionData;
-        
-        % 更新实时显示
-        if currentTrial == 1
-            figure('Position', [50 540 1000 250], 'name', 'TTL Events');
-            plot(BpodSystem.Data.TTLEvents, 'o-');
-            xlabel('Trial');
-            ylabel('TTL Event Time (s)');
-            title('TTL Events Over Time');
-        else
-            figure(findobj('name', 'TTL Events'));
-            plot(BpodSystem.Data.TTLEvents, 'o-');
-        end
-    end
     
-    % 处理暂停条件
+    
+    % Handle pause condition
     HandlePauseCondition;
     if BpodSystem.Status.BeingUsed == 0
         return
     end
+    
+    % Shorter trial interval
+    pause(0.1);
 end 
+end
+
+function SoftCodeHandler(Byte)
+    global BpodSystem % 使用全局变量
+    
+    currentTime = datestr(now, 'HH:MM:SS.FFF');
+    
+    switch Byte
+        case 1
+            message = ['[' currentTime '] State: Wait for touch'];
+        case 2
+            message = ['[' currentTime '] State: Touch detected'];
+        otherwise
+            message = ['[' currentTime '] Warning: Unknown SoftCode (' num2str(Byte) ')'];
+    end
+    
+    % 存储消息并显示
+    BpodSystem.Status.CurrentStateMessage = message;
+    fprintf('%s\n', message); % 使用 fprintf 并添加换行符
+end

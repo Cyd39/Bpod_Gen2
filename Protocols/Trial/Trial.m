@@ -1,43 +1,43 @@
-function BimodalStimuli()
+function Trial()
     global BpodSystem
+
     
     % Setup default parameters
-    %S = struct;
-    %S.GUI.SoundFrequency = 5000; % Hz
-    %S.GUI.SoundDuration = 0.5; % seconds  
-    %S.GUI.SoundVolume = 0.5; % 0-1
+    S = struct;
+    S.GUI.SoundFrequency = 523; % Hz
+    S.GUI.SoundDuration = 1; % seconds  
+    S.GUI.SoundVolume = 0.3; % 0-1
     %S.GUI.VibrationFrequency = 100; % Hz
     %S.GUI.VibrationDuration = 0.5; % seconds
     %S.GUI.VibrationIntensity = 0.5; % 0-1
     %S.GUI.RewardAmount = 3; % ul
     %S.GUI.ResponseTimeAllowed = 5; % seconds
-    S.GUI.MinITI = 1; % seconds
+    S.GUI.MinITI = 2; % seconds
     S.GUI.MaxITI = 3; % seconds
     S.GUI.MinQuietTime = 1; % seconds
     S.GUI.MaxQuietTime = 2; % seconds
     
     % Initialize parameter GUI
-    podParameterGUI('init', S);
+    BpodParameterGUI('init', S);
     
-    % Define trial types
-    % 1 = Sound only
-    % 2 = Vibration only  
-    % 3 = Sound + Vibration
-    %TrialTypes = randperm(90);
-    %TrialTypes = reshape(TrialTypes, 30, 3); % 30 trials of each type
-    %TrialTypes = TrialTypes(:);
     
     % Set reward valve time
-    ValveTime = 1;
+    ValveTime = 0.5;
     % Set response time allowed
     ResWin = 5;
 
-    % Prepare sound(need to be modified)
-    H = BpodHiFi(BpodSystem.ModuleUSB.HiFi1);
+    % Prepare sound
+    H = BpodHiFi('COM7'); 
     H.SamplingRate = 192000;
-    sf = 192000; 
-    soundDuration = 0.5; 
-    sounds = [set of 160 sounds];   
+    
+    % generate a fixed length sound
+    sound = GenerateSineWave(H.SamplingRate, S.GUI.SoundFrequency, S.GUI.SoundDuration);
+    sound = sound * S.GUI.SoundVolume;  % adjust volume
+    
+    
+    % load sound
+    H.load(1, sound);
+    H.push;
 
     % Prepare vibration
     % need to prepare vibration to be played in the stimulus state
@@ -49,10 +49,14 @@ function BimodalStimuli()
         % Generate random ITI and quiet time for this trial
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
+        TimerDuration = ThisITI+S.GUI.SoundDuration;
         
+        % Display the trial information
+        disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
+
         % Set sound stimulus
-        H.load(1, sounds(currentTrial));
-        H.push;
+        %H.load(1, sounds(currentTrial));
+        %H.push;
 
         % Determine stimulus for this trial
         %switch TrialTypes(currentTrial)
@@ -76,32 +80,41 @@ function BimodalStimuli()
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'BCN1High', 'NoLick', 'Tup', 'Stimulus'}, ...
+                'StateChangeConditions', {'BNC1High', 'ResetNoLick', 'Tup', 'Stimulus'}, ...
+                'OutputActions', {});
+            sma = AddState(sma, 'Name', 'ResetNoLick', ...
+                'Timer', 0, ...
+                'StateChangeConditions', {'Tup', 'NoLick'}, ...
                 'OutputActions', {});
         else
             sma = AddState(sma, 'Name', 'Ready', ...
                 'Timer', ThisITI, ...
-                'StateChangeConditions', {'Tup', 'Stimulus','BCN1High', 'NoLick'}, ...
+                'StateChangeConditions', {'Tup', 'Stimulus','BNC1High', 'NoLick'}, ...
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'BCN1High', 'NoLick', 'Tup', 'Stimulus'}, ...
+                'StateChangeConditions', {'BNC1High', 'ResetNoLick', 'Tup', 'Stimulus'}, ...
+                'OutputActions', {});
+            sma = AddState(sma, 'Name', 'ResetNoLick', ...
+                'Timer', 0, ...
+                'StateChangeConditions', {'Tup', 'NoLick'}, ...
                 'OutputActions', {});
         end
 
         % the timer begins at the stimulus state
         % Duration needs to be set.
-        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 5);         
+        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerDuration); 
+
         % Stimulus state
         sma = AddState(sma, 'Name', 'Stimulus', ...
-            'Timer', 0, ... % Using sound duration as stimulus time
+            'Timer', 0.2, ... % Using sound duration as stimulus time
             'StateChangeConditions', {'Tup', 'Response'}, ...
-            'OutputActions', {'HiFi1', ['P' 1],'GlobalTimerTrig', 1});
+            'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 1});
 
         % Response state
         sma = AddState(sma, 'Name', 'Response', ...
             'Timer', ResWin, ...
-            'StateChangeConditions', {'BCN1High', 'Reward', 'Tup', 'Checking'}, ...
+            'StateChangeConditions', {'BNC1High', 'Reward', 'Tup', 'Checking'}, ...
             'OutputActions', {});
 
         % Reward state
@@ -112,10 +125,9 @@ function BimodalStimuli()
         
         % Here is the part need to be modified(maybe need to set a timer for the checking state)
         sma = AddState(sma, 'Name', 'Checking', ...
-            'Timer', 10, ...
-            'StateChangeConditions', {'GlobalTimer1_End', 'exit'}, ...
-            'OutputActions', {});
-
+            'Timer', 0, ...
+            'StateChangeConditions', {'GlobalTimer1_End', 'exit','Tup','exit'}, ...
+            'OutputActions', {'Valve1', 0});
         
         % Send state machine to Bpod device
         SendStateMachine(sma);
@@ -126,19 +138,10 @@ function BimodalStimuli()
         % Save trial data
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data = AddTrialEvents(BpodSystem.Data, RawEvents);
-            BpodSystem.Data.TrialTypes(currentTrial) = TrialTypes(currentTrial);
             BpodSystem.Data.TrialSettings(currentTrial) = S;
             
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
-            
-            % Calculate response time if response occurred
-            if ~isnan(RawEvents.States.WaitForResponse(1))
-                responseTime = RawEvents.States.WaitForResponse(2) - RawEvents.States.WaitForResponse(1);
-                BpodSystem.Data.ResponseTime(currentTrial) = responseTime;
-            else
-                BpodSystem.Data.ResponseTime(currentTrial) = NaN;
-            end
             
             SaveBpodSessionData;
         end
@@ -147,7 +150,7 @@ function BimodalStimuli()
         HandlePauseCondition;
         
         % Check if session should end
-        if BpodSystem.BeingUsed == 0
+        if BpodSystem.Status.BeingUsed == 0
             return
         end
     end
