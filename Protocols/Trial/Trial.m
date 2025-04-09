@@ -70,9 +70,10 @@ function Trial()
         
         % Create state machine
         sma = NewStateMachine();
+ 
         
         % Set to record all BNC1High events
-        sma = SetGlobalCounter(sma, 1, 'BNC1Low', 1);
+        sma = SetCondition(sma, 1, 'BNC1', 1); % Condition 1: Port 1 low (is out)
         
         % Add states
         % Ready state under different conditions
@@ -106,7 +107,8 @@ function Trial()
 
         % the timer begins at the stimulus state
         % Duration needs to be set.
-        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerDuration); 
+        %sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerDuration); 
+        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 3); 
 
         % Stimulus state
         sma = AddState(sma, 'Name', 'Stimulus', ...
@@ -126,11 +128,14 @@ function Trial()
             'StateChangeConditions', {'Tup', 'Checking'}, ...
             'OutputActions', {'Valve1', 1});
         
+        % Set condition to check if GlobalTimer1 has ended
+        sma = SetCondition(sma, 2, 'GlobalTimer1', 0); % Condition 2: GlobalTimer1 has ended
+        
         % Here is the part need to be modified(maybe need to set a timer for the checking state)
         sma = AddState(sma, 'Name', 'Checking', ...
-            'Timer', 0, ...
-            'StateChangeConditions', {'GlobalTimer1_End', 'exit','Tup','exit'}, ...
-            'OutputActions', {'Valve1', 0});
+            'Timer', 0, ...  
+            'StateChangeConditions', {'Condition2', 'exit'}, ...
+            'OutputActions', {});
         
         % Send state machine to Bpod device
         SendStateMachine(sma);
@@ -145,14 +150,7 @@ function Trial()
             
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
-            
-            % Save all BNC1High timestamps
-            if isfield(RawEvents.Events, 'BNC1High')
-                BpodSystem.Data.BNC1HighTimestamps{currentTrial} = RawEvents.Events.BNC1High;
-            else
-                BpodSystem.Data.BNC1HighTimestamps{currentTrial} = [];
-            end
-            
+                        
             SaveBpodSessionData;
         end
         
