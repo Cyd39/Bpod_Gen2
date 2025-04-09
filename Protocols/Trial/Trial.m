@@ -70,7 +70,10 @@ function Trial()
         
         % Create state machine
         sma = NewStateMachine();
-
+        
+        % Set to record all BNC1High events
+        sma = SetGlobalCounter(sma, 1, 'BNC1Low', 1);
+        
         % Add states
         % Ready state under different conditions
         if ThisITI-QuietTime > 0
@@ -142,6 +145,13 @@ function Trial()
             
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
+            
+            % Save all BNC1High timestamps
+            if isfield(RawEvents.Events, 'BNC1High')
+                BpodSystem.Data.BNC1HighTimestamps{currentTrial} = RawEvents.Events.BNC1High;
+            else
+                BpodSystem.Data.BNC1HighTimestamps{currentTrial} = [];
+            end
             
             SaveBpodSessionData;
         end
