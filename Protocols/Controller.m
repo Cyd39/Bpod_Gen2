@@ -9,5 +9,22 @@ initBpod();
 % Initialize parameter GUI
 StimParamGui();
 
+% Generate stimulus
+genStim();
+
+% Define protocol parameters
+protocolName = 'neuroactive';  
+subjectName = 'human_test';            
+settingsName = 'DefaultSettings';
+
 % Run protocol
-RunProtocol('Start', 'neuroactive', 'human_test')
+try
+    % Start the protocol
+    disp('Starting protocol...');
+    RunProtocol('Start', protocolName, subjectName, settingsName);
+    
+catch err
+    % Error handling
+    disp('Error occurred while running protocol:');
+    disp(err.message);
+end

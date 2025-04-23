@@ -3,9 +3,9 @@
 % AM frequency,depth, volume, duration
 
 % Trial loop
-function neuroactive_test()
+function neuroactive()
     global BpodSystem
-
+    global StimParams
     
     % Setup default parameters
     S = struct;
