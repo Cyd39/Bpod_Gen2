@@ -1,7 +1,7 @@
-function genStim()
+function [SoundSet,VibrationSet] = genStim(stimParams)
     % generate stimulus
     % get stimulus parameters
-    stimParams = getStimParams();
-    
+    SoundSet = stimParams.SoundSet;
+    VibrationSet = stimParams.VibrationSet;
     % generate stimulus
 end

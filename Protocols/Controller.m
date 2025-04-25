@@ -6,16 +6,45 @@ end
 % Initialize Bpod system
 initBpod();
 
-% Initialize parameter GUI
-StimParamGui();
+% Get current timestamp for settings file name
+timestamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+settingsName = "Settings_" + timestamp;
 
-% Generate stimulus
-genStim();
+% Initialize parameter GUI and get parameters
+StimParams = StimParamGui();
+
+% Generate stimulus and get stimulus info
+[SoundSet,VibrationSet] = genStim(StimParams);
+
+% Create protocol settings structure
+ProtocolSettings = struct();
+% Add GUI parameters
+ProtocolSettings.GUI = guiParams;
+% Add stimulus information
+ProtocolSettings.Stimulus = stimInfo;
+% Add timestamp
+ProtocolSettings.Timestamp = timestamp;
 
 % Define protocol parameters
 protocolName = 'neuroactive';  
 subjectName = 'human_test';            
-settingsName = 'DefaultSettings';
+
+% Create settings file path and save settings
+global BpodSystem
+settingsPath = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings');
+if ~exist(settingsPath, 'dir')
+    mkdir(settingsPath);
+end
+
+% Save settings file
+settingsFile = fullfile(settingsPath, [settingsName '.mat']);
+save(settingsFile, 'ProtocolSettings');
+
+% Display settings information
+disp('已创建实验设置文件:');
+disp(['文件名: ' settingsName]);
+disp('参数内容:');
+disp(ProtocolSettings);
 
 % Run protocol
 try
@@ -25,6 +54,6 @@ try
     
 catch err
     % Error handling
-    disp('Error occurred while running protocol:');
+    disp('运行实验时发生错误:');
     disp(err.message);
 end
