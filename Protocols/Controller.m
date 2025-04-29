@@ -19,15 +19,13 @@ StimParams = StimParamGui();
 % Create protocol settings structure
 ProtocolSettings = struct();
 % Add GUI parameters
-ProtocolSettings.GUI = guiParams;
-% Add stimulus information
-ProtocolSettings.Stimulus = stimInfo;
+ProtocolSettings.StimParams = StimParams;
 % Add timestamp
 ProtocolSettings.Timestamp = timestamp;
 
 % Define protocol parameters
 protocolName = 'neuroactive';  
-subjectName = 'human_test';            
+subjectName = 'human_test';       
 
 % Create settings file path and save settings
 global BpodSystem
@@ -41,9 +39,9 @@ settingsFile = fullfile(settingsPath, [settingsName '.mat']);
 save(settingsFile, 'ProtocolSettings');
 
 % Display settings information
-disp('已创建实验设置文件:');
-disp(['文件名: ' settingsName]);
-disp('参数内容:');
+disp('Settings file created:');
+disp(['File name: ' settingsName]);
+disp('Parameters:');
 disp(ProtocolSettings);
 
 % Run protocol

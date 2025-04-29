@@ -4,9 +4,9 @@ function Trial()
     
     % Setup default parameters
     S = struct;
-    S.GUI.SoundFrequency = 523; % Hz
-    S.GUI.SoundDuration = 1; % seconds  
-    S.GUI.SoundVolume = 0.3; % 0-1
+    %S.GUI.SoundFrequency = 523; % Hz
+    %S.GUI.SoundDuration = 1; % seconds  
+    %S.GUI.SoundVolume = 0.3; % 0-1
     %S.GUI.VibrationFrequency = 100; % Hz
     %S.GUI.VibrationDuration = 0.5; % seconds
     %S.GUI.VibrationIntensity = 0.5; % 0-1
@@ -16,16 +16,13 @@ function Trial()
     S.GUI.MaxITI = 3; % seconds
     S.GUI.MinQuietTime = 1; % seconds
     S.GUI.MaxQuietTime = 2; % seconds
-    
+    S.GUI.ValveTime = 0.5; % seconds
+    S.GUI.ResWin = 5; % seconds
+
+
     % Initialize parameter GUI
     BpodParameterGUI('init', S);
     
-    
-    % Set reward valve time
-    ValveTime = 0.5;
-    % Set response time allowed
-    ResWin = 5;
-
     % Prepare sound
     H = BpodHiFi('COM7'); 
     H.SamplingRate = 192000;
@@ -50,6 +47,8 @@ function Trial()
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
         TimerDuration = ThisITI+S.GUI.SoundDuration;
+        ValveTime = S.GUI.ValveTime;
+        ResWin = S.GUI.ResWin;
         
         % Display the trial information
         disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  

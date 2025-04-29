@@ -8,21 +8,6 @@ function BimodalStim()
     % Setup default parameters
     S = struct;
     
-    % Sound parameters
-    S.GUI.SoundType = 'AM'; % 'AM' or 'Click'
-    S.GUI.SoundFrequency = 1000; % Hz, carrier frequency for AM
-    S.GUI.SoundDuration = 0.5; % seconds
-    S.GUI.SoundVolume = 0.3; % 0-1
-    S.GUI.AMFrequency = 20; % Hz, modulation frequency
-    S.GUI.AMDepth = 0.8; % 0-1
-    
-    % Vibration parameters  
-    S.GUI.VibrationWaveform = 'BiSine'; % 'Square','UniSine','BiSine'
-    S.GUI.VibrationFrequency = 100; % Hz
-    S.GUI.VibrationDuration = 0.5; % seconds
-    S.GUI.VibrationAmplitude = 0.5; % Volts
-    S.GUI.VibrationRamp = 5; % ms
-    
     % Trial timing parameters
     S.GUI.MinITI = 2; % seconds
     S.GUI.MaxITI = 3; % seconds

@@ -1,12 +1,63 @@
-% Initialize Bpod
+% Add custom function path
+if ~ismember('custom_func', path)
+    addpath('custom_func');
+end
+
 global BpodSystem
 
-% Define protocol parameters
-protocolName = 'mini_test';  
-subjectName = 'human_test'; 
-settingsName = 'mini_setting';
+% Get current timestamp for settings file name
+timestamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+settingsName = "Settings_" + timestamp;
 
-% Run protocol   
-disp('Starting protocol...');
-RunProtocol('Start', protocolName, subjectName, settingsName);
+% Initialize parameter GUI and get parameters
+StimParams = StimParamGui();
+
+% Generate stimulus and get stimulus info
+StimSets = genStim(StimParams);
+
+% Create protocol settings structure
+ProtocolSettings = struct();
+% Add GUI parameters
+ProtocolSettings.StimParams = StimParams;
+% Add timestamp
+ProtocolSettings.Timestamp = timestamp;
+% Add stimulus sets
+ProtocolSettings.StimSets = StimSets;
+
+% Define protocol parameters
+protocolName = 'testgui';  
+subjectName = 'human_test';       
+
+% Create settings file path and save settings
+settingsPath = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings');
+if ~exist(settingsPath, 'dir')
+    mkdir(settingsPath);
+end
+
+% Create empty settings file first
+settingsFile = fullfile(settingsPath, settingsName + '.mat');
+disp(settingsFile);
+
+% Save settings to the file
+save(settingsFile, 'ProtocolSettings');
+
+% Display settings information
+disp('Settings file created:');
+disp(['File name: ' settingsName]);
+disp('Parameters:');
+disp(ProtocolSettings);
+
+% Run protocol
+try
+    % Start the protocol
+    disp('Starting protocol...');
+    RunProtocol('Start', char(protocolName), char(subjectName), char(settingsName));
+    
+catch err
+    % Error handling
+    disp('Error occurred during protocol execution:');
+    disp(err.message);
+end
+
+hold on;
 
