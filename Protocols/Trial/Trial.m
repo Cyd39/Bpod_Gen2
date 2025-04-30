@@ -4,14 +4,6 @@ function Trial()
     
     % Setup default parameters
     S = struct;
-    %S.GUI.SoundFrequency = 523; % Hz
-    %S.GUI.SoundDuration = 1; % seconds  
-    %S.GUI.SoundVolume = 0.3; % 0-1
-    %S.GUI.VibrationFrequency = 100; % Hz
-    %S.GUI.VibrationDuration = 0.5; % seconds
-    %S.GUI.VibrationIntensity = 0.5; % 0-1
-    %S.GUI.RewardAmount = 3; % ul
-    %S.GUI.ResponseTimeAllowed = 5; % seconds
     S.GUI.MinITI = 2; % seconds
     S.GUI.MaxITI = 3; % seconds
     S.GUI.MinQuietTime = 1; % seconds

@@ -13,7 +13,7 @@ settingsName = "Settings_" + timestamp;
 StimParams = StimParamGui();
 
 % Generate stimulus and get stimulus info
-StimSets = genStim(StimParams);
+% StimSets = GenStim(StimParams);
 
 % Create protocol settings structure
 ProtocolSettings = struct();
@@ -22,7 +22,7 @@ ProtocolSettings.StimParams = StimParams;
 % Add timestamp
 ProtocolSettings.Timestamp = timestamp;
 % Add stimulus sets
-ProtocolSettings.StimSets = StimSets;
+% ProtocolSettings.StimSets = StimSets;
 
 % Define protocol parameters
 protocolName = 'testgui';  
@@ -36,7 +36,6 @@ end
 
 % Create empty settings file first
 settingsFile = fullfile(settingsPath, settingsName + '.mat');
-disp(settingsFile);
 
 % Save settings to the file
 save(settingsFile, 'ProtocolSettings');
@@ -51,7 +50,7 @@ disp(ProtocolSettings);
 try
     % Start the protocol
     disp('Starting protocol...');
-    RunProtocol('Start', char(protocolName), char(subjectName), char(settingsName));
+    RunProtocol('Start', protocolName, subjectName, char(settingsName)); % char(settingsName) is needed for RunProtocol
     
 catch err
     % Error handling

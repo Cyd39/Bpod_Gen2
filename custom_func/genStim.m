@@ -1,8 +1,15 @@
-function Stim = genStim(stimParams)
-    % generate stimulus
+% GenStim generates a stimulus based on the stimulus parameters
+% 1. randomize the stimulus parameters
+% 2. generate the stimulus
+% 3. save the stimulus to the stimulus set  
+function Stim = GenStim(stimParams)
+    % 1. randomize the stimulus parameters
+
+    % 2. generate the stimulus
+    
+    % 3. save the stimulus to the stimulus set  
     Stim = struct();
-    % get stimulus parameters
-    Stim.SndSet = 1;
-    Stim.SomSet = 1;
-    % generate stimulus
+
+    
+ 
 end

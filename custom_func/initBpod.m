@@ -1,4 +1,4 @@
-function initBpod()
+function InitBpod()
     global BpodSystem
     
     isInitialized = false;

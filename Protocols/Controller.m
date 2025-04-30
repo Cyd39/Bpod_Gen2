@@ -4,7 +4,7 @@ if ~ismember('custom_func', path)
 end
 
 % Initialize Bpod system
-initBpod();
+InitBpod();
 
 % Get current timestamp for settings file name
 timestamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
@@ -14,7 +14,7 @@ settingsName = "Settings_" + timestamp;
 StimParams = StimParamGui();
 
 % Generate stimulus and get stimulus info
-[SoundSet,VibrationSet] = genStim(StimParams);
+[SoundSet,VibrationSet] = GenStim(StimParams);
 
 % Create protocol settings structure
 ProtocolSettings = struct();
