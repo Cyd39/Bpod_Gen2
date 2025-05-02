@@ -3,7 +3,8 @@ if ~ismember('custom_func', path)
     addpath('custom_func');
 end
 
-global BpodSystem
+% Initialize Bpod system
+InitBpod();
 
 % Get current timestamp for settings file name
 timestamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
@@ -13,7 +14,7 @@ settingsName = "Settings_" + timestamp;
 StimParams = StimParamGui();
 
 % Generate stimulus and get stimulus info
-% StimSets = GenStim(StimParams);
+[SoundSet,VibrationSet] = GenStim(StimParams);
 
 % Create protocol settings structure
 ProtocolSettings = struct();
@@ -21,23 +22,20 @@ ProtocolSettings = struct();
 ProtocolSettings.StimParams = StimParams;
 % Add timestamp
 ProtocolSettings.Timestamp = timestamp;
-% Add stimulus sets
-% ProtocolSettings.StimSets = StimSets;
 
 % Define protocol parameters
-protocolName = 'testgui';  
+protocolName = 'neuroactive';  
 subjectName = 'human_test';       
 
 % Create settings file path and save settings
+global BpodSystem
 settingsPath = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings');
 if ~exist(settingsPath, 'dir')
     mkdir(settingsPath);
 end
 
-% Create empty settings file first
-settingsFile = fullfile(settingsPath, settingsName + '.mat');
-
-% Save settings to the file
+% Save settings file
+settingsFile = fullfile(settingsPath, [settingsName '.mat']);
 save(settingsFile, 'ProtocolSettings');
 
 % Display settings information
@@ -50,13 +48,10 @@ disp(ProtocolSettings);
 try
     % Start the protocol
     disp('Starting protocol...');
-    RunProtocol('Start', protocolName, subjectName, char(settingsName)); % char(settingsName) is needed for RunProtocol
+    RunProtocol('Start', protocolName, subjectName, settingsName);
     
 catch err
     % Error handling
-    disp('Error occurred during protocol execution:');
+    disp('Error occurred during experiment:');
     disp(err.message);
 end
-
-hold on;
-

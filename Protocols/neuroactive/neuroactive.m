@@ -5,7 +5,6 @@
 % Trial loop
 function neuroactive()
     global BpodSystem
-    global StimParams
     
     % Setup default parameters
     S = struct;
