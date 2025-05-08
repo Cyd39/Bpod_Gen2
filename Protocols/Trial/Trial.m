@@ -1,12 +1,12 @@
 function Trial()
     global BpodSystem
 
-    % 从StimParamGui获取参数
+    % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     
     % Setup default parameters
     S = struct;
-    % 使用StimParamGui中的行为参数作为默认值
+    % use the behavior parameters from StimParamGui as default values
     S.GUI.MinITI = StimParams.Behave.MinITI; % seconds
     S.GUI.MaxITI = StimParams.Behave.MaxITI; % seconds
     S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds

@@ -1,35 +1,52 @@
-% This protocol is used to test the neuroactive code interaction with the Bpod system
-% Input Stimuli properties in the GUI
-% AM frequency,depth, volume, duration
-
-% Trial loop
-function neuroactive()
+function TestEverything()
     global BpodSystem
+
+    % Initialize HiFi module
+    H = BpodHiFi('COM7'); 
+    H.SamplingRate = 192000; 
+
+    % get parameters from StimParamGui
+    StimParams = BpodSystem.ProtocolSettings.StimParams;
+    
+    % Generate Stimuli using GenStim
+    soundWaves = struct();
+    for i = 1:150
+        [soundWaves(i).waveform,~] = GenStim(StimParams(i));
+    end
+
+    disp('soundWaves generated!');
     
     % Setup default parameters
     S = struct;
-    S.GUI.SoundFrequency = 523; % Hz
-    S.GUI.SoundDuration = 1; % seconds  
-    S.GUI.SoundVolume = 0.3; % 0-1
-    %S.GUI.VibrationFrequency = 100; % Hz
-    %S.GUI.VibrationDuration = 0.5; % seconds
-    %S.GUI.VibrationIntensity = 0.5; % 0-1
-    %S.GUI.RewardAmount = 3; % ul
-    %S.GUI.ResponseTimeAllowed = 5; % seconds
-    S.GUI.MinITI = 2; % seconds
-    S.GUI.MaxITI = 3; % seconds
-    S.GUI.MinQuietTime = 1; % seconds
-    S.GUI.MaxQuietTime = 2; % seconds
-    
+    % use the behavior parameters from StimParamGui as default values
+    S.GUI.MinITI = StimParams.Behave.MinITI; % seconds
+    S.GUI.MaxITI = StimParams.Behave.MaxITI; % seconds
+    S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds
+    S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
+    S.GUI.ValveTime = StimParams.Behave.ValveTime; % seconds
+    S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
+
+
     % Initialize parameter GUI
     BpodParameterGUI('init', S);
-    
-    
-    % Set reward valve time
-    ValveTime = 0.5;
-    % Set response time allowed
-    ResWin = 5;
+    % Create update button
+    h = struct();
+    h.updateButton = uicontrol('Style', 'pushbutton', ...
+        'String', 'Update Parameters', ...
+        'Position', [160 240 150 30], ...  % [left bottom width height]
+        'FontSize', 12, ...
+        'Callback', @updateParams);
 
+    % Initialize update flag
+    updateFlag = false;
+
+    % Update button callback function
+    function updateParams(~, ~)
+        updateFlag = true;
+        disp('Parameters updated');
+    end
+
+    
     % Prepare sound
     H = BpodHiFi('COM7'); 
     H.SamplingRate = 192000;
@@ -48,12 +65,24 @@ function neuroactive()
 
     % Main trial loop
     for currentTrial = 1:160
-        S = BpodParameterGUI('sync', S);
+        % Check if update button was pressed
+        if updateFlag
+            % get parameters from GUI
+            S = BpodParameterGUI('sync', S);
+            updateFlag = false; % reset flag
+        end
         
+         % Load the sound wave into BpodHiFi
+         H.load(1, soundWaves(currentTrial).waveform); % Give more time for the sound to load
+         H.push();
+         disp('Sound loaded to buffer 1');
+
         % Generate random ITI and quiet time for this trial
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
         TimerDuration = ThisITI+S.GUI.SoundDuration;
+        ValveTime = S.GUI.ValveTime;
+        ResWin = S.GUI.ResWin;
         
         % Display the trial information
         disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
@@ -62,10 +91,19 @@ function neuroactive()
         %H.load(1, sounds(currentTrial));
         %H.push;
 
+        % Determine stimulus for this trial
+        %switch TrialTypes(currentTrial)
+        %    case 1 % Sound only
+        %        StimActions = {'PWM1', 255}; % Sound trigger
+        %    case 2 % Vibration only  
+        %        StimActions = {'PWM2', 255}; % Vibration trigger
+        %    case 3 % Both
+        %        StimActions = {'PWM1', 255, 'PWM2', 255}; % Both triggers
+        %end
+        
         % Create state machine
         sma = NewStateMachine();
- 
-        
+      
         % Set to record all BNC1High events
         sma = SetCondition(sma, 1, 'BNC1', 1); % Condition 1: Port 1 low (is out)
         
