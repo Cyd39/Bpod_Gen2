@@ -7,10 +7,11 @@ function TestEverything()
 
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
+    NumTrials = StimParams.Behave.NumTrials;
     
     % Generate Stimuli using GenStim
     soundWaves = struct();
-    for i = 1:150
+    for i = 1:NumTrials
         [soundWaves(i).waveform,~] = GenStim(StimParams(i));
     end
 
@@ -64,7 +65,7 @@ function TestEverything()
     % need to prepare vibration to be played in the stimulus state
 
     % Main trial loop
-    for currentTrial = 1:160
+    for currentTrial = 1:NumTrials
         % Check if update button was pressed
         if updateFlag
             % get parameters from GUI
