@@ -1,4 +1,4 @@
-function [Stim, Fs] = GenStim(Par)
+function [Stim, Fs] = GenStimWave(Par)
 % GenStim - Generate stimuli based on parameters from StimParamGui
 % Input:
 %   Par - Structure containing parameters from StimParamGui
@@ -157,12 +157,12 @@ isi = ISI * (0.5 + rand(N, 1));
 end
 
 function Stm = randtrls(Stm, Nrep)
-% RANDTRLS Randomize trial order
+% RANDTRLS Randomize trial order within each block
 % Input:
 %   Stm - Original parameter table
 %   Nrep - Number of repetitions
 % Output:
-%   Stm - Randomized parameter table
+%   Stm - Randomized parameter table with trials shuffled within each block
 
 % Get original number of trials
 nTrials = height(Stm);
@@ -173,11 +173,30 @@ Stm = repmat(Stm, Nrep, 1);
 % Get total number of trials
 nTotal = height(Stm);
 
-% Generate random permutation
-randIdx = randperm(nTotal);
+% Calculate number of trials per block
+nTrialsPerBlock = nTrials;
+
+% Initialize shuffled indices
+shuffledIdx = zeros(nTotal, 1);
+
+% Shuffle trials within each block
+for i = 1:Nrep
+    % Calculate start and end indices for current block
+    startIdx = (i-1)*nTrialsPerBlock + 1;
+    endIdx = i*nTrialsPerBlock;
+    
+    % Generate random permutation for current block
+    blockIdx = randperm(nTrialsPerBlock);
+    
+    % Add block offset to indices
+    blockIdx = blockIdx + (i-1)*nTrialsPerBlock;
+    
+    % Store shuffled indices
+    shuffledIdx(startIdx:endIdx) = blockIdx;
+end
 
 % Randomize trial order
-Stm = Stm(randIdx, :);
+Stm = Stm(shuffledIdx, :);
 
 end
 
