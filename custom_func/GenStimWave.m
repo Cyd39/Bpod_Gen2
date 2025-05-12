@@ -1,4 +1,4 @@
-function [Stim, Fs] = GenStimWave(Par)
+function Stim = GenStimWave(Par)
 % GenStim - Generate stimuli based on parameters from StimParamGui
 % Input:
 %   Par - Structure containing parameters from StimParamGui
