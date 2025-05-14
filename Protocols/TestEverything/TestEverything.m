@@ -47,20 +47,10 @@ function TestEverything()
         disp('Parameters updated');
     end
 
-    
     % Prepare sound
     H = BpodHiFi('COM7'); 
     H.SamplingRate = 192000;
     
-    % generate a fixed length sound
-    sound = GenerateSineWave(H.SamplingRate, S.GUI.SoundFrequency, S.GUI.SoundDuration);
-    sound = sound * S.GUI.SoundVolume;  % adjust volume
-    
-    
-    % load sound
-    H.load(1, sound);
-    H.push;
-
     % Prepare vibration
     % need to prepare vibration to be played in the stimulus state
 
@@ -81,16 +71,12 @@ function TestEverything()
         % Generate random ITI and quiet time for this trial
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
-        TimerDuration = ThisITI+S.GUI.SoundDuration;
+        TimerDuration = ThisITI+BpodSystem.ProtocolSettings.StimParams.SoundDuration;
         ValveTime = S.GUI.ValveTime;
         ResWin = S.GUI.ResWin;
         
         % Display the trial information
         disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
-
-        % Set sound stimulus
-        %H.load(1, sounds(currentTrial));
-        %H.push;
 
         % Determine stimulus for this trial
         %switch TrialTypes(currentTrial)
@@ -140,8 +126,8 @@ function TestEverything()
 
         % the timer begins at the stimulus state
         % Duration needs to be set.
-        %sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerDuration); 
-        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 3); 
+        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerDuration); 
+        %sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', 3); 
 
         % Stimulus state
         sma = AddState(sma, 'Name', 'Stimulus', ...

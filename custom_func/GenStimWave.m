@@ -1,3 +1,89 @@
+function [OutputWave, Fs] = GenStimWave(StimParams)
+% GenStimWave - Generate stimulus waveforms based on parameters
+% Input:
+%   StimParams - Single row from StimSeq table containing trial parameters
+%   Fs - Sampling frequency
+% Output:
+%   OutputWave - Combined waveform (stereo: [sound, vibration])
+Fs = 192000;
+% Generate sound waveform based on type
+switch StimParams.SoundType
+    case "AM Noise"
+        % Generate AM noise
+        t = (0:1/Fs:StimParams.SoundDuration/1000)';
+        carrier = sin(2*pi*StimParams.CarrierFreq*t);
+        modulator = 1 + StimParams.AMDepth * sin(2*pi*StimParams.AMFrequency*t);
+        SoundWave = StimParams.SoundVolume * carrier .* modulator;
+        
+        % Apply bandpass filter
+        [b,a] = butter(4, [StimParams.CarrierFreq-StimParams.BandWidth/2, ...
+            StimParams.CarrierFreq+StimParams.BandWidth/2]/(Fs/2), 'bandpass');
+        SoundWave = filtfilt(b, a, SoundWave);
+        
+        % Apply transition envelope
+        if StimParams.TransTime > 0
+            ramp = hanning(round(StimParams.TransTime*Fs*2));
+            ramp = ramp(1:round(length(ramp)/2));
+            SoundWave(1:length(ramp)) = SoundWave(1:length(ramp)) .* ramp;
+            SoundWave(end-length(ramp)+1:end) = SoundWave(end-length(ramp)+1:end) .* flip(ramp);
+        end
+        
+    case "Click Train"
+        % Generate click train
+        t = (0:1/Fs:StimParams.SoundDuration/1000)';
+        clickInterval = round(Fs/StimParams.ClickRate);
+        SoundWave = zeros(size(t));
+        
+        for i = 1:clickInterval:length(t)
+            if i <= length(t)
+                SoundWave(i) = StimParams.ClickAmplitude;
+            end
+        end
+        
+        % Add mask noise
+        maskNoise = StimParams.MaskIntensity * randn(size(t));
+        SoundWave = SoundWave + maskNoise;
+        
+    case "Noise"
+        % Generate bandpass noise
+        t = (0:1/Fs:StimParams.SoundDuration/1000)';
+        noise = randn(size(t));
+        [b,a] = butter(4, [StimParams.LowFreq, StimParams.HighFreq]/(Fs/2), 'bandpass');
+        SoundWave = StimParams.NoiseIntensity * filtfilt(b, a, noise);
+end
+
+% Generate vibration waveform
+t = (0:1/Fs:StimParams.VibDuration/1000)';
+switch StimParams.VibType
+    case "Square"
+        VibWave = StimParams.VibAmplitude * ones(size(t));
+    case "UniSine"
+        VibWave = StimParams.VibAmplitude * (1 - cos(2*pi*StimParams.VibFrequency*t))/2;
+    case "BiSine"
+        VibWave = StimParams.VibAmplitude * sin(2*pi*StimParams.VibFrequency*t);
+end
+
+% Apply ramp to vibration
+if StimParams.VibRamp > 0
+    ramp = hanning(round(StimParams.VibRamp*Fs*2));
+    ramp = ramp(1:round(length(ramp)/2));
+    VibWave(1:length(ramp)) = VibWave(1:length(ramp)) .* ramp;
+    VibWave(end-length(ramp)+1:end) = VibWave(end-length(ramp)+1:end) .* flip(ramp);
+end
+
+% Combine sound and vibration into stereo output
+% Make sure both signals have the same length
+maxLength = max(length(SoundWave), length(VibWave));
+OutputWave = zeros(maxLength, 2);
+
+% Put sound in left channel
+OutputWave(1:length(SoundWave), 1) = SoundWave;
+
+% Put vibration in right channel
+OutputWave(1:length(VibWave), 2) = VibWave;
+
+end
+
 function Stim = GenStimWave(Par)
 % GenStim - Generate stimuli based on parameters from StimParamGui
 % Input:
