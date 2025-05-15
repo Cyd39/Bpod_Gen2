@@ -632,6 +632,7 @@ function StimParams = StimParamGui()
         soundTypeStr = get(h.SoundType, 'String');
         StimParams.Sound.Type = soundType;
         StimParams.Sound.TypeName = soundTypeStr{soundType};
+        StimParams.Ramp = str2double(get(h.Ramp, 'String'));
         
         % Only get sound parameters if not VibrationOnly
         if sessionType ~= 3
@@ -668,7 +669,6 @@ function StimParams = StimParamGui()
             StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
             StimParams.Vibration.Amplitude = str2double(get(h.Vib.Amplitude, 'String'));
             StimParams.Vibration.Frequency = str2double(get(h.Vib.Frequency, 'String'));
-            StimParams.Vibration.Ramp = str2double(get(h.Vib.Ramp, 'String'));
         end
 
         % Behavior parameters
