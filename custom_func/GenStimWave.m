@@ -1,4 +1,4 @@
-function [OutputWave, Fs] = GenStimWave(StimParams)
+function OutputWave = GenStimWave(StimParams)
 % GenStimWave - Generate stimulus waveforms based on parameters
 % Input:
 %   StimParams - Single row from StimSeq table containing trial parameters
