@@ -6,8 +6,16 @@ function OutputWave = GenStimWave(StimParams)
 % Output:
 %   OutputWave - Combined waveform (stereo: [sound, vibration])
 Fs = 192000;
+
 % Generate sound waveform based on type
-switch StimParams.SoundType
+switch StimParams.SndTypeName
+    case "White Noise"
+        % Generate white noise
+        t = (0:1/Fs:StimParams.Duration/1000)';
+        SoundWave = randn(size(t));
+
+        
+        
     case "AM Noise"
         % Generate AM noise
         t = (0:1/Fs:StimParams.SoundDuration/1000)';
@@ -44,7 +52,7 @@ switch StimParams.SoundType
         maskNoise = StimParams.MaskIntensity * randn(size(t));
         SoundWave = SoundWave + maskNoise;
         
-    case "Noise"
+    case "Bandpass Noise"
         % Generate bandpass noise
         t = (0:1/Fs:StimParams.Sound.Duration/1000)';
         noise = randn(size(t));
