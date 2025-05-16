@@ -391,13 +391,13 @@ function StimParams = StimParamGui()
         % Intensity
         uicontrol('Parent', parent, ...
             'Style', 'text', ...
-            'String', 'Intensity (0-1):', ...
+            'String', 'Level (dB):', ...
             'Units', 'normalized', ...
             'Position', [0.05 0.72 0.4 0.1],...
             'FontSize', 14);
-        h.Noise.Intensity = uicontrol('Parent', parent, ...
+        h.Noise.Level = uicontrol('Parent', parent, ...
             'Style', 'edit', ...
-            'String', '0.5', ...
+            'String', '0', ...
             'Units', 'normalized', ...
             'Position', [0.5 0.72 0.4 0.1],...
             'FontSize', 14);
@@ -656,7 +656,7 @@ function StimParams = StimParamGui()
         if sessionType ~= 3
             switch soundType
                 case 1 % AM Noise
-                    StimParams.Sound.Duration = str2double(get(h.AM.Duration, 'String'));
+                    % StimParams.Sound.Duration = str2double(get(h.AM.Duration, 'String'));
                     StimParams.Sound.Volume = str2double(get(h.AM.Volume, 'String'));
                     StimParams.Sound.AM.Frequency = str2double(get(h.AM.Frequency, 'String'));
                     StimParams.Sound.AM.Depth = str2double(get(h.AM.Depth, 'String'));
@@ -666,17 +666,56 @@ function StimParams = StimParamGui()
                     StimParams.Sound.AM.TransDur = str2double(get(h.AM.TransitionDuration, 'String'))/1000;                   
 
                 case 2 % Click Train
-                    StimParams.Sound.Duration = str2double(get(h.Click.Duration, 'String'));
+                    % StimParams.Sound.Duration = str2double(get(h.Click.Duration, 'String'));
                     StimParams.Sound.Click.Balance = str2double(get(h.Click.Balance, 'String'));
                     StimParams.Sound.Click.Rate = str2double(get(h.Click.Rate, 'String'));
                     StimParams.Sound.Click.Amplitude = str2double(get(h.Click.Amplitude, 'String'));
                     StimParams.Sound.Click.MaskIntensity = str2double(get(h.Click.MaskIntensity, 'String'));
                     
                 case {3, 4} % Noise
-                    StimParams.Sound.Duration = str2double(get(h.Noise.Duration, 'String'));
-                    StimParams.Sound.Noise.Intensity = str2double(get(h.Noise.Intensity, 'String'));
+                    % StimParams.Sound.Duration = str2double(get(h.Noise.Duration, 'String'));
                     StimParams.Sound.Noise.LowFreq = str2double(get(h.Noise.LowFreq, 'String'));
                     StimParams.Sound.Noise.HighFreq = str2double(get(h.Noise.HighFreq, 'String'));
+                    % Handle Noise Level input
+                    levelStr = get(h.Noise.Level, 'String');
+                    try
+                        % Try to evaluate the string as a MATLAB expression
+                        levelValue = eval(levelStr);
+                        % Convert to column vector if it's a row vector
+                        if size(levelValue, 1) == 1
+                            levelValue = levelValue';
+                        end
+                        StimParams.Sound.Noise.Level = levelValue;
+                    catch
+                        % If evaluation fails, try to parse as a range
+                        try
+                            % Split the string by ':'
+                            parts = strsplit(levelStr, ':');
+                            % Convert all parts to numbers
+                            parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                            % Check if all parts are valid numbers
+                            if all(~cellfun(@isnan, parts))
+                                switch length(parts)
+                                    case 1
+                                        % Single value
+                                        StimParams.Sound.Noise.Level = parts{1};
+                                    case 2
+                                        % Start:End (default step = 1)
+                                        StimParams.Sound.Noise.Level = (parts{1}:parts{2})';
+                                    case 3
+                                        % Start:Step:End
+                                        StimParams.Sound.Noise.Level = (parts{1}:parts{2}:parts{3})';
+                                    otherwise
+                                        % Multiple values separated by colons
+                                        StimParams.Sound.Noise.Level = cell2mat(parts)';
+                                end
+                            else
+                                error('Invalid number format in range');
+                            end
+                        catch
+                            error('Invalid Noise Level format. Please use either "0:5:60" or "[30 45 60]" format.');
+                        end
+                    end
             end
         end
         
@@ -684,7 +723,7 @@ function StimParams = StimParamGui()
         if sessionType ~= 2
             % Vibration parameters
             StimParams.Vibration.Type = get(h.Vib.Type, 'String');
-            StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
+            % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
             StimParams.Vibration.Amplitude = str2double(get(h.Vib.Amplitude, 'String'));
             StimParams.Vibration.Frequency = str2double(get(h.Vib.Frequency, 'String'));
         end
