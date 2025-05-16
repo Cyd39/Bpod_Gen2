@@ -758,6 +758,5 @@ function StimParams = StimParamGui()
     end
 
     uiwait(h_gui);
-    StimParams = guidata(h_gui);
     close(h_gui);
 end
