@@ -679,13 +679,25 @@ function StimParams = StimParamGui()
                     % Handle Noise Level input
                     levelStr = get(h.Noise.Level, 'String');
                     try
-                        % Try to evaluate the string as a MATLAB expression
-                        levelValue = eval(levelStr);
-                        % Convert to column vector if it's a row vector
-                        if size(levelValue, 1) == 1
-                            levelValue = levelValue';
+                        % First try to handle comma-separated numbers
+                        if contains(levelStr, ',')
+                            % Split by comma and convert to numbers
+                            parts = strsplit(levelStr, ',');
+                            parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                            if all(~cellfun(@isnan, parts))
+                                StimParams.Sound.Noise.Level = cell2mat(parts)';
+                            else
+                                error('Invalid number format in comma-separated list');
+                            end
+                        else
+                            % Try to evaluate the string as a MATLAB expression
+                            levelValue = eval(levelStr);
+                            % Convert to column vector if it's a row vector
+                            if size(levelValue, 1) == 1
+                                levelValue = levelValue';
+                            end
+                            StimParams.Sound.Noise.Level = levelValue;
                         end
-                        StimParams.Sound.Noise.Level = levelValue;
                     catch
                         % If evaluation fails, try to parse as a range
                         try
@@ -713,7 +725,7 @@ function StimParams = StimParamGui()
                                 error('Invalid number format in range');
                             end
                         catch
-                            error('Invalid Noise Level format. Please use either "0:5:60" or "[30 45 60]" format.');
+                            error('Invalid Noise Level format. Please use one of these formats:\n- Comma separated: "4,5,10"\n- Space separated: "[4 5 10]"\n- Colon separated: "4:5:10"\n- Range with step: "0:5:60"');
                         end
                     end
             end
