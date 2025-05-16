@@ -46,10 +46,10 @@ switch StimParams.SoundType
         
     case "Noise"
         % Generate bandpass noise
-        t = (0:1/Fs:StimParams.SoundDuration/1000)';
+        t = (0:1/Fs:StimParams.Sound.Duration/1000)';
         noise = randn(size(t));
-        [b,a] = butter(4, [StimParams.LowFreq, StimParams.HighFreq]/(Fs/2), 'bandpass');
-        SoundWave = StimParams.NoiseIntensity * filtfilt(b, a, noise);
+        [b,a] = butter(4, [StimParams.Sound.Noise.LowFreq, StimParams.Sound.Noise.HighFreq]/(Fs/2), 'bandpass');
+        SoundWave = StimParams.Sound.Noise.Intensity * filtfilt(b, a, noise);
 end
 
 % Generate vibration waveform

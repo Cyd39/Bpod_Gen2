@@ -60,7 +60,7 @@ function StimParams = StimParamGui()
         'FontSize', 14);
     h.SoundType = uicontrol('Parent', soundPanel, ...
         'Style', 'popup', ...
-        'String', {'AM Noise', 'Click Train', 'White Noise', 'Bandpass Noise'}, ...
+        'String', {'White Noise', 'AM Noise', 'Click Train',  'Bandpass Noise'}, ...
         'Units', 'normalized', ...
         'Position', [0.45 0.85 0.45 0.1],...
         'FontSize', 14,...
@@ -71,7 +71,7 @@ function StimParams = StimParamGui()
         'Title', 'AM Noise Parameters',...
         'Units', 'normalized', ...
         'Position', [0.05 0.05 0.9 0.8],...
-        'Visible', 'on',...
+        'Visible', 'off',...
         'FontSize', 12);
 
     clickPanel = uipanel('Parent', soundPanel,...
@@ -85,7 +85,7 @@ function StimParams = StimParamGui()
         'Title', 'Noise Parameters',...
         'Units', 'normalized', ...
         'Position', [0.05 0.05 0.9 0.8],...
-        'Visible', 'off',...
+        'Visible', 'on',...
         'FontSize', 12);
 
     % Create controls for each panel
@@ -154,12 +154,12 @@ function StimParams = StimParamGui()
         set(noisePanel, 'Visible', 'off');
         
         switch type
-            case 1
-                set(amPanel, 'Visible', 'on');
-            case 2
-                set(clickPanel, 'Visible', 'on');
-            case {3, 4}
+            case {1, 4}
                 set(noisePanel, 'Visible', 'on');
+            case 2
+                set(amPanel, 'Visible', 'on');
+            case 3
+                set(clickPanel, 'Visible', 'on');
         end
     end
 
@@ -444,7 +444,7 @@ function StimParams = StimParamGui()
             'FontSize', 14);
         h.Vib.Type = uicontrol('Parent', parent, ...
             'Style', 'popup', ...
-            'String', {'Square', 'UniSine', 'BiSine'}, ...
+            'String', {'BiSine', 'UniSine', 'Square'}, ...
             'Units', 'normalized', ...
             'Position', [0.5 0.8 0.4 0.15],...
             'FontSize', 14);
@@ -655,7 +655,7 @@ function StimParams = StimParamGui()
         % Only get sound parameters if not VibrationOnly
         if sessionType ~= 3
             switch soundType
-                case 1 % AM Noise
+                case 2 % AM Noise
                     % StimParams.Sound.Duration = str2double(get(h.AM.Duration, 'String'));
                     StimParams.Sound.Volume = str2double(get(h.AM.Volume, 'String'));
                     StimParams.Sound.AM.Frequency = str2double(get(h.AM.Frequency, 'String'));
@@ -665,14 +665,14 @@ function StimParams = StimParamGui()
                     StimParams.Sound.AM.TransTime = str2double(get(h.AM.TransitionTime, 'String'))/1000;
                     StimParams.Sound.AM.TransDur = str2double(get(h.AM.TransitionDuration, 'String'))/1000;                   
 
-                case 2 % Click Train
+                case 3 % Click Train
                     % StimParams.Sound.Duration = str2double(get(h.Click.Duration, 'String'));
                     StimParams.Sound.Click.Balance = str2double(get(h.Click.Balance, 'String'));
                     StimParams.Sound.Click.Rate = str2double(get(h.Click.Rate, 'String'));
                     StimParams.Sound.Click.Amplitude = str2double(get(h.Click.Amplitude, 'String'));
                     StimParams.Sound.Click.MaskIntensity = str2double(get(h.Click.MaskIntensity, 'String'));
                     
-                case {3, 4} % Noise
+                case {1, 4} % Noise
                     % StimParams.Sound.Duration = str2double(get(h.Noise.Duration, 'String'));
                     StimParams.Sound.Noise.LowFreq = str2double(get(h.Noise.LowFreq, 'String'));
                     StimParams.Sound.Noise.HighFreq = str2double(get(h.Noise.HighFreq, 'String'));
@@ -725,7 +725,10 @@ function StimParams = StimParamGui()
                                 error('Invalid number format in range');
                             end
                         catch
-                            error('Invalid Noise Level format. Please use one of these formats:\n- Comma separated: "4,5,10"\n- Space separated: "[4 5 10]"\n- Colon separated: "4:5:10"\n- Range with step: "0:5:60"');
+                            error(sprintf(['Invalid Noise Level format. Please use one of these formats:' char(10) ...
+                                '- Comma separated: "4,5,10"' char(10) ...
+                                '- Space separated: "[4 5 10]"' char(10) ...
+                                '- Range with step: "0:5:60"']));
                         end
                     end
             end
@@ -736,8 +739,133 @@ function StimParams = StimParamGui()
             % Vibration parameters
             StimParams.Vibration.Type = get(h.Vib.Type, 'String');
             % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
-            StimParams.Vibration.Amplitude = str2double(get(h.Vib.Amplitude, 'String'));
-            StimParams.Vibration.Frequency = str2double(get(h.Vib.Frequency, 'String'));
+            
+            % Handle Vibration Amplitude input with range check
+            ampStr = get(h.Vib.Amplitude, 'String');
+            try
+                % First try to handle comma-separated numbers
+                if contains(ampStr, ',')
+                    % Split by comma and convert to numbers
+                    parts = strsplit(ampStr, ',');
+                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                    if all(~cellfun(@isnan, parts))
+                        ampValue = cell2mat(parts)';
+                        % Check if all values are within range [0,1]
+                        if any(ampValue < 0) || any(ampValue > 1)
+                            error('Amplitude values must be between 0 and 1');
+                        end
+                        StimParams.Vibration.Amplitude = ampValue;
+                    else
+                        error('Invalid number format in comma-separated list');
+                    end
+                else
+                    % Try to evaluate the string as a MATLAB expression
+                    ampValue = eval(ampStr);
+                    % Convert to column vector if it's a row vector
+                    if size(ampValue, 1) == 1
+                        ampValue = ampValue';
+                    end
+                    % Check if all values are within range [0,1]
+                    if any(ampValue < 0) || any(ampValue > 1)
+                        error('Amplitude values must be between 0 and 1');
+                    end
+                    StimParams.Vibration.Amplitude = ampValue;
+                end
+            catch
+                % If evaluation fails, try to parse as a range
+                try
+                    % Split the string by ':'
+                    parts = strsplit(ampStr, ':');
+                    % Convert all parts to numbers
+                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                    % Check if all parts are valid numbers
+                    if all(~cellfun(@isnan, parts))
+                        switch length(parts)
+                            case 1
+                                % Single value
+                                ampValue = parts{1};
+                            case 2
+                                % Start:End (default step = 1)
+                                ampValue = (parts{1}:parts{2})';
+                            case 3
+                                % Start:Step:End
+                                ampValue = (parts{1}:parts{2}:parts{3})';
+                            otherwise
+                                % Multiple values separated by colons
+                                ampValue = cell2mat(parts)';
+                        end
+                        % Check if all values are within range [0,1]
+                        if any(ampValue < 0) || any(ampValue > 1)
+                            error('Amplitude values must be between 0 and 1');
+                        end
+                        StimParams.Vibration.Amplitude = ampValue;
+                    else
+                        error('Invalid number format in range');
+                    end
+                catch
+                    error(sprintf(['Invalid Amplitude format. Please use one of these formats:' char(10) ...
+                        '- Comma separated: "0.2,0.5,0.8"' char(10) ...
+                        '- Space separated: "[0.2 0.5 0.8]"' char(10) ...
+                        '- Range with step: "0:0.1:1"' char(10) ...
+                        'All values must be between 0 and 1']));
+                end
+            end
+
+            % Handle Vibration Frequency input
+            freqStr = get(h.Vib.Frequency, 'String');
+            try
+                % First try to handle comma-separated numbers
+                if contains(freqStr, ',')
+                    % Split by comma and convert to numbers
+                    parts = strsplit(freqStr, ',');
+                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                    if all(~cellfun(@isnan, parts))
+                        StimParams.Vibration.Frequency = cell2mat(parts)';
+                    else
+                        error('Invalid number format in comma-separated list');
+                    end
+                else
+                    % Try to evaluate the string as a MATLAB expression
+                    freqValue = eval(freqStr);
+                    % Convert to column vector if it's a row vector
+                    if size(freqValue, 1) == 1
+                        freqValue = freqValue';
+                    end
+                    StimParams.Vibration.Frequency = freqValue;
+                end
+            catch
+                % If evaluation fails, try to parse as a range
+                try
+                    % Split the string by ':'
+                    parts = strsplit(freqStr, ':');
+                    % Convert all parts to numbers
+                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                    % Check if all parts are valid numbers
+                    if all(~cellfun(@isnan, parts))
+                        switch length(parts)
+                            case 1
+                                % Single value
+                                StimParams.Vibration.Frequency = parts{1};
+                            case 2
+                                % Start:End (default step = 1)
+                                StimParams.Vibration.Frequency = (parts{1}:parts{2})';
+                            case 3
+                                % Start:Step:End
+                                StimParams.Vibration.Frequency = (parts{1}:parts{2}:parts{3})';
+                            otherwise
+                                % Multiple values separated by colons
+                                StimParams.Vibration.Frequency = cell2mat(parts)';
+                        end
+                    else
+                        error('Invalid number format in range');
+                    end
+                catch
+                    error(sprintf(['Invalid Frequency format. Please use one of these formats:' char(10) ...
+                        '- Comma separated: "100,200,300"' char(10) ...
+                        '- Space separated: "[100 200 300]"' char(10) ...
+                        '- Range with step: "100:50:300"']));
+                end
+            end
         end
 
         % Behavior parameters
