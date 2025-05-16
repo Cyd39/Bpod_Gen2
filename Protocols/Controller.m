@@ -25,7 +25,7 @@ ProtocolSettings.Timestamp = timestamp;
 % ProtocolSettings.StimSets = StimSets;
 
 % Define protocol parameters
-protocolName = 'TestGUI';  
+protocolName = 'TestEverything';  
 subjectName = 'human_test';       
 
 % Create settings file path and save settings

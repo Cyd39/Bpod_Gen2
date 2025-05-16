@@ -737,7 +737,10 @@ function StimParams = StimParamGui()
         % Only get vibration parameters if not SoundOnly
         if sessionType ~= 2
             % Vibration parameters
-            StimParams.Vibration.Type = get(h.Vib.Type, 'String');
+            vibType = get(h.Vib.Type, 'Value');
+            vibTypeName = get(h.Vib.Type, 'String');
+            StimParams.Vibration.Type = vibType;
+            StimParams.Vibration.TypeName = vibTypeName{vibType};
             % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
             
             % Handle Vibration Amplitude input with range check

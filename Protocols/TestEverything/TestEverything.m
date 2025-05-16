@@ -2,8 +2,8 @@ function TestEverything()
     global BpodSystem
 
     % Initialize HiFi module
-    H = BpodHiFi('COM7'); 
-    H.SamplingRate = 192000; 
+    % H = BpodHiFi('COM7'); 
+    % H.SamplingRate = 192000; 
 
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
@@ -11,14 +11,6 @@ function TestEverything()
     
     % Generate Stimuli parameter table
     StimTable = GenStimSeq(StimParams);
-
-    % Generate Stimuli using GenStim
-    soundWaves = struct();
-    for i = 1:NumTrials
-        [soundWaves(i).waveform,~] = GenStim(StimTable(i,:));
-    end
-
-    disp('soundWaves generated!');
     
     % Setup default parameters
     S = struct;
@@ -50,13 +42,6 @@ function TestEverything()
         disp('Parameters updated');
     end
 
-    % Prepare sound
-    H = BpodHiFi('COM7'); 
-    H.SamplingRate = 192000;
-    
-    % Prepare vibration
-    % need to prepare vibration to be played in the stimulus state
-
     % Main trial loop
     for currentTrial = 1:NumTrials
         % Check if update button was pressed
@@ -66,8 +51,11 @@ function TestEverything()
             updateFlag = false; % reset flag
         end
         
+        % Generate sound&vibration waveform
+        soundWave = GenStimWave(StimTable(currentTrial,:));
+
          % Load the sound wave into BpodHiFi
-         H.load(1, soundWaves(currentTrial).waveform); % Give more time for the sound to load
+         H.load(1, soundWave); 
          H.push();
          disp('Sound loaded to buffer 1');
 

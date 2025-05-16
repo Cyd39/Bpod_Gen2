@@ -1,105 +1,173 @@
 function StimTable = GenStimSeq(StimParams)
-% GenStimSeq - Generate stimulus sequence and waveforms
+% GenStimSeq - Generate stimulus sequence table for each trial
 % Input:
 %   Par - Structure containing parameters from StimParamGui
 % Output:
 %   StimTable - Table containing stimulus parameters for each trial
 
-% Generate stimuli for each trial
+% get general parameters
 nTrials = StimParams.Behave.NumTrials;
-   
-% Extract timing parameters
-Dur = str2double(StimParams.AMStimTime);
+sessionTypeName = StimParams.Session.TypeName;
 
-% Extract auditory parameters
-Sndlvl = eval(StimParams.AMLevel);
-Sndvel = eval(StimParams.AMVelocity);
-Sndmd = eval(StimParams.AMModDepth);
-F0 = str2double(StimParams.AMF0);
-Nfreq = str2double(StimParams.AMNFreq);
+switch sessionTypeName
+    case 'Multimodal'
+        StimTable = makeMultiTable(StimParams);
 
-% Get number of repetitions
-Nrep = str2double(StimParams.Behave.NumRepetitions);
+    case 'SoundOnly'
+        StimTable = makeSndTable(StimParams);
 
-% Handle unmodulated condition
-if (any(Sndmd == 0))
-    addZero = 1;
-else 
-    addZero = 0;
-end
-Sndmd = Sndmd(Sndmd ~= 0);
-
-% Create parameter grid
-[Mf, Md, Intensity] = ndgrid(Sndvel', Sndmd', Sndlvl');
-
-% Reshape parameters
-Mf = Mf(:);
-Md = Md(:);
-Intensity = Intensity(:);
-
-% Add unmodulated condition if needed
-if (addZero)
-    NLvl = length(Sndlvl);
-    Intensity = [Intensity; Sndlvl(:)];
-    Mf = [Mf; zeros(NLvl, 1)];
-    Md = [Md; zeros(NLvl, 1)];
+    case 'VibrationOnly'
+        StimTable = makeVibTable(StimParams);
+        
+    otherwise
+        error('Invalid session type');
 end
 
-% Create parameter table
-StimTable = table(Mf, Md, Intensity);
+% Save StimTable to workspace
+assignin('base', 'StimTable', StimTable);
+disp('StimTable has been generated and saved to workspace');
 
-% Randomize trials within blocks
-StimTable = randomizeTrials(StimTable, Nrep);
+% Generate stimulus table for multimodal condition
+function StimTable = makeMultiTable(StimParams)
+    % get general parameters
+    nTrials = StimParams.Behave.NumTrials;
+    soundTypeName = StimParams.Sound.TypeName;
+    vibTypeName = StimParams.Vibration.TypeName;
+    switch soundTypeName
+        case 'White Noise'
+            sndLevel = StimParams.Sound.Noise.Level;
+            vibAmp = StimParams.Vibration.Amplitude;
+            vibFreq = StimParams.Vibration.Frequency;
 
-% Get number of trials
-NStm = height(StimTable);
+            % Create unique combinations of parameters
+            [sndLevel, vibAmp, vibFreq] = ndgrid(sndLevel, vibAmp, vibFreq);
+            stimTableUnq = table(sndLevel(:), vibAmp(:), vibFreq(:), 'VariableNames', {'SndLevel', 'VibAmp', 'VibFreq'});
+            
+            % Calculate number of blocks needed
+            blockSize = height(stimTableUnq);
+            numBlocks = floor(nTrials / blockSize);
+            remainingRows = mod(nTrials, blockSize);
 
-% Add static parameters
-StimTable.Set = repmat(Nname, NStm, 1);
-StimTable.StimT = repmat(Dur, NStm, 1);
-StimTable.F0 = repmat(F0, NStm, 1);
-StimTable.Nfreq = repmat(Nfreq, NStm, 1);
+            % Initialize stimTable
+            StimTable = table();
+
+            % Randomize blocks and add to stimTable
+            for i = 1:numBlocks
+                randomBlock = stimTableUnq(randperm(blockSize), :);
+                StimTable = [StimTable; randomBlock];
+            end
+
+            % Add remaining rows
+            if remainingRows > 0
+                randomIndices = randi(blockSize, remainingRows, 1);
+                remainingBlock = stimTableUnq(randomIndices, :);
+                StimTable = [StimTable; remainingBlock];
+            end
+
+            % Add other parameters
+            StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
+            StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
+            StimTable.SndLow = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
+            StimTable.SndHigh = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
+            StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
+            StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
+        case 'AM Noise'
+            % pass
+        case 'Click Train'
+            % pass
+        case 'Bandpass Noise'
+            % pass
+    end
+
 end
 
-function StmTable = randomizeTrials(StmTable, Nrep)
-% RANDOMIZETRIALS Randomize trial order within each block
-% Input:
-%   Stm - Original parameter table
-%   Nrep - Number of repetitions
-% Output:
-%   Stm - Randomized parameter table with trials shuffled within each block
+% Generate stimulus table for sound only condition
+function StimTable = makeSndTable(StimParams)
+    % get general parameters
+    nTrials = StimParams.Behave.NumTrials;
+    soundTypeName = StimParams.Sound.TypeName;
+    switch soundTypeName
+        case 'White Noise'
+            sndLevel = StimParams.Sound.Noise.Level;
 
-% Get original number of trials
-nTrials = height(StmTable);
+            % Create unique combinations of parameters
+            [sndLevel] = ndgrid(sndLevel);
+            stimTableUnq = table(sndLevel(:), 'VariableNames', {'SndLevel'});
+            
+            % Calculate number of blocks needed
+            blockSize = height(stimTableUnq);
+            numBlocks = floor(nTrials / blockSize);
+            remainingRows = mod(nTrials, blockSize);
 
-% Create repeated trials
-StmTable = repmat(StmTable, Nrep, 1);
+            % Initialize stimTable
+            StimTable = table();
 
-% Get total number of trials
-nTotal = height(StmTable);
+            % Randomize blocks and add to stimTable
+            for i = 1:numBlocks
+                randomBlock = stimTableUnq(randperm(blockSize), :);
+                StimTable = [StimTable; randomBlock];
+            end
 
-% Calculate number of trials per block
-nTrialsPerBlock = nTrials;
+            % Add remaining rows
+            if remainingRows > 0
+                randomIndices = randi(blockSize, remainingRows, 1);
+                remainingBlock = stimTableUnq(randomIndices, :);
+                StimTable = [StimTable; remainingBlock];
+            end
 
-% Initialize shuffled indices
-shuffledIdx = zeros(nTotal, 1);
+             % Add other parameters
+             StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
+             StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
+             StimTable.SndLow = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
+             StimTable.SndHigh = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
+             StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
+        case 'AM Noise'
+            % pass
+        case 'Click Train'
+            % pass
+        case 'Bandpass Noise'
+            % pass
+    end
 
-% Shuffle trials within each block
-for i = 1:Nrep
-    % Calculate start and end indices for current block
-    startIdx = (i-1)*nTrialsPerBlock + 1;
-    endIdx = i*nTrialsPerBlock;
+end
+
+% Generate stimulus table for vibration only condition
+function StimTable = makeVibTable(StimParams)
+    % get general parameters
+    nTrials = StimParams.Behave.NumTrials;
+    vibTypeName = StimParams.Vibration.TypeName;
+    vibAmp = StimParams.Vibration.Amplitude;
+    vibFreq = StimParams.Vibration.Frequency;
+
+    % Create unique combinations of parameters
+    [vibAmp, vibFreq] = ndgrid(vibAmp, vibFreq);
+    stimTableUnq = table(vibAmp(:), vibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
     
-    % Generate random permutation for current block
-    blockIdx = randperm(nTrialsPerBlock);
-    
-    % Add block offset to indices
-    blockIdx = blockIdx + (i-1)*nTrialsPerBlock;
-    
-    % Store shuffled indices
-    shuffledIdx(startIdx:endIdx) = blockIdx;
-end
+    % Calculate number of blocks needed
+    blockSize = height(stimTableUnq);
+    numBlocks = floor(nTrials / blockSize);
+    remainingRows = mod(nTrials, blockSize);
 
-% Randomize trial order
-StmTable = StmTable(shuffledIdx, :);
+    % Initialize stimTable
+    StimTable = table();
+
+    % Randomize blocks and add to stimTable
+    for i = 1:numBlocks
+        randomBlock = stimTableUnq(randperm(blockSize), :);
+        StimTable = [StimTable; randomBlock];
+    end
+
+    % Add remaining rows
+    if remainingRows > 0
+        randomIndices = randi(blockSize, remainingRows, 1);
+        remainingBlock = stimTableUnq(randomIndices, :);
+        StimTable = [StimTable; remainingBlock];
+    end
+
+     % Add other parameters
+     StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
+     StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
+     StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
+end 
+
 end
