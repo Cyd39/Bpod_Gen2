@@ -1,27 +1,25 @@
-function StimTable = GenStimSeq(Par)
+function StimTable = GenStimSeq(StimParams)
 % GenStimSeq - Generate stimulus sequence and waveforms
 % Input:
 %   Par - Structure containing parameters from StimParamGui
 % Output:
 %   StimTable - Table containing stimulus parameters for each trial
 
-
 % Generate stimuli for each trial
-nTrials = Par.StimParams.Behave.NumTrials;
+nTrials = StimParams.Behave.NumTrials;
    
 % Extract timing parameters
-Dur = str2double(Par.AMStimTime);
+Dur = str2double(StimParams.AMStimTime);
 
 % Extract auditory parameters
-Sndlvl = eval(Par.AMLevel);
-Sndvel = eval(Par.AMVelocity);
-Sndmd = eval(Par.AMModDepth);
-F0 = str2double(Par.AMF0);
-Nfreq = str2double(Par.AMNFreq);
+Sndlvl = eval(StimParams.AMLevel);
+Sndvel = eval(StimParams.AMVelocity);
+Sndmd = eval(StimParams.AMModDepth);
+F0 = str2double(StimParams.AMF0);
+Nfreq = str2double(StimParams.AMNFreq);
 
 % Get number of repetitions
-% Nrep = str2double(Par.StimParams.Behave.NumRepetitions);
-Nrep = 1;
+Nrep = str2double(StimParams.Behave.NumRepetitions);
 
 % Handle unmodulated condition
 if (any(Sndmd == 0))

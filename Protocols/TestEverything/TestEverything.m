@@ -9,10 +9,13 @@ function TestEverything()
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     NumTrials = StimParams.Behave.NumTrials;
     
+    % Generate Stimuli parameter table
+    StimTable = GenStimSeq(StimParams);
+
     % Generate Stimuli using GenStim
     soundWaves = struct();
     for i = 1:NumTrials
-        [soundWaves(i).waveform,~] = GenStim(StimParams(i));
+        [soundWaves(i).waveform,~] = GenStim(StimTable(i,:));
     end
 
     disp('soundWaves generated!');
