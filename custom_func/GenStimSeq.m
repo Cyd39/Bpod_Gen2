@@ -7,7 +7,7 @@ function StimTable = GenStimSeq(StimParams)
 
 % get general parameters
 nTrials = StimParams.Behave.NumTrials;
-percCatch = StimParams.Behave.PercCatch;
+propCatch = StimParams.Behave.PropCatch;
 sessionTypeName = StimParams.Session.TypeName;
 
 
@@ -26,7 +26,9 @@ switch sessionTypeName
 end
 
 % Add in catch trials
-StimTable = addCatchTrials(StimTable, nTrials, percCatch);
+if propCatch > 0
+    StimTable = addCatchTrials(StimTable, nTrials, propCatch);
+end
 
 % Save StimTable to workspace
 assignin('base', 'StimTable', StimTable);
@@ -176,9 +178,9 @@ function StimTable = makeVibTable(StimParams)
 end 
 
 % Add catch trials to the stimulus table
-function StimTable = addCatchTrials(StimTable, nTrials, percCatch)
+function StimTable = addCatchTrials(StimTable, nTrials, propCatch)
     % Calculate number of catch trials
-    nCatch = floor(nTrials * percCatch);
+    nCatch = floor(nTrials * propCatch);
     nOrigTrials = nTrials - nCatch;
     
     % First trim table to match nOrigTrials
