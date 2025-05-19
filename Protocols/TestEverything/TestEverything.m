@@ -62,7 +62,7 @@ function TestEverything()
         % Generate random ITI and quiet time for this trial
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
-        TimerDuration = ThisITI+BpodSystem.ProtocolSettings.StimParams.SoundDuration;
+        TimerDuration = ThisITI+BpodSystem.ProtocolSettings.StimParams.Duration;
         ValveTime = S.GUI.ValveTime;
         ResWin = S.GUI.ResWin;
         
@@ -126,17 +126,35 @@ function TestEverything()
             'StateChangeConditions', {'Tup', 'Response'}, ...
             'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 1});
 
-        % Response state
-        sma = AddState(sma, 'Name', 'Response', ...
-            'Timer', ResWin, ...
-            'StateChangeConditions', {'BNC1High', 'Reward', 'Tup', 'Checking'}, ...
-            'OutputActions', {});
+        % If it is a catch trial, there is no jumping into the reward state
+        isCatchTrial = false;
+        if ismember('SndTypeName', StimTable.Properties.VariableNames)
+            isCatchTrial = isCatchTrial | strcmp(StimTable.SndTypeName(currentTrial), 'null');
+        end
+        if ismember('VibTypeName', StimTable.Properties.VariableNames)
+            isCatchTrial = isCatchTrial | strcmp(StimTable.VibTypeName(currentTrial), 'null');
+        end
+        
+        if isCatchTrial
+            % NoReward state
+            sma = AddState(sma, 'Name', 'NoReward', ...
+                'Timer', ResWin, ...
+                'StateChangeConditions', {'Tup', 'Checking'}, ...
+                'OutputActions', {});
+        else
+            % Response state
+            sma = AddState(sma, 'Name', 'Response', ...
+                'Timer', ResWin, ...
+                'StateChangeConditions', {'BNC1High', 'Reward', 'Tup', 'Checking'}, ...
+                'OutputActions', {});
+        end
 
         % Reward state
         sma = AddState(sma, 'Name', 'Reward', ...
             'Timer', ValveTime, ...
             'StateChangeConditions', {'Tup', 'Checking'}, ...
             'OutputActions', {'Valve1', 1});
+
         
         % Set condition to check if GlobalTimer1 has ended
         sma = SetCondition(sma, 2, 'GlobalTimer1', 0); % Condition 2: GlobalTimer1 has ended
