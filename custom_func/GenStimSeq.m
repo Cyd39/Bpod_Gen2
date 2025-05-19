@@ -50,25 +50,33 @@ function StimTable = makeMultiTable(StimParams)
             [sndLevel, vibAmp, vibFreq] = ndgrid(sndLevel, vibAmp, vibFreq);
             stimTableUnq = table(sndLevel(:), vibAmp(:), vibFreq(:), 'VariableNames', {'SndLevel', 'VibAmp', 'VibFreq'});
             
+            % Remove combinations that would be equivalent to catch trials
+            % (where sndLevel is NaN and at least one of vibAmp or vibFreq is NaN)
+            invalidRows = isnan(stimTableUnq.SndLevel) & (isnan(stimTableUnq.VibAmp) | isnan(stimTableUnq.VibFreq));
+            stimTableUnq = stimTableUnq(~invalidRows, :);
+            
             % Calculate number of blocks needed
             blockSize = height(stimTableUnq);
             numBlocks = floor(nTrials / blockSize);
             remainingRows = mod(nTrials, blockSize);
 
-            % Initialize stimTable
-            StimTable = table();
-
-            % Randomize blocks and add to stimTable
+            % Preallocate StimTable
+            StimTable = table('Size', [nTrials, width(stimTableUnq)], 'VariableTypes', varfun(@class, stimTableUnq, 'OutputFormat', 'cell'));
+            StimTable.Properties.VariableNames = stimTableUnq.Properties.VariableNames;
+            
+            % Fill StimTable with randomized blocks
+            currentRow = 1;
             for i = 1:numBlocks
                 randomBlock = stimTableUnq(randperm(blockSize), :);
-                StimTable = [StimTable; randomBlock];
+                StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
+                currentRow = currentRow + blockSize;
             end
 
             % Add remaining rows
             if remainingRows > 0
                 randomIndices = randi(blockSize, remainingRows, 1);
                 remainingBlock = stimTableUnq(randomIndices, :);
-                StimTable = [StimTable; remainingBlock];
+                StimTable(currentRow:end, :) = remainingBlock;
             end
 
             % Add other parameters
@@ -106,20 +114,23 @@ function StimTable = makeSndTable(StimParams)
             numBlocks = floor(nTrials / blockSize);
             remainingRows = mod(nTrials, blockSize);
 
-            % Initialize stimTable
-            StimTable = table();
-
-            % Randomize blocks and add to stimTable
+            % Preallocate StimTable
+            StimTable = table('Size', [nTrials, width(stimTableUnq)], 'VariableTypes', varfun(@class, stimTableUnq, 'OutputFormat', 'cell'));
+            StimTable.Properties.VariableNames = stimTableUnq.Properties.VariableNames;
+            
+            % Fill StimTable with randomized blocks
+            currentRow = 1;
             for i = 1:numBlocks
                 randomBlock = stimTableUnq(randperm(blockSize), :);
-                StimTable = [StimTable; randomBlock];
+                StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
+                currentRow = currentRow + blockSize;
             end
 
             % Add remaining rows
             if remainingRows > 0
                 randomIndices = randi(blockSize, remainingRows, 1);
                 remainingBlock = stimTableUnq(randomIndices, :);
-                StimTable = [StimTable; remainingBlock];
+                StimTable(currentRow:end, :) = remainingBlock;
             end
 
              % Add other parameters
@@ -155,20 +166,23 @@ function StimTable = makeVibTable(StimParams)
     numBlocks = floor(nTrials / blockSize);
     remainingRows = mod(nTrials, blockSize);
 
-    % Initialize stimTable
-    StimTable = table();
-
-    % Randomize blocks and add to stimTable
+    % Preallocate StimTable
+    StimTable = table('Size', [nTrials, width(stimTableUnq)], 'VariableTypes', varfun(@class, stimTableUnq, 'OutputFormat', 'cell'));
+    StimTable.Properties.VariableNames = stimTableUnq.Properties.VariableNames;
+    
+    % Fill StimTable with randomized blocks
+    currentRow = 1;
     for i = 1:numBlocks
         randomBlock = stimTableUnq(randperm(blockSize), :);
-        StimTable = [StimTable; randomBlock];
+        StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
+        currentRow = currentRow + blockSize;
     end
 
     % Add remaining rows
     if remainingRows > 0
         randomIndices = randi(blockSize, remainingRows, 1);
         remainingBlock = stimTableUnq(randomIndices, :);
-        StimTable = [StimTable; remainingBlock];
+        StimTable(currentRow:end, :) = remainingBlock;
     end
 
      % Add other parameters
