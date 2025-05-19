@@ -7,7 +7,9 @@ function StimTable = GenStimSeq(StimParams)
 
 % get general parameters
 nTrials = StimParams.Behave.NumTrials;
+percCatch = 0.2;
 sessionTypeName = StimParams.Session.TypeName;
+
 
 switch sessionTypeName
     case 'Multimodal'
@@ -22,6 +24,9 @@ switch sessionTypeName
     otherwise
         error('Invalid session type');
 end
+
+% Add in catch trials
+StimTable = addCatchTrials(StimTable, nTrials, percCatch);
 
 % Save StimTable to workspace
 assignin('base', 'StimTable', StimTable);
@@ -170,4 +175,58 @@ function StimTable = makeVibTable(StimParams)
      StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
 end 
 
+% Add catch trials to the stimulus table
+function StimTable = addCatchTrials(StimTable, nTrials, percCatch)
+    % Calculate number of catch trials
+    nCatch = floor(nTrials * percCatch);
+    
+    % Create catch trial template with null values
+    catchTrial = table('Size', [1, width(StimTable)], 'VariableTypes', varfun(@class, StimTable, 'OutputFormat', 'cell'));
+    catchTrial.Properties.VariableNames = StimTable.Properties.VariableNames;
+    
+    % Fill catch trial with NaN for numeric columns and 'null' for string/cell columns
+    for i = 1:width(catchTrial)
+        if isnumeric(StimTable{1,i})
+            catchTrial{1,i} = NaN;
+        else
+            catchTrial{1,i} = {'null'};
+        end
+    end
+    
+    % Generate valid positions for catch trials (ensuring no consecutive positions)
+    validPositions = 1:height(StimTable);
+    catchPositions = zeros(1, nCatch);
+    
+    for i = 1:nCatch
+        if isempty(validPositions)
+            warning('Not enough valid positions for all catch trials');
+            break;
+        end
+        % Randomly select a position from valid positions
+        posIdx = randi(length(validPositions));
+        catchPositions(i) = validPositions(posIdx);
+        
+        % Remove the selected position and its adjacent positions from valid positions
+        validPositions = validPositions(~ismember(validPositions, ...
+            [catchPositions(i)-1, catchPositions(i), catchPositions(i)+1]));
+    end
+    
+    % Remove any unused positions (if we couldn't place all catch trials)
+    catchPositions = catchPositions(catchPositions > 0);
+    
+    % Sort positions in descending order to avoid index shifting during insertion
+    catchPositions = sort(catchPositions, 'descend');
+    
+    % Insert catch trials
+    for i = 1:length(catchPositions)
+        StimTable = [StimTable(1:catchPositions(i)-1,:); catchTrial; StimTable(catchPositions(i):end,:)];
+    end
+    
+    % Trim table to match nTrials
+    if height(StimTable) > nTrials
+        StimTable = StimTable(1:nTrials, :);
+    end
 end
+
+end
+
