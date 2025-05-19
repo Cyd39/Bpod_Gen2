@@ -649,264 +649,283 @@ function StimParams = StimParamGui()
             'Units', 'normalized', ...
             'Position', [0.6 0.3 0.3 0.04],...
             'FontSize', 12);
+
+        % Error message display area
+        h.ErrorMsg = uicontrol('Parent', parent, ...
+            'Style', 'text', ...
+            'String', '', ...
+            'Units', 'normalized', ...
+            'Position', [0.02 0.05 0.96 0.2],...
+            'FontSize', 12,...
+            'ForegroundColor', 'red',...
+            'HorizontalAlignment', 'left',...
+            'BackgroundColor', [0.95 0.95 0.95]);
     end
 
     function setStimParams(~, ~)
-        % Get session type
-        sessionType = get(h.SessionType, 'Value');
-        sessionTypeStr = get(h.SessionType, 'String');
-        StimParams.Session.Type = sessionType;
-        StimParams.Session.TypeName = sessionTypeStr{sessionType};
+        % Clear previous error message
+        set(h.ErrorMsg, 'String', '');
         
-        % get sound type
-        soundType = get(h.SoundType, 'Value');
-        soundTypeStr = get(h.SoundType, 'String');
-        StimParams.Sound.Type = soundType;
-        StimParams.Sound.TypeName = soundTypeStr{soundType};
-        StimParams.Duration = str2double(get(h.Duration, 'String')); % ms
-        StimParams.Ramp = str2double(get(h.Ramp, 'String')); % ms
-        
-        % Only get sound parameters if not VibrationOnly
-        if sessionType ~= 3
-            switch soundType
-                case 2 % AM Noise
-                    % StimParams.Sound.Duration = str2double(get(h.AM.Duration, 'String'));
-                    StimParams.Sound.Volume = str2double(get(h.AM.Volume, 'String'));
-                    StimParams.Sound.AM.Frequency = str2double(get(h.AM.Frequency, 'String'));
-                    StimParams.Sound.AM.Depth = str2double(get(h.AM.Depth, 'String'));
-                    StimParams.Sound.AM.CarrierFreq = str2double(get(h.AM.CarrierFreq, 'String'));
-                    StimParams.Sound.AM.BandWidth = str2double(get(h.AM.BandWidth, 'String'));
-                    StimParams.Sound.AM.TransTime = str2double(get(h.AM.TransitionTime, 'String'))/1000;
-                    StimParams.Sound.AM.TransDur = str2double(get(h.AM.TransitionDuration, 'String'))/1000;                   
+        try
+            % Get session type
+            sessionType = get(h.SessionType, 'Value');
+            sessionTypeStr = get(h.SessionType, 'String');
+            StimParams.Session.Type = sessionType;
+            StimParams.Session.TypeName = sessionTypeStr{sessionType};
+            
+            % get sound type
+            soundType = get(h.SoundType, 'Value');
+            soundTypeStr = get(h.SoundType, 'String');
+            StimParams.Sound.Type = soundType;
+            StimParams.Sound.TypeName = soundTypeStr{soundType};
+            StimParams.Duration = str2double(get(h.Duration, 'String')); % ms
+            StimParams.Ramp = str2double(get(h.Ramp, 'String')); % ms
+            
+            % Only get sound parameters if not VibrationOnly
+            if sessionType ~= 3
+                switch soundType
+                    case 2 % AM Noise
+                        % StimParams.Sound.Duration = str2double(get(h.AM.Duration, 'String'));
+                        StimParams.Sound.Volume = str2double(get(h.AM.Volume, 'String'));
+                        StimParams.Sound.AM.Frequency = str2double(get(h.AM.Frequency, 'String'));
+                        StimParams.Sound.AM.Depth = str2double(get(h.AM.Depth, 'String'));
+                        StimParams.Sound.AM.CarrierFreq = str2double(get(h.AM.CarrierFreq, 'String'));
+                        StimParams.Sound.AM.BandWidth = str2double(get(h.AM.BandWidth, 'String'));
+                        StimParams.Sound.AM.TransTime = str2double(get(h.AM.TransitionTime, 'String'))/1000;
+                        StimParams.Sound.AM.TransDur = str2double(get(h.AM.TransitionDuration, 'String'))/1000;                   
 
-                case 3 % Click Train
-                    % StimParams.Sound.Duration = str2double(get(h.Click.Duration, 'String'));
-                    StimParams.Sound.Click.Balance = str2double(get(h.Click.Balance, 'String'));
-                    StimParams.Sound.Click.Rate = str2double(get(h.Click.Rate, 'String'));
-                    StimParams.Sound.Click.Amplitude = str2double(get(h.Click.Amplitude, 'String'));
-                    StimParams.Sound.Click.MaskIntensity = str2double(get(h.Click.MaskIntensity, 'String'));
-                    
-                case {1, 4} % Noise
-                    % StimParams.Sound.Duration = str2double(get(h.Noise.Duration, 'String'));
-                    StimParams.Sound.Noise.LowFreq = str2double(get(h.Noise.LowFreq, 'String'));
-                    StimParams.Sound.Noise.HighFreq = str2double(get(h.Noise.HighFreq, 'String'));
-                    % Handle Noise Level input
-                    levelStr = get(h.Noise.Level, 'String');
-                    try
-                        % First try to handle comma-separated numbers
-                        if contains(levelStr, ',')
-                            % Split by comma and convert to numbers
-                            parts = strsplit(levelStr, ',');
-                            parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                            if all(~cellfun(@isnan, parts))
-                                StimParams.Sound.Noise.Level = cell2mat(parts)';
-                            else
-                                error('Invalid number format in comma-separated list');
-                            end
-                        else
-                            % Try to evaluate the string as a MATLAB expression
-                            levelValue = eval(levelStr);
-                            % Convert to column vector if it's a row vector
-                            if size(levelValue, 1) == 1
-                                levelValue = levelValue';
-                            end
-                            StimParams.Sound.Noise.Level = levelValue;
-                        end
-                    catch
-                        % If evaluation fails, try to parse as a range
+                    case 3 % Click Train
+                        % StimParams.Sound.Duration = str2double(get(h.Click.Duration, 'String'));
+                        StimParams.Sound.Click.Balance = str2double(get(h.Click.Balance, 'String'));
+                        StimParams.Sound.Click.Rate = str2double(get(h.Click.Rate, 'String'));
+                        StimParams.Sound.Click.Amplitude = str2double(get(h.Click.Amplitude, 'String'));
+                        StimParams.Sound.Click.MaskIntensity = str2double(get(h.Click.MaskIntensity, 'String'));
+                        
+                    case {1, 4} % Noise
+                        % StimParams.Sound.Duration = str2double(get(h.Noise.Duration, 'String'));
+                        StimParams.Sound.Noise.LowFreq = str2double(get(h.Noise.LowFreq, 'String'));
+                        StimParams.Sound.Noise.HighFreq = str2double(get(h.Noise.HighFreq, 'String'));
+                        % Handle Noise Level input
+                        levelStr = get(h.Noise.Level, 'String');
                         try
-                            % Split the string by ':'
-                            parts = strsplit(levelStr, ':');
-                            % Convert all parts to numbers
-                            parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                            % Check if all parts are valid numbers
-                            if all(~cellfun(@isnan, parts))
-                                switch length(parts)
-                                    case 1
-                                        % Single value
-                                        StimParams.Sound.Noise.Level = parts{1};
-                                    case 2
-                                        % Start:End (default step = 1)
-                                        StimParams.Sound.Noise.Level = (parts{1}:parts{2})';
-                                    case 3
-                                        % Start:Step:End
-                                        StimParams.Sound.Noise.Level = (parts{1}:parts{2}:parts{3})';
-                                    otherwise
-                                        % Multiple values separated by colons
-                                        StimParams.Sound.Noise.Level = cell2mat(parts)';
+                            % First try to handle comma-separated numbers
+                            if contains(levelStr, ',')
+                                % Split by comma and convert to numbers
+                                parts = strsplit(levelStr, ',');
+                                parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                                if all(~cellfun(@isnan, parts))
+                                    StimParams.Sound.Noise.Level = cell2mat(parts)';
+                                else
+                                    error('Invalid number format in comma-separated list');
                                 end
                             else
-                                error('Invalid number format in range');
+                                % Try to evaluate the string as a MATLAB expression
+                                levelValue = eval(levelStr);
+                                % Convert to column vector if it's a row vector
+                                if size(levelValue, 1) == 1
+                                    levelValue = levelValue';
+                                end
+                                StimParams.Sound.Noise.Level = levelValue;
                             end
                         catch
-                            error(sprintf(['Invalid Noise Level format. Please use one of these formats:' char(10) ...
-                                '- Comma separated: "4,5,10"' char(10) ...
-                                '- Space separated: "[4 5 10]"' char(10) ...
-                                '- Range with step: "0:5:60"']));
+                            % If evaluation fails, try to parse as a range
+                            try
+                                % Split the string by ':'
+                                parts = strsplit(levelStr, ':');
+                                % Convert all parts to numbers
+                                parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                                % Check if all parts are valid numbers
+                                if all(~cellfun(@isnan, parts))
+                                    switch length(parts)
+                                        case 1
+                                            % Single value
+                                            StimParams.Sound.Noise.Level = parts{1};
+                                        case 2
+                                            % Start:End (default step = 1)
+                                            StimParams.Sound.Noise.Level = (parts{1}:parts{2})';
+                                        case 3
+                                            % Start:Step:End
+                                            StimParams.Sound.Noise.Level = (parts{1}:parts{2}:parts{3})';
+                                        otherwise
+                                            % Multiple values separated by colons
+                                            StimParams.Sound.Noise.Level = cell2mat(parts)';
+                                    end
+                                else
+                                    error('Invalid number format in range');
+                                end
+                            catch
+                                error(sprintf(['Invalid Noise Level format. Please use one of these formats:' char(10) ...
+                                    '- Comma separated: "4,5,10"' char(10) ...
+                                    '- Space separated: "[4 5 10]"' char(10) ...
+                                    '- Range with step: "0:5:60"']));
+                            end
                         end
-                    end
+                end
             end
-        end
-        
-        % Only get vibration parameters if not SoundOnly
-        if sessionType ~= 2
-            % Vibration parameters
-            vibType = get(h.Vib.Type, 'Value');
-            vibTypeName = get(h.Vib.Type, 'String');
-            StimParams.Vibration.Type = vibType;
-            StimParams.Vibration.TypeName = vibTypeName{vibType};
-            % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
             
-            % Handle Vibration Amplitude input with range check
-            ampStr = get(h.Vib.Amplitude, 'String');
-            try
-                % First try to handle comma-separated numbers
-                if contains(ampStr, ',')
-                    % Split by comma and convert to numbers
-                    parts = strsplit(ampStr, ',');
-                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                    if all(~cellfun(@isnan, parts))
-                        ampValue = cell2mat(parts)';
-                        % Check if all values are within range [0,1]
-                        if any(ampValue < 0) || any(ampValue > 1)
-                            error('Amplitude values must be between 0 and 1');
-                        end
-                        StimParams.Vibration.Amplitude = ampValue;
-                    else
-                        error('Invalid number format in comma-separated list');
-                    end
-                else
-                    % Try to evaluate the string as a MATLAB expression
-                    ampValue = eval(ampStr);
-                    % Convert to column vector if it's a row vector
-                    if size(ampValue, 1) == 1
-                        ampValue = ampValue';
-                    end
-                    % Check if all values are within range [0,1]
-                    if any(ampValue < 0) || any(ampValue > 1)
-                        error('Amplitude values must be between 0 and 1');
-                    end
-                    StimParams.Vibration.Amplitude = ampValue;
-                end
-            catch
-                % If evaluation fails, try to parse as a range
+            % Only get vibration parameters if not SoundOnly
+            if sessionType ~= 2
+                % Vibration parameters
+                vibType = get(h.Vib.Type, 'Value');
+                vibTypeName = get(h.Vib.Type, 'String');
+                StimParams.Vibration.Type = vibType;
+                StimParams.Vibration.TypeName = vibTypeName{vibType};
+                % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
+                
+                % Handle Vibration Amplitude input with range check
+                ampStr = get(h.Vib.Amplitude, 'String');
                 try
-                    % Split the string by ':'
-                    parts = strsplit(ampStr, ':');
-                    % Convert all parts to numbers
-                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                    % Check if all parts are valid numbers
-                    if all(~cellfun(@isnan, parts))
-                        switch length(parts)
-                            case 1
-                                % Single value
-                                ampValue = parts{1};
-                            case 2
-                                % Start:End (default step = 1)
-                                ampValue = (parts{1}:parts{2})';
-                            case 3
-                                % Start:Step:End
-                                ampValue = (parts{1}:parts{2}:parts{3})';
-                            otherwise
-                                % Multiple values separated by colons
-                                ampValue = cell2mat(parts)';
+                    % First try to handle comma-separated numbers
+                    if contains(ampStr, ',')
+                        % Split by comma and convert to numbers
+                        parts = strsplit(ampStr, ',');
+                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                        if all(~cellfun(@isnan, parts))
+                            ampValue = cell2mat(parts)';
+                            % Check if all values are within range [0,1]
+                            if any(ampValue < 0) || any(ampValue > 1)
+                                error('Amplitude values must be between 0 and 1');
+                            end
+                            StimParams.Vibration.Amplitude = ampValue;
+                        else
+                            error('Invalid number format in comma-separated list');
+                        end
+                    else
+                        % Try to evaluate the string as a MATLAB expression
+                        ampValue = eval(ampStr);
+                        % Convert to column vector if it's a row vector
+                        if size(ampValue, 1) == 1
+                            ampValue = ampValue';
                         end
                         % Check if all values are within range [0,1]
                         if any(ampValue < 0) || any(ampValue > 1)
                             error('Amplitude values must be between 0 and 1');
                         end
                         StimParams.Vibration.Amplitude = ampValue;
-                    else
-                        error('Invalid number format in range');
                     end
                 catch
-                    error(sprintf(['Invalid Amplitude format. Please use one of these formats:' char(10) ...
-                        '- Comma separated: "0.2,0.5,0.8"' char(10) ...
-                        '- Space separated: "[0.2 0.5 0.8]"' char(10) ...
-                        '- Range with step: "0:0.1:1"' char(10) ...
-                        'All values must be between 0 and 1']));
+                    % If evaluation fails, try to parse as a range
+                    try
+                        % Split the string by ':'
+                        parts = strsplit(ampStr, ':');
+                        % Convert all parts to numbers
+                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                        % Check if all parts are valid numbers
+                        if all(~cellfun(@isnan, parts))
+                            switch length(parts)
+                                case 1
+                                    % Single value
+                                    ampValue = parts{1};
+                                case 2
+                                    % Start:End (default step = 1)
+                                    ampValue = (parts{1}:parts{2})';
+                                case 3
+                                    % Start:Step:End
+                                    ampValue = (parts{1}:parts{2}:parts{3})';
+                                otherwise
+                                    % Multiple values separated by colons
+                                    ampValue = cell2mat(parts)';
+                            end
+                            % Check if all values are within range [0,1]
+                            if any(ampValue < 0) || any(ampValue > 1)
+                                error('Amplitude values must be between 0 and 1');
+                            end
+                            StimParams.Vibration.Amplitude = ampValue;
+                        else
+                            error('Invalid number format in range');
+                        end
+                    catch
+                        error(sprintf(['Invalid Amplitude format. Please use one of these formats:' char(10) ...
+                            '- Comma separated: "0.2,0.5,0.8"' char(10) ...
+                            '- Space separated: "[0.2 0.5 0.8]"' char(10) ...
+                            '- Range with step: "0:0.1:1"' char(10) ...
+                            'All values must be between 0 and 1']));
+                    end
                 end
-            end
 
-            % Handle Vibration Frequency input
-            freqStr = get(h.Vib.Frequency, 'String');
-            try
-                % First try to handle comma-separated numbers
-                if contains(freqStr, ',')
-                    % Split by comma and convert to numbers
-                    parts = strsplit(freqStr, ',');
-                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                    if all(~cellfun(@isnan, parts))
-                        StimParams.Vibration.Frequency = cell2mat(parts)';
-                    else
-                        error('Invalid number format in comma-separated list');
-                    end
-                else
-                    % Try to evaluate the string as a MATLAB expression
-                    freqValue = eval(freqStr);
-                    % Convert to column vector if it's a row vector
-                    if size(freqValue, 1) == 1
-                        freqValue = freqValue';
-                    end
-                    StimParams.Vibration.Frequency = freqValue;
-                end
-            catch
-                % If evaluation fails, try to parse as a range
+                % Handle Vibration Frequency input
+                freqStr = get(h.Vib.Frequency, 'String');
                 try
-                    % Split the string by ':'
-                    parts = strsplit(freqStr, ':');
-                    % Convert all parts to numbers
-                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                    % Check if all parts are valid numbers
-                    if all(~cellfun(@isnan, parts))
-                        switch length(parts)
-                            case 1
-                                % Single value
-                                StimParams.Vibration.Frequency = parts{1};
-                            case 2
-                                % Start:End (default step = 1)
-                                StimParams.Vibration.Frequency = (parts{1}:parts{2})';
-                            case 3
-                                % Start:Step:End
-                                StimParams.Vibration.Frequency = (parts{1}:parts{2}:parts{3})';
-                            otherwise
-                                % Multiple values separated by colons
-                                StimParams.Vibration.Frequency = cell2mat(parts)';
+                    % First try to handle comma-separated numbers
+                    if contains(freqStr, ',')
+                        % Split by comma and convert to numbers
+                        parts = strsplit(freqStr, ',');
+                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                        if all(~cellfun(@isnan, parts))
+                            StimParams.Vibration.Frequency = cell2mat(parts)';
+                        else
+                            error('Invalid number format in comma-separated list');
                         end
                     else
-                        error('Invalid number format in range');
+                        % Try to evaluate the string as a MATLAB expression
+                        freqValue = eval(freqStr);
+                        % Convert to column vector if it's a row vector
+                        if size(freqValue, 1) == 1
+                            freqValue = freqValue';
+                        end
+                        StimParams.Vibration.Frequency = freqValue;
                     end
                 catch
-                    error(sprintf(['Invalid Frequency format. Please use one of these formats:' char(10) ...
-                        '- Comma separated: "100,200,300"' char(10) ...
-                        '- Space separated: "[100 200 300]"' char(10) ...
-                        '- Range with step: "100:50:300"']));
+                    % If evaluation fails, try to parse as a range
+                    try
+                        % Split the string by ':'
+                        parts = strsplit(freqStr, ':');
+                        % Convert all parts to numbers
+                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                        % Check if all parts are valid numbers
+                        if all(~cellfun(@isnan, parts))
+                            switch length(parts)
+                                case 1
+                                    % Single value
+                                    StimParams.Vibration.Frequency = parts{1};
+                                case 2
+                                    % Start:End (default step = 1)
+                                    StimParams.Vibration.Frequency = (parts{1}:parts{2})';
+                                case 3
+                                    % Start:Step:End
+                                    StimParams.Vibration.Frequency = (parts{1}:parts{2}:parts{3})';
+                                otherwise
+                                    % Multiple values separated by colons
+                                    StimParams.Vibration.Frequency = cell2mat(parts)';
+                            end
+                        else
+                            error('Invalid number format in range');
+                        end
+                    catch
+                        error(sprintf(['Invalid Frequency format. Please use one of these formats:' char(10) ...
+                            '- Comma separated: "100,200,300"' char(10) ...
+                            '- Space separated: "[100 200 300]"' char(10) ...
+                            '- Range with step: "100:50:300"']));
+                    end
                 end
             end
-        end
 
-        % Behavior parameters
-        StimParams.Behave.MinITI = str2double(get(h.Behave.MinITI, 'String'));
-        StimParams.Behave.MaxITI = str2double(get(h.Behave.MaxITI, 'String'));
-        StimParams.Behave.MinQuietTime = str2double(get(h.Behave.MinQuietTime, 'String'));
-        StimParams.Behave.MaxQuietTime = str2double(get(h.Behave.MaxQuietTime, 'String'));
-        StimParams.Behave.ResWin = str2double(get(h.Behave.ResWin, 'String'));
-        StimParams.Behave.ValveTime = str2double(get(h.Behave.ValveTime, 'String'));
-        StimParams.Behave.NumTrials = str2double(get(h.Behave.NumTrials, 'String'));
-        
-        % Validate catch trial percentage
-        propCatch = str2double(get(h.Behave.PropCatch, 'String'));
-        if propCatch < 0 || propCatch > 1
-            error('Catch trial proportion must be between 0 and 1');
-        end
-        StimParams.Behave.PropCatch = propCatch;
+            % Behavior parameters
+            StimParams.Behave.MinITI = str2double(get(h.Behave.MinITI, 'String'));
+            StimParams.Behave.MaxITI = str2double(get(h.Behave.MaxITI, 'String'));
+            StimParams.Behave.MinQuietTime = str2double(get(h.Behave.MinQuietTime, 'String'));
+            StimParams.Behave.MaxQuietTime = str2double(get(h.Behave.MaxQuietTime, 'String'));
+            StimParams.Behave.ResWin = str2double(get(h.Behave.ResWin, 'String'));
+            StimParams.Behave.ValveTime = str2double(get(h.Behave.ValveTime, 'String'));
+            StimParams.Behave.NumTrials = str2double(get(h.Behave.NumTrials, 'String'));
+            
+            % Validate catch trial proportion
+            propCatch = str2double(get(h.Behave.PropCatch, 'String'));
+            if propCatch < 0 || propCatch > 1
+                error('Catch trial proportion must be between 0 and 1');
+            end
+            StimParams.Behave.PropCatch = propCatch;
 
-        % Save and display parameters
-        guidata(h_gui, StimParams);
-        disp('Stimulus parameters set:')
-        disp(StimParams)
-        
-        uiresume(h_gui);
+            % Save and display parameters
+            guidata(h_gui, StimParams);
+            disp('Stimulus parameters set:')
+            disp(StimParams)
+            
+            uiresume(h_gui);
+        catch ME
+            % Display error message in the error area
+            set(h.ErrorMsg, 'String', ME.message);
+        end
     end
 
     uiwait(h_gui);
