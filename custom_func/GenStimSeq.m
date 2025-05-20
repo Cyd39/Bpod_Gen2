@@ -25,11 +25,6 @@ switch sessionTypeName
         error('Invalid session type');
 end
 
-% Add in catch trials
-if propCatch > 0
-    StimTable = addCatchTrials(StimTable, nTrials, propCatch);
-end
-
 % Add MMType column based on conditions
 StimTable.MMType = cell(height(StimTable), 1);
 for j = 1:height(StimTable)
@@ -115,6 +110,11 @@ function StimTable = makeMultiTable(StimParams)
                 remainingBlock = stimTableUnq(randomIndices, :);
                 StimTable(currentRow:end, :) = remainingBlock;
             end
+            
+            % Add in catch trials
+            if propCatch > 0
+                StimTable = addCatchTrials(StimTable, nTrials, propCatch);
+            end
 
             % Add other parameters
             StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
@@ -143,6 +143,10 @@ function StimTable = makeSndTable(StimParams)
             [sndLevel] = ndgrid(sndLevel);
             stimTableUnq = table(sndLevel(:), 'VariableNames', {'AudIntensity'});
             
+            % Remove invalid rows
+            invalidRows = stimTableUnq.AudIntensity == -inf;
+            stimTableUnq = stimTableUnq(~invalidRows, :);
+
             % Calculate number of blocks needed
             blockSize = height(stimTableUnq);
             numBlocks = floor(nTrials / blockSize);
@@ -165,6 +169,11 @@ function StimTable = makeSndTable(StimParams)
                 randomIndices = randi(blockSize, remainingRows, 1);
                 remainingBlock = stimTableUnq(randomIndices, :);
                 StimTable(currentRow:end, :) = remainingBlock;
+            end
+
+            % Add in catch trials
+            if propCatch > 0
+                StimTable = addCatchTrials(StimTable, nTrials, propCatch);
             end
 
              % Add other parameters
@@ -192,6 +201,10 @@ function StimTable = makeVibTable(StimParams)
     [vibAmp, vibFreq] = ndgrid(vibAmp, vibFreq);
     stimTableUnq = table(vibAmp(:), vibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
     
+    % Remove invalid rows
+    invalidRows = stimTableUnq.VibAmp == 0 | stimTableUnq.VibFreq == 0;
+    stimTableUnq = stimTableUnq(~invalidRows, :);
+    
     % Calculate number of blocks needed
     blockSize = height(stimTableUnq);
     numBlocks = floor(nTrials / blockSize);
@@ -207,6 +220,11 @@ function StimTable = makeVibTable(StimParams)
         randomBlock = stimTableUnq(randperm(blockSize), :);
         StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
         currentRow = currentRow + blockSize;
+    end
+
+    % Add in catch trials
+    if propCatch > 0
+        StimTable = addCatchTrials(StimTable, nTrials, propCatch);
     end
 
     % Add remaining rows

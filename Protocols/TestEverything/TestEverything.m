@@ -8,7 +8,7 @@ function TestEverything()
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     NumTrials = StimParams.Behave.NumTrials;
-    Ramp = StimParams.Ramp;
+    StimDur = StimParams.Duration;
     
     % Generate Stimuli parameter table
     StimTable = GenStimSeq(StimParams);
@@ -53,7 +53,7 @@ function TestEverything()
         end
         
         % Generate sound&vibration waveform
-        soundWave = GenStimWave(StimTable(currentTrial,:), Ramp);
+        soundWave = GenStimWave(StimTable(currentTrial,:));
 
          % Load the sound wave into BpodHiFi
          H.load(1, soundWave); 
@@ -63,23 +63,13 @@ function TestEverything()
         % Generate random ITI and quiet time for this trial
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
-        TimerDuration = ThisITI+BpodSystem.ProtocolSettings.StimParams.Duration;
+        TimerDuration = ThisITI+StimDur;
         ValveTime = S.GUI.ValveTime;
         ResWin = S.GUI.ResWin;
         
         % Display the trial information
         disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
 
-        % Determine stimulus for this trial
-        %switch TrialTypes(currentTrial)
-        %    case 1 % Sound only
-        %        StimActions = {'PWM1', 255}; % Sound trigger
-        %    case 2 % Vibration only  
-        %        StimActions = {'PWM2', 255}; % Vibration trigger
-        %    case 3 % Both
-        %        StimActions = {'PWM1', 255, 'PWM2', 255}; % Both triggers
-        %end
-        
         % Create state machine
         sma = NewStateMachine();
       

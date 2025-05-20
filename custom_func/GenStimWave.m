@@ -1,4 +1,4 @@
-function OutputWave = GenStimWave(StimRow, Ramp)
+function OutputWave = GenStimWave(StimRow)
 % GenStimWave - Generate stimulus waveforms based on parameters
 % Input:
 %   StimParams - Single row from StimSeq table containing trial parameters
@@ -13,22 +13,32 @@ SoundWave = zeros(size(t));
 VibWave = zeros(size(t));
 
 % Generate sound waveform based on type if not NaN
-if StimRow.SndLevel~= -inf
-    switch StimRow.SndTypeName
-        case "NoiseBurst"
+if StimRow.AudIntensity ~= -inf
+    % Convert cell to char if necessary
+    sndType = StimRow.SndTypeName;
+    if iscell(sndType)
+        sndType = sndType{1};
+    end
+    
+    switch sndType
+        case "Noise Burst"
             % Set parameters
-            Int = StimRow.SndLevel;
+            Int = StimRow.AudIntensity;
             Mf = 0;
             Md = 0;
-            fLow = StimRow.SndLow;
-            fHigh = StimRow.SndHigh;
-            useLogDen = 1;
+            fLow = StimRow.AudFreqMin;
+            fHigh = StimRow.AudFreqMax;
+            useLogDen = StimRow.LogDensity;
             maskBand = 0;
-            transTime = 0;
+            transTime = -inf;
             transDur = 0;
-            RiseTime = 0;
-            FallTime = 0;
-            
+            RiseTime = StimRow.RampDur;
+            FallTime = StimRow.RampDur;
+            Dur = StimRow.Duration/1000;
+            % Get speaker and gain - to be changed
+            Spk = 1;
+            Gain = 1;
+            Ref = 1;
             
         case "AM Noise"
             %pass
@@ -36,7 +46,7 @@ if StimRow.SndLevel~= -inf
         case "Click Train"
             %pass
     end
-    Dur = StimRow.Duration/1000;
+
     % Generate sound waveform
     SoundWave = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
         maskBand,transTime, transDur,RiseTime,FallTime,...
