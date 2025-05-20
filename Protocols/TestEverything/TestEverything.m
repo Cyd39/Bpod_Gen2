@@ -8,6 +8,7 @@ function TestEverything()
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     NumTrials = StimParams.Behave.NumTrials;
+    Ramp = StimParams.Ramp;
     
     % Generate Stimuli parameter table
     StimTable = GenStimSeq(StimParams);
@@ -52,7 +53,7 @@ function TestEverything()
         end
         
         % Generate sound&vibration waveform
-        soundWave = GenStimWave(StimTable(currentTrial,:));
+        soundWave = GenStimWave(StimTable(currentTrial,:), Ramp);
 
          % Load the sound wave into BpodHiFi
          H.load(1, soundWave); 

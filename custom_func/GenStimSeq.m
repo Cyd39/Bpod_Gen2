@@ -30,6 +30,43 @@ if propCatch > 0
     StimTable = addCatchTrials(StimTable, nTrials, propCatch);
 end
 
+% Add MMType column based on conditions
+StimTable.MMType = cell(height(StimTable), 1);
+for j = 1:height(StimTable)
+    hasSnd = ismember('AudIntensity', StimTable.Properties.VariableNames);
+    hasVib = ismember('VibAmp', StimTable.Properties.VariableNames);
+    
+    if hasSnd && hasVib
+        if StimTable.AudIntensity(j) == -inf && StimTable.VibAmp(j) == 0
+            StimTable.MMType{j} = 'OO';
+        elseif StimTable.AudIntensity(j) == -inf
+            StimTable.MMType{j} = 'SO';
+        elseif StimTable.VibAmp(j) == 0
+            StimTable.MMType{j} = 'OA';
+        else
+            StimTable.MMType{j} = 'SA';
+        end
+    elseif hasSnd
+        if StimTable.AudIntensity(j) == -inf
+            StimTable.MMType{j} = 'OO';
+        else
+            StimTable.MMType{j} = 'SO';
+        end
+    elseif hasVib
+        if StimTable.VibAmp(j) == 0
+            StimTable.MMType{j} = 'OO';
+        else
+            StimTable.MMType{j} = 'OA';
+        end
+    else
+        StimTable.MMType{j} = 'OO';
+    end
+end
+
+% Add Duration and RampDur columns
+StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
+StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
+
 % Save StimTable to workspace
 assignin('base', 'StimTable', StimTable);
 disp('StimTable has been generated and saved to workspace');
@@ -41,18 +78,18 @@ function StimTable = makeMultiTable(StimParams)
     soundTypeName = StimParams.Sound.TypeName;
     vibTypeName = StimParams.Vibration.TypeName;
     switch soundTypeName
-        case 'White Noise'
+        case 'Noise Burst'
             sndLevel = StimParams.Sound.Noise.Level;
             vibAmp = StimParams.Vibration.Amplitude;
             vibFreq = StimParams.Vibration.Frequency;
 
             % Create unique combinations of parameters
             [sndLevel, vibAmp, vibFreq] = ndgrid(sndLevel, vibAmp, vibFreq);
-            stimTableUnq = table(sndLevel(:), vibAmp(:), vibFreq(:), 'VariableNames', {'SndLevel', 'VibAmp', 'VibFreq'});
+            stimTableUnq = table(sndLevel(:), vibAmp(:), vibFreq(:), 'VariableNames', {'AudIntensity', 'VibAmp', 'VibFreq'});
             
             % Remove combinations that would be equivalent to catch trials
             % (where sndLevel is NaN and at least one of vibAmp or vibFreq is NaN)
-            invalidRows = isnan(stimTableUnq.SndLevel) & (isnan(stimTableUnq.VibAmp) | isnan(stimTableUnq.VibFreq));
+            invalidRows = stimTableUnq.AudIntensity == -inf & (stimTableUnq.VibAmp == 0 | stimTableUnq.VibFreq == 0);
             stimTableUnq = stimTableUnq(~invalidRows, :);
             
             % Calculate number of blocks needed
@@ -80,17 +117,14 @@ function StimTable = makeMultiTable(StimParams)
             end
 
             % Add other parameters
-            StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
-            StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
-            StimTable.SndLow = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
-            StimTable.SndHigh = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
+            StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
+            StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
             StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
             StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
+            StimTable.LogDensity = repmat(StimParams.Sound.Noise.LogDen, height(StimTable), 1);
         case 'AM Noise'
             % pass
         case 'Click Train'
-            % pass
-        case 'Bandpass Noise'
             % pass
     end
 
@@ -102,12 +136,12 @@ function StimTable = makeSndTable(StimParams)
     nTrials = StimParams.Behave.NumTrials;
     soundTypeName = StimParams.Sound.TypeName;
     switch soundTypeName
-        case 'White Noise'
+        case 'Noise Burst'
             sndLevel = StimParams.Sound.Noise.Level;
 
             % Create unique combinations of parameters
             [sndLevel] = ndgrid(sndLevel);
-            stimTableUnq = table(sndLevel(:), 'VariableNames', {'SndLevel'});
+            stimTableUnq = table(sndLevel(:), 'VariableNames', {'AudIntensity'});
             
             % Calculate number of blocks needed
             blockSize = height(stimTableUnq);
@@ -134,16 +168,13 @@ function StimTable = makeSndTable(StimParams)
             end
 
              % Add other parameters
-             StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
-             StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
-             StimTable.SndLow = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
-             StimTable.SndHigh = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
+             StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
+             StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
              StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
+             StimTable.LogDensity = repmat(StimParams.Sound.Noise.LogDen, height(StimTable), 1);
         case 'AM Noise'
             % pass
         case 'Click Train'
-            % pass
-        case 'Bandpass Noise'
             % pass
     end
 
@@ -186,8 +217,6 @@ function StimTable = makeVibTable(StimParams)
     end
 
      % Add other parameters
-     StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
-     StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
      StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
 end 
 
@@ -206,12 +235,13 @@ function StimTable = addCatchTrials(StimTable, nTrials, propCatch)
     catchTrial = table('Size', [1, width(StimTable)], 'VariableTypes', varfun(@class, StimTable, 'OutputFormat', 'cell'));
     catchTrial.Properties.VariableNames = StimTable.Properties.VariableNames;
     
-    % Fill catch trial with NaN for numeric columns and 'null' for string/cell columns
+    % Fill catch trial with specific values based on column existence
     for i = 1:width(catchTrial)
-        if isnumeric(StimTable{1,i})
-            catchTrial{1,i} = NaN;
-        else
-            catchTrial{1,i} = {'null'};
+        if strcmp(catchTrial.Properties.VariableNames{i}, 'AudIntensity')
+            catchTrial.AudIntensity = -inf;
+        elseif strcmp(catchTrial.Properties.VariableNames{i}, 'VibAmp') || strcmp(catchTrial.Properties.VariableNames{i}, 'VibFreq')
+            catchTrial.VibAmp = 0;
+            catchTrial.VibFreq = 0;
         end
     end
     
