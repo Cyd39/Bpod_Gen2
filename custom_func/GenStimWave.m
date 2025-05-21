@@ -8,7 +8,7 @@ function OutputWave = GenStimWave(StimRow)
 Fs = 192000;
 
 % Initialize empty waveforms
-t = (0:1/Fs:(StimRow.Duration/1000))';
+t = (0:1/Fs:StimRow.Duration/1000)';
 SoundWave = zeros(size(t));
 VibWave = zeros(size(t));
 
