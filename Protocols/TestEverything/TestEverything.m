@@ -2,13 +2,13 @@ function TestEverything()
     global BpodSystem
 
     % Initialize HiFi module
-    % H = BpodHiFi('COM7'); 
-    % H.SamplingRate = 192000; 
+    H = BpodHiFi('COM7'); 
+    H.SamplingRate = 192000; 
 
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     NumTrials = StimParams.Behave.NumTrials;
-    StimDur = StimParams.Duration;
+    StimDur = StimParams.Duration/1000;
     
     % Generate Stimuli parameter table
     StimTable = GenStimSeq(StimParams);
@@ -55,10 +55,10 @@ function TestEverything()
         % Generate sound&vibration waveform
         soundWave = GenStimWave(StimTable(currentTrial,:));
 
-         % Load the sound wave into BpodHiFi
-         H.load(1, soundWave); 
-         H.push();
-         disp('Sound loaded to buffer 1');
+        % Load the sound wave into BpodHiFi
+        H.load(1, soundWave); 
+        H.push();
+        disp(['Trial ' num2str(currentTrial) ': Sound loaded to buffer 1']);
 
         % Generate random ITI and quiet time for this trial
         ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
@@ -178,7 +178,11 @@ function TestEverything()
         
         % Check if session should end
         if BpodSystem.Status.BeingUsed == 0
+            disp('End of session');
             return
         end
     end
-    end 
+    
+    % Display end of session message when all trials are completed
+    disp('End of session - All trials completed');
+end 

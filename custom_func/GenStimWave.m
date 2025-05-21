@@ -91,10 +91,17 @@ if length(SoundWave) ~= length(VibWave)
 end
 
 % Combine sound and vibration into stereo output
-OutputWave = [SoundWave, VibWave];
+OutputWave = [SoundWave, VibWave]';
+
+% put into workspace
+assignin('base', 'OutputWave', OutputWave);
 
 end
 
+
+
+
+% --Local functions--%
 function Snd = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
         maskBand,transTime, transDur,RiseTime,FallTime,...
         Fs,Spk,Gain,Ref)
