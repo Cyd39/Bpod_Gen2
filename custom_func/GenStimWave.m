@@ -32,8 +32,8 @@ if ismember(StimRow.MMType,{'OA','SA'})
             maskBand = 0;
             transTime = -inf;
             transDur = 0;
-            RiseTime = StimRow.RampDur;
-            FallTime = StimRow.RampDur;
+            RiseTime = StimRow.RampDur * 0.001; % ms -> s
+            FallTime = StimRow.RampDur * 0.001; % ms -> s
             Dur = StimRow.Duration/1000;
             
             % Temporary Gain matrix for testing
@@ -47,7 +47,7 @@ if ismember(StimRow.MMType,{'OA','SA'})
             SoundWave = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
                 maskBand,transTime, transDur,RiseTime,FallTime,...
                 Fs,Spk,Gain,Ref);
-            
+            SoundWave = SoundWave(:);
         case "AM Noise"
             %pass
             
@@ -77,6 +77,16 @@ if ismember(StimRow.MMType,{'SO','SA'})
     if StimRow.RampDur > 0
         Nenv = round(StimRow.RampDur*10^-3*Fs);
         VibWave = applyEnvelope(VibWave,Nenv);
+    end
+end
+
+% Check if the length of the sound and vibration waveforms are the same
+if length(SoundWave) ~= length(VibWave)
+    % If not, pad the shorter waveform with zeros
+    if length(SoundWave) < length(VibWave)
+        SoundWave = [SoundWave; zeros(length(VibWave) - length(SoundWave), 1)];
+    else
+        VibWave = [VibWave; zeros(length(SoundWave) - length(VibWave), 1)];
     end
 end
 
@@ -114,9 +124,9 @@ nSamp       =   round(Fs*Dur);           % Number of samples in signal
 dF          =   1/Dur;              % frequency resolution
 
 %% Use Calibration
-Gain		=	Gain(Gain(:,3)==Spk,:); % -- select speaker --
-DACmax      =   Ref(1,3);
-RefdB       =   Ref(1,2);
+%Gain		=	Gain(Gain(:,3)==Spk,:); % -- select speaker --
+%DACmax      =   Ref(1,3);
+%RefdB       =   Ref(1,2);
 
 % Generate Signal
 %% Select frequncy band
@@ -164,12 +174,14 @@ if useLogDen
 end
 %% apply calibration
 ToneSPL		=	Int - 10 * log10(totalN);	%-- Each component contributes Lvl - 10*log10(# components) to the overall level --%
+% --- temporary gain for testing ---
+amplitude =  0.1 * 10^((ToneSPL-70)./20);
+%-----------------------------
+maskXX1(maskIdx)      =   maskXX1(maskIdx).*amplitude;%.*getamp(Gain,FF(maskIdx),ToneSPL,RefdB,DACmax);
+mainXX1(mainIdx)      =   mainXX1(mainIdx).*amplitude;%.*getamp(Gain,FF(mainIdx),ToneSPL,RefdB,DACmax);
 
-maskXX1(maskIdx)      =   maskXX1(maskIdx).*getamp(Gain,FF(maskIdx),ToneSPL,RefdB,DACmax);
-mainXX1(mainIdx)      =   mainXX1(mainIdx).*getamp(Gain,FF(mainIdx),ToneSPL,RefdB,DACmax);
-
-maskXX2(maskIdx)      =   maskXX2(maskIdx).*getamp(Gain,FF(maskIdx),ToneSPL,RefdB,DACmax);
-mainXX2(mainIdx)      =   mainXX2(mainIdx).*getamp(Gain,FF(mainIdx),ToneSPL,RefdB,DACmax);
+maskXX2(maskIdx)      =   maskXX2(maskIdx).*amplitude;%.*getamp(Gain,FF(maskIdx),ToneSPL,RefdB,DACmax);
+mainXX2(mainIdx)      =   mainXX2(mainIdx).*amplitude;%.*getamp(Gain,FF(mainIdx),ToneSPL,RefdB,DACmax);
 
 %% generate t-domain signal
 

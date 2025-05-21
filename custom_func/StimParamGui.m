@@ -123,11 +123,15 @@ function StimParams = StimParamGui()
         % Get all controls in vibration panel
         vibControls = findall(vibPanel, 'Type', 'uicontrol');
         
+        % Get duration controls
+        durationControls = findall(h_gui, 'Tag', 'SepDurControl');
+        
         switch sessionType
             case 1 % Multimodal
-                % Enable all controls
+                % Enable all controls except duration controls
                 set(soundControls, 'Enable', 'on');
                 set(vibControls, 'Enable', 'on');
+                set(durationControls, 'Enable', 'off');
                 set(soundPanel, 'Title', 'Sound Stimulus Parameters');
                 set(vibPanel, 'Title', 'Vibration Stimulus Parameters');
                 
@@ -135,6 +139,7 @@ function StimParams = StimParamGui()
                 % Enable sound controls, disable vibration controls
                 set(soundControls, 'Enable', 'on');
                 set(vibControls, 'Enable', 'off');
+                set(durationControls, 'Enable', 'off');
                 set(soundPanel, 'Title', 'Sound Stimulus Parameters');
                 set(vibPanel, 'Title', 'Vibration Stimulus Parameters (Disabled)');
                 
@@ -142,6 +147,7 @@ function StimParams = StimParamGui()
                 % Disable sound controls, enable vibration controls
                 set(soundControls, 'Enable', 'off');
                 set(vibControls, 'Enable', 'on');
+                set(durationControls, 'Enable', 'off');
                 set(soundPanel, 'Title', 'Sound Stimulus Parameters (Disabled)');
                 set(vibPanel, 'Title', 'Vibration Stimulus Parameters');
         end
@@ -205,7 +211,8 @@ function StimParams = StimParamGui()
             'Units', 'normalized', ...
             'Position', [0.5 0.25 0.4 0.1],...
             'FontSize', 14,...
-            'Enable', 'off');
+            'Enable', 'off',...
+            'Tag', 'SepDurControl');
 
         % Volume
         uicontrol('Parent', parent, ...
@@ -300,7 +307,8 @@ function StimParams = StimParamGui()
             'Units', 'normalized', ...
             'Position', [0.5 0.85 0.4 0.1],...
             'FontSize', 14,...
-            'Enable', 'off');
+            'Enable', 'off',...
+            'Tag', 'SepDurControl');
 
         % Other click parameters...
         createRemainingClickControls(parent);
@@ -381,7 +389,8 @@ function StimParams = StimParamGui()
             'Units', 'normalized', ...
             'Position', [0.5 0.85 0.4 0.1],...
             'FontSize', 14,...
-            'Enable', 'off');
+            'Enable', 'off',...
+            'Tag', 'SepDurControl');
 
         % Other noise parameters...
         createRemainingNoiseControls(parent);
@@ -481,7 +490,8 @@ function StimParams = StimParamGui()
             'Units', 'normalized', ...
             'Position', [0.5 0.5 0.4 0.15],...
             'FontSize', 14,...
-            'Enable', 'off');
+            'Enable', 'off',...
+            'Tag', 'SepDurControl');
 
         % Amplitude
         uicontrol('Parent', parent, ...
