@@ -45,13 +45,13 @@ for j = 1:height(StimTable)
         if StimTable.AudIntensity(j) == -inf
             StimTable.MMType{j} = 'OO';
         else
-            StimTable.MMType{j} = 'SO';
+            StimTable.MMType{j} = 'OA';
         end
     elseif hasVib
         if StimTable.VibAmp(j) == 0
             StimTable.MMType{j} = 'OO';
         else
-            StimTable.MMType{j} = 'OA';
+            StimTable.MMType{j} = 'SO';
         end
     else
         StimTable.MMType{j} = 'OO';

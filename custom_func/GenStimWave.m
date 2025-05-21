@@ -8,12 +8,12 @@ function OutputWave = GenStimWave(StimRow)
 Fs = 192000;
 
 % Initialize empty waveforms
-t = (0:1/Fs:StimRow.Duration/1000)';
+t = (0:1/Fs:(StimRow.Duration/1000))';
 SoundWave = zeros(size(t));
 VibWave = zeros(size(t));
 
 % Generate sound waveform based on type if not NaN
-if StimRow.AudIntensity ~= -inf
+if ismember(StimRow.MMType,{'OA','SA'})
     % Convert cell to char if necessary
     sndType = StimRow.SndTypeName;
     if iscell(sndType)
@@ -35,10 +35,18 @@ if StimRow.AudIntensity ~= -inf
             RiseTime = StimRow.RampDur;
             FallTime = StimRow.RampDur;
             Dur = StimRow.Duration/1000;
-            % Get speaker and gain - to be changed
-            Spk = 1;
-            Gain = 1;
-            Ref = 1;
+            
+            % Temporary Gain matrix for testing
+            % Format: [Frequency, Gain, Speaker]
+            freqRange = linspace(fLow, fHigh, 100)';
+            Gain = [freqRange, zeros(100,1), ones(100,1)];  % Flat gain
+            Spk = 1;  % Speaker number
+            Ref = [0, 0, 1];  % [Frequency, dB, DACmax]
+            
+            % Generate sound waveform
+            SoundWave = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
+                maskBand,transTime, transDur,RiseTime,FallTime,...
+                Fs,Spk,Gain,Ref);
             
         case "AM Noise"
             %pass
@@ -46,16 +54,17 @@ if StimRow.AudIntensity ~= -inf
         case "Click Train"
             %pass
     end
-
-    % Generate sound waveform
-    SoundWave = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
-        maskBand,transTime, transDur,RiseTime,FallTime,...
-        Fs,Spk,Gain,Ref)
 end
 
 % Generate vibration waveform if not NaN
-if StimRow.VibAmp~=0 && StimRow.VibFreq~=0
-    switch StimRow.VibTypeName
+if ismember(StimRow.MMType,{'SO','SA'})
+    % Convert cell to char if necessary
+    vibType = StimRow.VibTypeName;
+    if iscell(vibType)
+        vibType = vibType{1};
+    end
+    
+    switch vibType
         case "Square"
             VibWave = StimRow.VibAmp * ones(size(t));
         case "UniSine"
@@ -65,11 +74,9 @@ if StimRow.VibAmp~=0 && StimRow.VibFreq~=0
     end
 
     % Apply ramp to vibration
-    if Ramp > 0
-        ramp = hanning(round(Ramp*Fs*2));
-        ramp = ramp(1:round(length(ramp)/2));
-        VibWave(1:length(ramp)) = VibWave(1:length(ramp)) .* ramp;
-        VibWave(end-length(ramp)+1:end) = VibWave(end-length(ramp)+1:end) .* flip(ramp);
+    if StimRow.RampDur > 0
+        Nenv = round(StimRow.RampDur*10^-3*Fs);
+        VibWave = applyEnvelope(VibWave,Nenv);
     end
 end
 
@@ -211,8 +218,65 @@ Snd = Snd(:)'; % make sure Snd is a row vector (required for TDT)
 if( size(Snd,2) > 2 )
     if ~all(RiseFall == 0)
         Nenv			=	round( RiseFall .*Fs );
-        Snd				=	envelope(Snd',Nenv)';
+        Snd				=	applyEnvelope(Snd',Nenv)';
     end
 end
 
+end
+
+function Sig = applyEnvelope(Sig, NEnv)
+% Create a smooth on- and offset envelope for an auditory signal
+%
+% function SIG = ENVELOPE (SIG, NENV)
+%
+% .. Dr. P ...
+
+if (length(NEnv) == 1); NEnv = [NEnv,NEnv];end
+
+SigLen = size(Sig,1);
+
+if (SigLen < 2*NEnv)
+
+    disp ('-- ERROR: Envelope length greater than signal');
+
+else
+
+    Env1 = ( sin(0.5*pi*(0:NEnv(1))/NEnv(1)) ).^2;
+    Env2 = flip( sin(0.5*pi*(0:NEnv(2))/NEnv(2)) ).^2;
+    head = 1:(NEnv(1)+1);
+    tail = (SigLen-NEnv(2)):SigLen;
+
+    for i=1:size(Sig,2)
+    Sig(head,i) = Env1' .* Sig(head,i);
+    Sig(tail,i) = Env2' .* Sig(tail,i);
+    end
+end
+
+function Amp = getamp(GainTable,Freq,Lvl,RefdB,DACmax)
+%-- Select interpolate gain from the calibration table --%
+uSpk = unique(GainTable(:,3));
+nSpk = length(uSpk);
+
+Gain2D = nan(nSpk,length(Freq));
+for s = 1:nSpk
+    Spk = uSpk(s);
+    GT = GainTable(GainTable(:,3) == Spk,:);
+    Gain2D(s,:) = interp1(GT(:,1),GT(:,2),Freq(:));
+end
+
+Gain = mean(Gain2D,1); % if both speakers 
+
+Amp		=	(10.^((Lvl-RefdB)/20)) ./ Gain;
+
+if ( Amp >= DACmax )
+    if( idx+1 > size(GainTable,1) )
+        Gain	=	min([ mean( GainTable(idx-1:idx,2) ) 9]);
+    else
+        Gain	=	min([ mean( GainTable(idx-1:idx+1,2) ) 9]);
+    end
+    Amp		=	(10.^((Lvl-RefdB)/20)) ./ Gain;
+    warning(['Used adjacent gains to calibrate f= ' num2str(round(Freq)) ' Hz & clipped to 9 V if necessary.'])
+end
+
+end
 end
