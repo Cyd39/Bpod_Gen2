@@ -9,11 +9,11 @@ global BpodSystem
 timestamp = string(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
 settingsName = "Settings_" + timestamp;
 
+% Get protocol parameters from GUI
+[protocolName, subjectName] = ProtocolNameGui();
+
 % Initialize parameter GUI and get parameters
 StimParams = StimParamGui();
-
-% Generate stimulus and get stimulus info
-% StimSets = GenStim(StimParams);
 
 % Create protocol settings structure
 ProtocolSettings = struct();
@@ -23,10 +23,6 @@ ProtocolSettings.StimParams = StimParams;
 ProtocolSettings.Timestamp = timestamp;
 % Add stimulus sets
 % ProtocolSettings.StimSets = StimSets;
-
-% Define protocol parameters
-protocolName = 'TestEverything';  
-subjectName = 'human_test';       
 
 % Create settings file path and save settings
 settingsPath = fullfile(BpodSystem.Path.DataFolder, subjectName, protocolName, 'Session Settings');
