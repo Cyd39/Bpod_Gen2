@@ -54,5 +54,3 @@ catch err
     disp(err.message);
 end
 
-hold on;
-
