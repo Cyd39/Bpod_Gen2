@@ -2,7 +2,7 @@ function TestEverything()
     global BpodSystem
 
     % Initialize HiFi module
-    H = BpodHiFi('COM7'); 
+    H = BpodHiFi('COM3'); 
     H.SamplingRate = 192000; 
 
     % get parameters from StimParamGui
@@ -61,9 +61,11 @@ function TestEverything()
         disp(['Trial ' num2str(currentTrial) ': Sound loaded to buffer 1']);
 
         % Generate random ITI and quiet time for this trial
-        ThisITI = S.GUI.MinITI + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
+        ITIBefore = S.GUI.MinITI/2;
+        ITIAfter = S.GUI.MinITI/2 + rand() * (S.GUI.MaxITI - S.GUI.MinITI);
+        ThisITI = ITIBefore + ITIAfter;
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
-        TimerDuration = ThisITI+StimDur;
+        TimerDuration = ITIAfter+StimDur;
         ValveTime = S.GUI.ValveTime;
         ResWin = S.GUI.ResWin;
         
@@ -78,10 +80,10 @@ function TestEverything()
         
         % Add states
         % Ready state under different conditions
-        if ThisITI-QuietTime > 0
+        if ITIBefore-QuietTime > 0
             sma = AddState(sma, 'Name', 'Ready', ...
-                'Timer', ThisITI-QuietTime, ...
-                'StateChangeConditions', {'Tup', 'NoLick'}, ...
+                'Timer', ITIBefore-QuietTime, ...
+                'StateChangeConditions', {'Condition1', 'NoLick','Tup', 'NoLick'}, ...
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
@@ -89,8 +91,8 @@ function TestEverything()
                 'OutputActions', {});
         else
             sma = AddState(sma, 'Name', 'Ready', ...
-                'Timer', ThisITI, ...
-                'StateChangeConditions', {'Tup', 'Stimulus','Condition1', 'NoLick'}, ...
+                'Timer', ITIBefore, ...
+                'StateChangeConditions', {'Condition1', 'NoLick','Tup', 'Stimulus'}, ...
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
@@ -109,16 +111,14 @@ function TestEverything()
 
         % If it is a catch trial, there is no jumping into the reward state
         isCatchTrial = false;
-        if ismember('SndTypeName', StimTable.Properties.VariableNames)
-            isCatchTrial = isCatchTrial | strcmp(StimTable.SndTypeName(currentTrial), 'null');
-        end
-        if ismember('VibTypeName', StimTable.Properties.VariableNames)
-            isCatchTrial = isCatchTrial | strcmp(StimTable.VibTypeName(currentTrial), 'null');
+        if strcmp(char(StimTable.MMType(currentTrial)), 'OO')
+            isCatchTrial = true;
+            disp('catch trial')
         end
         
         if isCatchTrial
             % NoReward state
-            sma = AddState(sma, 'Name', 'NoReward', ...
+            sma = AddState(sma, 'Name', 'Response', ...
                 'Timer', ResWin, ...
                 'StateChangeConditions', {'Tup', 'Checking'}, ...
                 'OutputActions', {});
@@ -173,6 +173,4 @@ function TestEverything()
         end
     end
     
-    % Display end of session message when all trials are completed
-    disp('End of session - All trials completed');
 end 
