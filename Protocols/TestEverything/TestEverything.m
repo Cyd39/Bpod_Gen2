@@ -23,6 +23,9 @@ function TestEverything()
     S.GUI.ValveTime = StimParams.Behave.ValveTime; % seconds
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
 
+    % Cut-off period for NoLick state
+    CutOffPeriod = 60; % seconds
+
 
     % Initialize parameter GUI
     BpodParameterGUI('init', S);
@@ -68,6 +71,7 @@ function TestEverything()
         TimerDuration = ITIAfter+StimDur;
         ValveTime = S.GUI.ValveTime;
         ResWin = S.GUI.ResWin;
+        CutOff = CutOffPeriod;
         
         % Display the trial information
         disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
@@ -78,6 +82,10 @@ function TestEverything()
         % Set condition for BNC1 state
         sma = SetCondition(sma, 1, 'BNC1', 0); % Condition 1: BNC1 is HIGH (licking detected)
         sma = SetCondition(sma, 2, 'BNC1', 1); % Condition 2: BNC1 is LOW (no licking detected)
+
+        % Set timer and condition for the cut-off period
+        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', CutOff);
+        sma = SetCondition(sma, 3, 'GlobalTimer1', 0); % Condition 3: GlobalTimer1 has ended
         
         % Add states
         % Ready state under different conditions
@@ -88,11 +96,11 @@ function TestEverything()
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick','Tup', 'Stimulus'}, ... % Use condition to detect BNC1 state
-                'OutputActions', {});
+                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick','Tup', 'Stimulus','Condition3', 'Stimulus'}, ... % Use condition to detect BNC1 state
+                'OutputActions', {'GlobalTimerTrig', 1});
             sma = AddState(sma, 'Name', 'ResetNoLick', ...
                 'Timer', 0, ...
-                'StateChangeConditions', {'Condition2', 'NoLick'}, ... % Reset NoLick Timer
+                'StateChangeConditions', {'Condition2', 'NoLick','Condition3', 'Stimulus'}, ... % Reset NoLick Timer
                 'OutputActions', {});
         else
             sma = AddState(sma, 'Name', 'Ready', ...
@@ -101,22 +109,22 @@ function TestEverything()
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick', 'Tup', 'Stimulus'}, ... % Use condition to detect BNC1 state
+                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick', 'Tup', 'Stimulus','Condition3', 'Stimulus'}, ... % Use condition to detect BNC1 state
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'ResetNoLick', ...
                 'Timer', 0, ...
-                'StateChangeConditions', {'Condition2', 'NoLick'}, ... % Reset NoLick Timer
-                'OutputActions', {});
+                'StateChangeConditions', {'Condition2', 'NoLick','Condition3', 'Stimulus'}, ... % Reset NoLick Timer
+                'OutputActions', {'GlobalTimerTrig', 1});
         end
 
         % the timer begins at the stimulus state， the duration is Stimulus+ITI
-        sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', TimerDuration); 
+        sma = SetGlobalTimer(sma, 'TimerID', 2, 'Duration', TimerDuration); 
 
         % Stimulus state
         sma = AddState(sma, 'Name', 'Stimulus', ...
             'Timer', 0.2, ... % Using sound duration as stimulus time
             'StateChangeConditions', {'Tup', 'Response'}, ...
-            'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 1});
+            'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
 
         % If it is a catch trial, there is no jumping into the reward state
         isCatchTrial = false;
@@ -147,12 +155,12 @@ function TestEverything()
 
         
         % Set condition to check if GlobalTimer1 has ended
-        sma = SetCondition(sma, 3, 'GlobalTimer1', 0); % Condition 3: GlobalTimer1 has ended
+        sma = SetCondition(sma, 4, 'GlobalTimer2', 0); % Condition 4: GlobalTimer2 has ended
         
         % Here is the part need to be modified(maybe need to set a timer for the checking state)
         sma = AddState(sma, 'Name', 'Checking', ...
             'Timer', 0, ...  
-            'StateChangeConditions', {'Condition3', 'exit'}, ...
+            'StateChangeConditions', {'Condition4', 'exit'}, ...
             'OutputActions', {});
         
         % Send state machine to Bpod device
