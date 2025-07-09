@@ -184,7 +184,7 @@ end
 %% apply calibration
 ToneSPL		=	Int - 10 * log10(totalN);	%-- Each component contributes Lvl - 10*log10(# components) to the overall level --%
 % --- temporary gain for testing ---
-amplitude =  0.1 * 10^((ToneSPL-70)./20);
+%amplitude =  0.1 * 10^((ToneSPL-70)./20);
 %-----------------------------
 maskXX1(maskIdx)      =   maskXX1(maskIdx).*getamp(CalTable,FF(maskIdx),ToneSPL);
 mainXX1(mainIdx)      =   mainXX1(mainIdx).*getamp(CalTable,FF(mainIdx),ToneSPL);
