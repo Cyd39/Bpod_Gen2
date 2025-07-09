@@ -45,6 +45,9 @@ function TestEverything()
         disp('Parameters updated');
     end
 
+    % Save the StimTable to SessionData
+    BpodSystem.Data.StimTable = StimTable;
+    
     % Main trial loop
     for currentTrial = 1:NumTrials
         % Check if update button was pressed

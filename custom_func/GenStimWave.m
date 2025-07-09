@@ -1,11 +1,14 @@
 function OutputWave = GenStimWave(StimRow)
 % GenStimWave - Generate stimulus waveforms based on parameters
 % Input:
-%   StimParams - Single row from StimSeq table containing trial parameters
-%   Fs - Sampling frequency
+%   StimRow - Single row from StimSeq table containing trial parameters
 % Output:
 %   OutputWave - Combined waveform (stereo: [sound, vibration])
 Fs = 192000;
+
+% Load calibration table
+CalFile = 'Calibration Files\CalTable_20250707.mat';
+load(CalFile,'CalTable');
 
 % Initialize empty waveforms
 t = (0:1/Fs:StimRow.Duration/1000)';
@@ -100,7 +103,6 @@ end
 
 
 
-
 % --Local functions--%
 function Snd = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
         maskBand,transTime, transDur,RiseTime,FallTime,...
@@ -184,11 +186,11 @@ ToneSPL		=	Int - 10 * log10(totalN);	%-- Each component contributes Lvl - 10*log
 % --- temporary gain for testing ---
 amplitude =  0.1 * 10^((ToneSPL-70)./20);
 %-----------------------------
-maskXX1(maskIdx)      =   maskXX1(maskIdx).*amplitude;%.*getamp(Gain,FF(maskIdx),ToneSPL,RefdB,DACmax);
-mainXX1(mainIdx)      =   mainXX1(mainIdx).*amplitude;%.*getamp(Gain,FF(mainIdx),ToneSPL,RefdB,DACmax);
+maskXX1(maskIdx)      =   maskXX1(maskIdx).*getamp(CalTable,FF(maskIdx),ToneSPL);
+mainXX1(mainIdx)      =   mainXX1(mainIdx).*getamp(CalTable,FF(mainIdx),ToneSPL);
 
-maskXX2(maskIdx)      =   maskXX2(maskIdx).*amplitude;%.*getamp(Gain,FF(maskIdx),ToneSPL,RefdB,DACmax);
-mainXX2(mainIdx)      =   mainXX2(mainIdx).*amplitude;%.*getamp(Gain,FF(mainIdx),ToneSPL,RefdB,DACmax);
+maskXX2(maskIdx)      =   maskXX2(maskIdx).*getamp(CalTable,FF(maskIdx),ToneSPL);
+mainXX2(mainIdx)      =   mainXX2(mainIdx).*getamp(CalTable,FF(mainIdx),ToneSPL);
 
 %% generate t-domain signal
 
@@ -271,31 +273,15 @@ else
     end
 end
 
-function Amp = getamp(GainTable,Freq,Lvl,RefdB,DACmax)
-%-- Select interpolate gain from the calibration table --%
-uSpk = unique(GainTable(:,3));
-nSpk = length(uSpk);
+function amp = getamp(CalTable,freq,dBSPL)
+    
+gain = interp1(CalTable.CalFreq,CalTable.CalDB,freq,'makima');
 
-Gain2D = nan(nSpk,length(Freq));
-for s = 1:nSpk
-    Spk = uSpk(s);
-    GT = GainTable(GainTable(:,3) == Spk,:);
-    Gain2D(s,:) = interp1(GT(:,1),GT(:,2),Freq(:));
+amp = db2a(dBSPL - gain);
+
 end
 
-Gain = mean(Gain2D,1); % if both speakers 
-
-Amp		=	(10.^((Lvl-RefdB)/20)) ./ Gain;
-
-if ( Amp >= DACmax )
-    if( idx+1 > size(GainTable,1) )
-        Gain	=	min([ mean( GainTable(idx-1:idx,2) ) 9]);
-    else
-        Gain	=	min([ mean( GainTable(idx-1:idx+1,2) ) 9]);
-    end
-    Amp		=	(10.^((Lvl-RefdB)/20)) ./ Gain;
-    warning(['Used adjacent gains to calibrate f= ' num2str(round(Freq)) ' Hz & clipped to 9 V if necessary.'])
-end
-
+function amp = db2a(dB)
+    amp = 10.^(dB./20);
 end
 end
