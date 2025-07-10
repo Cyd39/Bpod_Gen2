@@ -12,6 +12,10 @@ function TestEverything()
     
     % Generate Stimuli parameter table
     StimTable = GenStimSeq(StimParams);
+
+    % Load calibration table
+    CalFile = 'Calibration Files\CalTable_20250707.mat';
+    load(CalFile,'CalTable');
     
     % Setup default parameters
     S = struct;
@@ -45,8 +49,9 @@ function TestEverything()
         disp('Parameters updated');
     end
 
-    % Save the StimTable to SessionData
+    % Save the StimTable and StimParams to SessionData
     BpodSystem.Data.StimTable = StimTable;
+    BpodSystem.Data.StimParams = StimParams;
     
     % Main trial loop
     for currentTrial = 1:NumTrials
@@ -58,7 +63,8 @@ function TestEverything()
         end
         
         % Generate sound&vibration waveform
-        soundWave = GenStimWave(StimTable(currentTrial,:));
+        soundWave = GenStimWave(StimTable(currentTrial,:),CalTable);
+        disp(StimTable(currentTrial,:));
 
         % Load the sound wave into BpodHiFi
         H.load(1, soundWave); 

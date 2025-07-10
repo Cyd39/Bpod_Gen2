@@ -1,14 +1,10 @@
-function OutputWave = GenStimWave(StimRow)
+function OutputWave = GenStimWave(StimRow,CalTable)
 % GenStimWave - Generate stimulus waveforms based on parameters
 % Input:
 %   StimRow - Single row from StimSeq table containing trial parameters
 % Output:
 %   OutputWave - Combined waveform (stereo: [sound, vibration])
 Fs = 192000;
-
-% Load calibration table
-CalFile = 'Calibration Files\CalTable_20250707.mat';
-load(CalFile,'CalTable');
 
 % Initialize empty waveforms
 t = (0:1/Fs:StimRow.Duration/1000)';
@@ -49,7 +45,7 @@ if ismember(StimRow.MMType,{'OA','SA'})
             % Generate sound waveform
             SoundWave = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
                 maskBand,transTime, transDur,RiseTime,FallTime,...
-                Fs,Spk,Gain,Ref);
+                Fs,Spk,Gain,Ref,CalTable);
             SoundWave = SoundWave(:);
         case "AM Noise"
             %pass
@@ -106,7 +102,7 @@ end
 % --Local functions--%
 function Snd = genamnoise(Dur,Int,Mf,Md,fLow,fHigh,useLogDen,...
         maskBand,transTime, transDur,RiseTime,FallTime,...
-        Fs,Spk,Gain,Ref)
+        Fs,Spk,Gain,Ref,CalTable)
 % [SND,FS] = GENAMNOISE
 % All inputs in SI units
 
@@ -242,7 +238,6 @@ if( size(Snd,2) > 2 )
         Snd				=	applyEnvelope(Snd',Nenv)';
     end
 end
-
 end
 
 function Sig = applyEnvelope(Sig, NEnv)
@@ -272,16 +267,14 @@ else
     Sig(tail,i) = Env2' .* Sig(tail,i);
     end
 end
+end
 
-function amp = getamp(CalTable,freq,dBSPL)
-    
-gain = interp1(CalTable.CalFreq,CalTable.CalDB,freq,'makima');
-
-amp = db2a(dBSPL - gain);
-
+function amp = getamp(CalTable,freq,dBSPL) 
+    gain = interp1(CalTable.CalFreq,CalTable.CalDB,freq,'makima');
+    amp = db2a(dBSPL - gain);
 end
 
 function amp = db2a(dB)
     amp = 10.^(dB./20);
 end
-end
+
