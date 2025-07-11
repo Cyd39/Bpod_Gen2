@@ -48,8 +48,12 @@ if ismember(StimRow.MMType,{'OA','SA'})
                 Fs,Spk,Gain,Ref,CalTable);
             SoundWave = SoundWave(:);
         case "AM Noise"
-            %pass
-            
+            S = StimRow;Spk = 1;
+            SoundWave     =   genamnoise(S.Duration/1000,S.AudIntensity,S.ModFreq,S.ModDepth,S.AudFreqMin,S.AudFreqMax,S.LogDensity,...
+                S.MaskBand,S.TransTime,S.TransDur,S.RiseTime*0.001,S.FallTime*0.001,...
+                Fs,Spk,[],[],CalTable);
+            SoundWave = SoundWave(:);
+
         case "Click Train"
             %pass
     end

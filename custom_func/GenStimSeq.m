@@ -117,8 +117,8 @@ function StimTable = makeMultiTable(StimParams)
             end
 
             % Add other parameters
-            StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
-            StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
+            StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.FreqMin, height(StimTable), 1);
+            StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.FreqMax, height(StimTable), 1);
             StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
             StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
             StimTable.LogDensity = repmat(StimParams.Sound.Noise.LogDen, height(StimTable), 1);
@@ -147,29 +147,8 @@ function StimTable = makeSndTable(StimParams)
             invalidRows = stimTableUnq.AudIntensity == -inf;
             stimTableUnq = stimTableUnq(~invalidRows, :);
 
-            % Calculate number of blocks needed
-            blockSize = height(stimTableUnq);
-            numBlocks = floor(nTrials / blockSize);
-            remainingRows = mod(nTrials, blockSize);
-
-            % Preallocate StimTable
-            StimTable = table('Size', [nTrials, width(stimTableUnq)], 'VariableTypes', varfun(@class, stimTableUnq, 'OutputFormat', 'cell'));
-            StimTable.Properties.VariableNames = stimTableUnq.Properties.VariableNames;
-            
             % Fill StimTable with randomized blocks
-            currentRow = 1;
-            for i = 1:numBlocks
-                randomBlock = stimTableUnq(randperm(blockSize), :);
-                StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
-                currentRow = currentRow + blockSize;
-            end
-
-            % Add remaining rows
-            if remainingRows > 0
-                randomIndices = randi(blockSize, remainingRows, 1);
-                remainingBlock = stimTableUnq(randomIndices, :);
-                StimTable(currentRow:end, :) = remainingBlock;
-            end
+            StimTable = fillUpBlocks(stimTableUnq, nTrials);
 
             % Add in catch trials
             if propCatch > 0
@@ -177,12 +156,65 @@ function StimTable = makeSndTable(StimParams)
             end
 
              % Add other parameters
-             StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.LowFreq, height(StimTable), 1);
-             StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.HighFreq, height(StimTable), 1);
+             StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.FreqMin, height(StimTable), 1);
+             StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.FreqMax, height(StimTable), 1);
              StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
              StimTable.LogDensity = repmat(StimParams.Sound.Noise.LogDen, height(StimTable), 1);
         case 'AM Noise'
-            % pass
+            Dur		=	StimParams.Duration; %ms
+
+            %-- Auditory parameters --%
+            Sndlvl	=	StimParams.Sound.Noise.Intensity; % dB
+            Sndvel	=	StimParams.Sound.AM.ModFreq; % Hz
+            Sndmd	=	StimParams.Sound.AM.ModDepth; % [0,1]
+            Sndtrans = StimParams.Sound.AM.TransitionTime / 1000; %ms -> s
+            SndMask = 0;
+
+            %-- Unimodal auditory stimulus parameters --%
+            if (any(Sndmd == 0));    addZero = 1; else; addZero = 0; end
+            Sndmd = Sndmd(Sndmd ~= 0);Sndvel = Sndvel(Sndvel ~= 0);
+
+            [Mf,Md,Intensity,TransTime,MaskBand]	=	ndgrid(Sndvel',Sndmd',Sndlvl',Sndtrans',SndMask');
+            Mf          =	Mf(:);
+            Md          =	Md(:);
+            Intensity	=	Intensity(:);
+            TransTime   =   TransTime(:);
+            MaskBand   =   MaskBand(:);
+            
+            if (addZero) % zero modulation
+                [ZeroSpeaker,ZeroIntensity,ZeroTransTime]	=	ndgrid(Sndloc',Sndlvl',Sndtrans');
+                ZeroSpeaker = ZeroSpeaker(:);
+                ZeroIntensity = ZeroIntensity(:);
+                ZeroTransTime = ZeroTransTime(:);
+            
+                NZero        = length(ZeroIntensity); 
+                Intensity   = [Intensity; ZeroIntensity(:)]; % different intensities
+                Speaker     = [Speaker;ZeroSpeaker]; % assume single speaker
+                Mf          = [Mf;zeros(NZero,1)]; % Mf = 0
+                Md          = [Md;zeros(NZero,1)]; % Md = 0
+                TransTime  = [TransTime;ZeroTransTime]; %
+                MaskBand  = [MaskBand;zeros(NZero,1)]; % masking does not matter.
+            end
+
+            stimTableUnq    =	table(Mf, Md, Intensity, TransTime,MaskBand, ...
+                                       'VariableNames', {'ModFreq','ModDepth','AudIntensity',...
+                                                        'TransTime','MaskBand'});
+            % Fill StimTable with randomized blocks
+            StimTable = fillUpBlocks(stimTableUnq, nTrials);
+
+            % Add in catch trials
+            if propCatch > 0
+                StimTable = addCatchTrials(StimTable, nTrials, propCatch);
+            end
+
+            StimTable.AudFreqMin = repmat(StimParams.Sound.Noise.FreqMin, height(StimTable), 1);
+            StimTable.AudFreqMax = repmat(StimParams.Sound.Noise.FreqMax, height(StimTable), 1);
+            StimTable.SndTypeName = repmat({soundTypeName}, height(StimTable), 1);
+            StimTable.TransDur = repmat(StimParams.Sound.AM.TransitionDuration / 1000, height(StimTable), 1); % ms -> s
+            StimTable.LogDensity = repmat(StimParams.Sound.Noise.LogDen, height(StimTable), 1);
+            StimTable.RiseTime = repmat(StimParams.Sound.Ramp, height(StimTable), 1);
+            StimTable.FallTime = repmat(StimParams.Sound.Ramp, height(StimTable), 1);
+
         case 'Click Train'
             % pass
     end
@@ -237,6 +269,34 @@ function StimTable = makeVibTable(StimParams)
      % Add other parameters
      StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
 end 
+
+% fill up blocks
+    function StimTable = fillUpBlocks(stimTableUnq, nTrials)
+        % Calculate number of blocks needed
+        blockSize = height(stimTableUnq);
+        numBlocks = floor(nTrials / blockSize);
+        remainingRows = mod(nTrials, blockSize);
+
+        % Preallocate StimTable
+        StimTable = table('Size', [nTrials, width(stimTableUnq)], 'VariableTypes', varfun(@class, stimTableUnq, 'OutputFormat', 'cell'));
+        StimTable.Properties.VariableNames = stimTableUnq.Properties.VariableNames;
+
+        % Fill StimTable with randomized blocks
+        currentRow = 1;
+        for i = 1:numBlocks
+            randomBlock = stimTableUnq(randperm(blockSize), :);
+            StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
+            currentRow = currentRow + blockSize;
+        end
+
+        % Add remaining rows
+        if remainingRows > 0
+            randomIndices = randi(blockSize, remainingRows, 1);
+            remainingBlock = stimTableUnq(randomIndices, :);
+            StimTable(currentRow:end, :) = remainingBlock;
+        end
+
+    end
 
 % Add catch trials to the stimulus table
 function StimTable = addCatchTrials(StimTable, nTrials, propCatch)
