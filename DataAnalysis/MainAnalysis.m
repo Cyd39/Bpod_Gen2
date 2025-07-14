@@ -4,6 +4,7 @@
 % ExtractTimeStamps
 Session_tbl = ExtractTimeStamps(SessionData);
 
+%% pre-process data
 % align timing to stimulus onset
 n_stim = height(Session_tbl);
 LickOn = cell(n_stim,1);
@@ -14,7 +15,9 @@ for ii = 1:height(Session_tbl)
     LickOff{ii} = Session_tbl.LickOff{ii} - Session_tbl.Stimulus(ii,1);
 end
 
-disp("Data loaded")
+LickAfterStim = cellfun(@(x) x(x>0), LickOn, 'UniformOutput', false);
+
+disp("Data pre-processed.")
 
 %% add column "Hit" to Session_tbl
 Session_tbl.Hit = zeros(height(Session_tbl), 1); % Initialize Hit column
@@ -58,15 +61,15 @@ xlabel('Time (s)');
 ylabel('Count');
 
 % First LickOn
-LickOnFirst = cellfun(@(x) x(1), LickOn, 'UniformOutput', false);
+LickOnFirst = cellfun(@(x) (x(1)), LickAfterStim(~cellfun(@isempty, LickAfterStim)), 'UniformOutput', false);
 LickOnFirst = [LickOnFirst{:}];
+LickOnFirst = LickOnFirst(~isnan(LickOnFirst)); % Remove NaN values
 
 subplot(1, 2, 2);
-histogram(LickOnFirst, -5:0.05:2);
+histogram(LickOnFirst, 0:0.05:2);
 title('First Lick On Times');
 xlabel('Time (s)');
 ylabel('Count');
-
 
 %% raster plot
 fig = figure;
