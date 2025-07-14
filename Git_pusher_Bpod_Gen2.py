@@ -42,8 +42,8 @@ def git_push(repo_path):
         subprocess.run(["git", "commit", "-m", commit_message], check=True)
 
         # 推送更改到远程仓库
-        print("正在执行：git push")
-        subprocess.run(["git", "push"], check=True)
+        print("正在执行：git push origin master")
+        subprocess.run(["git", "push", "origin", "master"], check=True)
 
         # 弹出成功对话框
         show_success_message()
