@@ -10,12 +10,15 @@ n_stim = height(Session_tbl);
 LickOn = cell(n_stim,1);
 LickOff = cell(n_stim,1);
 
+% align timing to stimulus onset
 for ii = 1:height(Session_tbl)
-    LickOn{ii} = Session_tbl.LickOn{ii} - Session_tbl.Stimulus(ii,1);
-    LickOff{ii} = Session_tbl.LickOff{ii} - Session_tbl.Stimulus(ii,1);
+    Session_tbl.LickOnAfterStim{ii} = Session_tbl.LickOn{ii} - Session_tbl.Stimulus(ii,1);
+    Session_tbl.LickOffAfterStim{ii} = Session_tbl.LickOff{ii} - Session_tbl.Stimulus(ii,1);
 end
 
-LickAfterStim = cellfun(@(x) x(x>0), LickOn, 'UniformOutput', false);
+% calculate first lick after stimulus onset
+FirstLickAfterStim = cellfun(@(x) min(x(x>0)), Session_tbl.LickOnAfterStim, 'UniformOutput', false);
+Session_tbl.FirstLickAfterStim = FirstLickAfterStim;
 
 disp("Data pre-processed.")
 
@@ -29,7 +32,7 @@ for t = 1:height(Session_tbl)
     windowEnd = stimulusStart + ResWin;
     
     % Get LickOn times for this trial
-    LickOn_t = LickOn{t};
+    LickOn_t = Session_tbl.LickOnAfterStim{t};
     
     % Check if any LickOn is within the time window and not NaN
     if ~isempty(LickOn_t) && ~all(isnan(LickOn_t))
@@ -61,9 +64,9 @@ xlabel('Time (s)');
 ylabel('Count');
 
 % First LickOn
-LickOnFirst = cellfun(@(x) (x(1)), LickAfterStim(~cellfun(@isempty, LickAfterStim)), 'UniformOutput', false);
+LickOnFirst = cellfun(@(x) (x(1)), FirstLickAfterStim(~cellfun(@isempty, FirstLickAfterStim)), 'UniformOutput', false);
 LickOnFirst = [LickOnFirst{:}];
-LickOnFirst = LickOnFirst(~isnan(LickOnFirst)); % Remove NaN values
+LickOnFirst = LickOnFirst(~isempty(LickOnFirst)); % Remove NaN values
 
 subplot(1, 2, 2);
 histogram(LickOnFirst, 0:0.05:2);
@@ -80,7 +83,7 @@ Colour = turbo(nInt);%[0,0,0];
 [ax,YTick,YTickLab] = plotraster(ax, LickOn,Session_tbl.AudIntensity, Colour,[10],1);
 ax.YTick = YTick{1};
 ax.YTickLabel = YTickLab;
-xlim(ax,[0,1])
+xlim(ax,[0,2])
 
 %% plot hit rate
 % Calculate hit rate for each intensity level
@@ -181,7 +184,7 @@ uInt = unique(Session_tbl.AudIntensity);
 for t = 1:height(Session_tbl)
     if hitTrials(t)
         % Get trial data
-        lickOnTimes = LickOn{t}; % Already aligned to stimulus onset
+        lickOnTimes = LickAfterStim{t}; % Already aligned to stimulus onset
         stimulusStart = Session_tbl.Stimulus(t, 1);
         resWin = SessionData.TrialSettings(t).GUI.ResWin;
         windowEnd = stimulusStart + resWin;
@@ -213,48 +216,65 @@ end
 
 % Create boxplot of latency by intensity
 if ~isempty(fieldnames(latencyByIntensity))
-    figure;
-    
-    % Prepare data for boxplot
-    latencyData = [];
-    intensityLabels = {};
-    
+    % Count how many intensities have data
+    validIntensities = 0;
     for i = 1:length(uInt)
         intensityStr = num2str(uInt(i));
         if isfield(latencyByIntensity, intensityStr) && ~isempty(latencyByIntensity.(intensityStr))
-            latencyData = [latencyData; latencyByIntensity.(intensityStr)];
-            if isinf(uInt(i)) && uInt(i) < 0
-                intensityLabels{end+1} = '-∞';
-            else
-                intensityLabels{end+1} = intensityStr;
-            end
+            validIntensities = validIntensities + 1;
         end
     end
     
-    % Create boxplot
-    if ~isempty(latencyData)
-        boxplot(latencyData, 'Labels', intensityLabels);
-        xlabel('Intensity');
-        ylabel('Latency (s)');
-        title('Response Latency by Intensity (Hit Trials Only)');
-        grid on;
+    if validIntensities > 0
+        % Create figure with subplots for each intensity
+        figure('Position', [100, 100, 200*validIntensities, 400]);
         
-        % Add statistics
+        plotIndex = 1;
         fprintf('\nLatency Analysis by Intensity (Hit trials only):\n');
         fprintf('================================================\n');
+        
         for i = 1:length(uInt)
             intensityStr = num2str(uInt(i));
             if isfield(latencyByIntensity, intensityStr) && ~isempty(latencyByIntensity.(intensityStr))
                 data = latencyByIntensity.(intensityStr);
+                
+                % Create subplot for this intensity
+                subplot(1, validIntensities, plotIndex);
+                
+                % Create boxplot
+                boxplot(data);
+                
+                % Set title and labels
                 if isinf(uInt(i)) && uInt(i) < 0
                     intensityLabel = '-∞';
                 else
                     intensityLabel = intensityStr;
                 end
-                fprintf('Intensity %s: n=%d, mean=%.3f±%.3f s\n', ...
-                    intensityLabel, length(data), mean(data), std(data));
+                
+                title(sprintf('Intensity %s\nn=%d', intensityLabel, length(data)));
+                ylabel('Latency (s)');
+                
+                % Add statistics text
+                meanLatency = mean(data);
+                medianLatency = median(data);
+                stdLatency = std(data);
+                
+                text(0.5, 0.95, sprintf('Mean: %.3f s\nMedian: %.3f s\nStd: %.3f s', ...
+                    meanLatency, medianLatency, stdLatency), ...
+                    'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+                    'VerticalAlignment', 'top', 'FontSize', 8, 'BackgroundColor', 'white');
+                
+                % Print statistics
+                fprintf('Intensity %s: n=%d, mean=%.3f±%.3f s, median=%.3f s\n', ...
+                    intensityLabel, length(data), meanLatency, stdLatency, medianLatency);
+                
+                plotIndex = plotIndex + 1;
             end
         end
+        
+        % Add overall title
+        sgtitle('Response Latency by Intensity (Hit Trials Only)', 'FontSize', 14);
+        
     else
         fprintf('\nNo Hit trials found for latency analysis.\n');
     end
