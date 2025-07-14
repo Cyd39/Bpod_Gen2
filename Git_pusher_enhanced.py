@@ -16,7 +16,8 @@ class EnhancedGitPusher:
         self.config = {
             "repo_path": r"Y:\Code\Bpod_Gen2",
             "default_branch": "main",
-            "auto_push": True
+            "auto_push": True,
+            "auto_pull": True
         }
         
         if os.path.exists(self.config_file):
@@ -83,6 +84,9 @@ class EnhancedGitPusher:
         auto_push_var = tk.BooleanVar(value=self.config["auto_push"])
         ttk.Checkbutton(options_frame, text="自动推送", variable=auto_push_var).pack(anchor='w')
         
+        auto_pull_var = tk.BooleanVar(value=self.config["auto_pull"])
+        ttk.Checkbutton(options_frame, text="推送前自动拉取", variable=auto_pull_var).pack(anchor='w')
+        
         # Git状态显示
         status_frame = ttk.LabelFrame(main_frame, text="Git状态", padding="10")
         status_frame.pack(fill='both', expand=True, pady=(0, 10))
@@ -100,10 +104,10 @@ class EnhancedGitPusher:
         
         ttk.Button(button_frame, text="检查状态", command=lambda: self.check_status(path_var.get())).pack(side='left', padx=(0, 5))
         ttk.Button(button_frame, text="提交并推送", command=lambda: self.commit_and_push(
-            path_var.get(), branch_var.get(), auto_push_var.get()
+            path_var.get(), branch_var.get(), auto_push_var.get(), auto_pull_var.get()
         )).pack(side='left', padx=(0, 5))
         ttk.Button(button_frame, text="保存设置", command=lambda: self.save_settings(
-            path_var.get(), branch_var.get(), auto_push_var.get()
+            path_var.get(), branch_var.get(), auto_push_var.get(), auto_pull_var.get()
         )).pack(side='left', padx=(0, 5))
         ttk.Button(button_frame, text="退出", command=self.root.destroy).pack(side='right')
         
@@ -194,7 +198,7 @@ class EnhancedGitPusher:
         dialog.wait_window()
         return commit_message[0]
     
-    def commit_and_push(self, repo_path, branch, auto_push):
+    def commit_and_push(self, repo_path, branch, auto_push, auto_pull):
         """提交并推送代码"""
         try:
             if not os.path.exists(repo_path):
@@ -226,8 +230,24 @@ class EnhancedGitPusher:
             
             # 推送
             if auto_push:
-                push_result = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, check=True)
-                messagebox.showinfo("成功", f"代码已成功推送到 {branch} 分支！", parent=self.root)
+                try:
+                    push_result = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, check=True)
+                    messagebox.showinfo("成功", f"代码已成功推送到 {branch} 分支！", parent=self.root)
+                except subprocess.CalledProcessError as e:
+                    if "failed to push some refs" in e.stderr:
+                        # 尝试先拉取远程更改
+                        try:
+                            messagebox.showinfo("提示", "远程仓库有更新，正在拉取最新代码...", parent=self.root)
+                            pull_result = subprocess.run(["git", "pull", "origin", branch], capture_output=True, text=True, check=True)
+                            # 再次尝试推送
+                            push_result = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, check=True)
+                            messagebox.showinfo("成功", f"代码已成功推送到 {branch} 分支！", parent=self.root)
+                        except subprocess.CalledProcessError as pull_error:
+                            error_msg = f"推送失败：\n远程仓库有冲突，需要手动解决。\n\n拉取错误：{pull_error.stderr}\n\n推送错误：{e.stderr}"
+                            messagebox.showerror("错误", error_msg, parent=self.root)
+                    else:
+                        error_msg = f"推送失败：\n{e.stderr}"
+                        messagebox.showerror("错误", error_msg, parent=self.root)
             else:
                 messagebox.showinfo("成功", "代码已提交，请手动推送！", parent=self.root)
             
