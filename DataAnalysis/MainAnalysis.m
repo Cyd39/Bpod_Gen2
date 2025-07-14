@@ -7,7 +7,7 @@ Session_tbl = ExtractTimeStamps(SessionData);
 %% pre-process data
 % align timing to stimulus onset
 n_stim = height(Session_tbl);
-LickOn = cell(n_stim,1);
+%LickOn = cell(n_stim,1);
 LickOff = cell(n_stim,1);
 
 % align timing to stimulus onset
@@ -28,19 +28,12 @@ Session_tbl.Hit = zeros(height(Session_tbl), 1); % Initialize Hit column
 for t = 1:height(Session_tbl)
     % Get trial parameters
     ResWin = SessionData.TrialSettings(t).GUI.ResWin;
-    stimulusStart = Session_tbl.Stimulus(t, 1);
-    windowEnd = stimulusStart + ResWin;
+    LickOn_t = Session_tbl.FirstLickAfterStim{t};
     
-    % Get LickOn times for this trial
-    LickOn_t = Session_tbl.LickOnAfterStim{t};
-    
-    % Check if any LickOn is within the time window and not NaN
+    % Check if FirstLickAfterStim is within the time window and not NaN
     if ~isempty(LickOn_t) && ~all(isnan(LickOn_t))
-        % Find valid licks (not NaN)
-        validLicks = LickOn_t(~isnan(LickOn_t));
-        
         % Check if any valid lick is within the response window
-        licksInWindow = validLicks >= stimulusStart & validLicks <= windowEnd;
+        licksInWindow = LickOn_t >= 0 & LickOn_t <= ResWin;
         
         if any(licksInWindow)
             Session_tbl.Hit(t) = 1;
@@ -102,15 +95,20 @@ xlabel('Time (s)');
 ylabel('Count');
 
 %% raster plot
+LickOn = Session_tbl.LickOnAfterStim;
 fig = figure;
 ax = axes("Parent",fig);
 uInt = unique(Session_tbl.AudIntensity);
 nInt= length(uInt);
 Colour = turbo(nInt);%[0,0,0];
-[ax,YTick,YTickLab] = plotraster(ax, LickOn,Session_tbl.AudIntensity, Colour,[10],1);
+[ax,YTick,YTickLab] = plotraster(ax, LickOn,Session_tbl.AudIntensity, Colour,10,1);
 ax.YTick = YTick{1};
 ax.YTickLabel = YTickLab;
 xlim(ax,[0,2])
+
+% Increase marker size for better visibility
+set(findobj(ax, 'Type', 'line'), 'MarkerSize', 8);
+set(findobj(ax, 'Type', 'line'), 'LineWidth', 1.5);
 
 %% plot hit rate
 % Calculate hit rate for each intensity level
@@ -211,32 +209,28 @@ uInt = unique(Session_tbl.AudIntensity);
 for t = 1:height(Session_tbl)
     if hitTrials(t)
         % Get trial data
-        lickOnTimes = LickAfterStim{t}; % Already aligned to stimulus onset
-        stimulusStart = Session_tbl.Stimulus(t, 1);
-        resWin = SessionData.TrialSettings(t).GUI.ResWin;
-        windowEnd = stimulusStart + resWin;
         intensity = Session_tbl.AudIntensity(t);
         
-        % Find the first valid lick within the response window
-        if ~isempty(lickOnTimes) && ~all(isnan(lickOnTimes))
-            validLicks = lickOnTimes(~isnan(lickOnTimes));
-            licksInWindow = validLicks >= stimulusStart & validLicks <= windowEnd;
+        % Get FirstLickAfterStim (already aligned to stimulus onset)
+        firstLickTime = Session_tbl.FirstLickAfterStim{t};
+        
+        % Check if we have a valid first lick time
+        if ~isempty(firstLickTime) && ~isnan(firstLickTime)
+            % FirstLickAfterStim is already the latency (time from stimulus onset)
+            latency = firstLickTime;
             
-            if any(licksInWindow)
-                % Get the first lick in the window
-                firstLickInWindow = validLicks(licksInWindow);
-                firstLickInWindow = firstLickInWindow(1); % First lick
-                
-                % Calculate latency (time from stimulus onset to first lick)
-                latency = firstLickInWindow - stimulusStart;
-                
-                % Store latency by intensity
+                            % Store latency by intensity
                 intensityStr = num2str(intensity);
-                if ~isfield(latencyByIntensity, intensityStr)
-                    latencyByIntensity.(intensityStr) = [];
+                % Create safe field name
+                if isinf(intensity) && intensity < 0
+                    fieldName = 'Intensity_Inf';
+                else
+                    fieldName = ['Intensity_' intensityStr];
                 end
-                latencyByIntensity.(intensityStr) = [latencyByIntensity.(intensityStr); latency];
-            end
+                if ~isfield(latencyByIntensity, fieldName)
+                    latencyByIntensity.(fieldName) = [];
+                end
+                latencyByIntensity.(fieldName) = [latencyByIntensity.(fieldName); latency];
         end
     end
 end
@@ -247,64 +241,179 @@ if ~isempty(fieldnames(latencyByIntensity))
     validIntensities = 0;
     for i = 1:length(uInt)
         intensityStr = num2str(uInt(i));
-        if isfield(latencyByIntensity, intensityStr) && ~isempty(latencyByIntensity.(intensityStr))
+        % Create safe field name
+        if isinf(uInt(i)) && uInt(i) < 0
+            fieldName = 'Intensity_Inf';
+        else
+            fieldName = ['Intensity_' intensityStr];
+        end
+        if isfield(latencyByIntensity, fieldName) && ~isempty(latencyByIntensity.(fieldName))
             validIntensities = validIntensities + 1;
         end
     end
     
     if validIntensities > 0
-        % Create figure with subplots for each intensity
-        figure('Position', [100, 100, 200*validIntensities, 400]);
+        % Create single figure for all boxplots
+        figure('Position', [100, 100, 800, 500]);
         
-        plotIndex = 1;
         fprintf('\nLatency Analysis by Intensity (Hit trials only):\n');
         fprintf('================================================\n');
         
+        % Prepare data for combined boxplot
+        allData = [];
+        groupLabels = {};
+        
         for i = 1:length(uInt)
             intensityStr = num2str(uInt(i));
-            if isfield(latencyByIntensity, intensityStr) && ~isempty(latencyByIntensity.(intensityStr))
-                data = latencyByIntensity.(intensityStr);
+            % Create safe field name
+            if isinf(uInt(i)) && uInt(i) < 0
+                fieldName = 'Intensity_Inf';
+            else
+                fieldName = ['Intensity_' intensityStr];
+            end
+            if isfield(latencyByIntensity, fieldName) && ~isempty(latencyByIntensity.(fieldName))
+                data = latencyByIntensity.(fieldName);
+                allData = [allData; data];
                 
-                % Create subplot for this intensity
-                subplot(1, validIntensities, plotIndex);
-                
-                % Create boxplot
-                boxplot(data);
-                
-                % Set title and labels
+                % Create group labels
                 if isinf(uInt(i)) && uInt(i) < 0
                     intensityLabel = '-∞';
                 else
                     intensityLabel = intensityStr;
                 end
                 
-                title(sprintf('Intensity %s\nn=%d', intensityLabel, length(data)));
-                ylabel('Latency (s)');
+                % Add group labels for each data point
+                groupLabels = [groupLabels; repmat({intensityLabel}, length(data), 1)];
                 
-                % Add statistics text
+                % Print statistics
                 meanLatency = mean(data);
                 medianLatency = median(data);
                 stdLatency = std(data);
-                
-                text(0.5, 0.95, sprintf('Mean: %.3f s\nMedian: %.3f s\nStd: %.3f s', ...
-                    meanLatency, medianLatency, stdLatency), ...
-                    'Units', 'normalized', 'HorizontalAlignment', 'center', ...
-                    'VerticalAlignment', 'top', 'FontSize', 8, 'BackgroundColor', 'white');
-                
-                % Print statistics
                 fprintf('Intensity %s: n=%d, mean=%.3f±%.3f s, median=%.3f s\n', ...
                     intensityLabel, length(data), meanLatency, stdLatency, medianLatency);
-                
-                plotIndex = plotIndex + 1;
             end
         end
         
-        % Add overall title
-        sgtitle('Response Latency by Intensity (Hit Trials Only)', 'FontSize', 14);
+        % Create combined boxplot
+        boxplot(allData, groupLabels);
+        hold on;
+        
+        % Add individual data points
+        for i = 1:length(uInt)
+            intensityStr = num2str(uInt(i));
+            if isinf(uInt(i)) && uInt(i) < 0
+                fieldName = 'Intensity_Inf';
+            else
+                fieldName = ['Intensity_' intensityStr];
+            end
+            if isfield(latencyByIntensity, fieldName) && ~isempty(latencyByIntensity.(fieldName))
+                data = latencyByIntensity.(fieldName);
+                % Add jittered points
+                x_pos = i + (rand(length(data), 1) - 0.5) * 0.3;
+                scatter(x_pos, data, 20, 'k', 'filled', 'MarkerFaceAlpha', 0.6);
+            end
+        end
+        
+        xlabel('Intensity');
+        ylabel('Latency (s)');
+        title('Latency by Intensity (Hit Trials Only)');
+        grid on;
+        
+        % Add statistics as text on the plot
+        yLim = ylim;
+        textY = yLim(2) * 0.95;
+        for i = 1:length(uInt)
+            intensityStr = num2str(uInt(i));
+            if isinf(uInt(i)) && uInt(i) < 0
+                fieldName = 'Intensity_Inf';
+                intensityLabel = '-∞';
+            else
+                fieldName = ['Intensity_' intensityStr];
+                intensityLabel = intensityStr;
+            end
+            if isfield(latencyByIntensity, fieldName) && ~isempty(latencyByIntensity.(fieldName))
+                data = latencyByIntensity.(fieldName);
+                meanLatency = mean(data);
+                text(i, textY, sprintf('n=%d\nμ=%.2f', length(data), meanLatency), ...
+                    'HorizontalAlignment', 'center', 'FontSize', 8, 'BackgroundColor', 'white');
+            end
+        end
         
     else
         fprintf('\nNo Hit trials found for latency analysis.\n');
     end
 else
     fprintf('\nNo Hit trials found for latency analysis.\n');
+end
+
+% plot latency median vs intensity
+if ~isempty(fieldnames(latencyByIntensity))
+    % Prepare data for median plot
+    medianLatencies = [];
+    intensityValues = [];
+    intensityLabels = {};
+    
+    for i = 1:length(uInt)
+        intensityStr = num2str(uInt(i));
+        if isinf(uInt(i)) && uInt(i) < 0
+            fieldName = 'Intensity_Inf';
+            intensityLabel = '-∞';
+        else
+            fieldName = ['Intensity_' intensityStr];
+            intensityLabel = intensityStr;
+        end
+        
+        if isfield(latencyByIntensity, fieldName) && ~isempty(latencyByIntensity.(fieldName))
+            data = latencyByIntensity.(fieldName);
+            medianLatencies = [medianLatencies; median(data)];
+            intensityValues = [intensityValues; uInt(i)];
+            intensityLabels{end+1} = intensityLabel;
+        end
+    end
+    
+    if ~isempty(medianLatencies)
+        figure;
+        
+        % Handle -inf for plotting
+        plotIntensities = intensityValues;
+        if any(isinf(intensityValues) & intensityValues < 0)
+            % Replace -inf with a negative value for plotting
+            plotIntensities(isinf(intensityValues) & intensityValues < 0) = min(intensityValues(~isinf(intensityValues))) - 10;
+        end
+        
+        % Create the plot
+        plot(plotIntensities, medianLatencies, 'o-', 'LineWidth', 2, 'MarkerSize', 8);
+        
+        % Set x-axis with proper labels
+        ax = gca;
+        ax.XTick = plotIntensities;
+        ax.XTickLabel = intensityLabels;
+        
+        % Add break symbol if there's -inf
+        if any(isinf(intensityValues) & intensityValues < 0)
+            xBreak = min(intensityValues(~isinf(intensityValues))) - 5;
+            yLim = ylim;
+            hold on;
+            plot([xBreak, xBreak], yLim, 'k--', 'LineWidth', 1);
+            text(xBreak, yLim(2), '//', 'HorizontalAlignment', 'center', 'FontSize', 12);
+        end
+        
+        xlabel('Intensity');
+        ylabel('Median Latency (s)');
+        title('Median Response Latency vs Intensity');
+        grid on;
+        
+        % Add data points as text labels
+        for i = 1:length(medianLatencies)
+            % Create safe field name
+            if isinf(intensityValues(i)) && intensityValues(i) < 0
+                fieldName = 'Intensity_Inf';
+            else
+                fieldName = ['Intensity_' num2str(intensityValues(i))];
+            end
+            text(plotIntensities(i), medianLatencies(i) + 0.02, ...
+                sprintf('n=%d', length(latencyByIntensity.(fieldName))), ...
+                'HorizontalAlignment', 'center', 'FontSize', 8);
+        end
+    end
 end
