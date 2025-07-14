@@ -57,19 +57,46 @@ figure('Position', [200, 300, 1600, 400]);
 
 % All licks
 subplot(1, 2, 1);
-histogram([LickOn{:}],-5:0.05:2);
+% Convert cell array to numeric array for histogram
+% Preallocate with maximum possible size
+maxPossibleSize = sum(cellfun(@(x) length(x), Session_tbl.LickOnAfterStim));
+allLickOnTimes = zeros(maxPossibleSize, 1);
+currentIndex = 1;
+
+for i = 1:height(Session_tbl)
+    if ~isempty(Session_tbl.LickOnAfterStim{i}) && ~all(isnan(Session_tbl.LickOnAfterStim{i}))
+        validTimes = Session_tbl.LickOnAfterStim{i}(~isnan(Session_tbl.LickOnAfterStim{i}));
+        validTimes = validTimes(:);
+        nValid = length(validTimes);
+        allLickOnTimes(currentIndex:currentIndex+nValid-1) = validTimes;
+        currentIndex = currentIndex + nValid;
+    end
+end
+% Trim to actual size
+allLickOnTimes = allLickOnTimes(1:currentIndex-1);
+histogram(allLickOnTimes, -5:0.05:2);
 title('All Lick On Times');
 
 xlabel('Time (s)');
 ylabel('Count');
 
 % First LickOn
-LickOnFirst = cellfun(@(x) (x(1)), FirstLickAfterStim(~cellfun(@isempty, FirstLickAfterStim)), 'UniformOutput', false);
-LickOnFirst = [LickOnFirst{:}];
-LickOnFirst = LickOnFirst(~isempty(LickOnFirst)); % Remove NaN values
-
 subplot(1, 2, 2);
-histogram(LickOnFirst, 0:0.05:2);
+% Convert cell array to numeric array for histogram
+% Preallocate with maximum possible size
+firstLickOnTimes = zeros(height(Session_tbl), 1);
+currentIndex = 1;
+
+for i = 1:height(Session_tbl)
+    if ~isempty(Session_tbl.FirstLickAfterStim{i}) && ~isnan(Session_tbl.FirstLickAfterStim{i})
+        firstLickTime = Session_tbl.FirstLickAfterStim{i}(:);
+        firstLickOnTimes(currentIndex) = firstLickTime;
+        currentIndex = currentIndex + 1;
+    end
+end
+% Trim to actual size
+firstLickOnTimes = firstLickOnTimes(1:currentIndex-1);
+histogram(firstLickOnTimes, 0:0.05:2);
 title('First Lick On Times');
 xlabel('Time (s)');
 ylabel('Count');
