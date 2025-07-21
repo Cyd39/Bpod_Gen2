@@ -184,6 +184,16 @@ function TestEverything()
             
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
+
+            % Save timing of the trial
+            BpodSystem.Data.ITIBefore(currentTrial) = ITIBefore;
+            BpodSystem.Data.ITIAfter(currentTrial) = ITIAfter;
+            BpodSystem.Data.ThisITI(currentTrial) = ThisITI;
+            BpodSystem.Data.QuietTime(currentTrial) = QuietTime;
+            BpodSystem.Data.TimerDuration(currentTrial) = TimerDuration;
+            BpodSystem.Data.ValveTime(currentTrial) = ValveTime;
+            BpodSystem.Data.ResWin(currentTrial) = ResWin;
+            BpodSystem.Data.CutOff(currentTrial) = CutOff;
                         
             SaveBpodSessionData;
         end
