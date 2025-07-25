@@ -87,14 +87,14 @@ end
 if length(SoundWave) ~= length(VibWave)
     % If not, pad the shorter waveform with zeros
     if length(SoundWave) < length(VibWave)
-        SoundWave = [SoundWave; zeros(length(VibWave) - length(SoundWave), 1)];
+        SoundWave = [SoundWave(:); zeros(length(VibWave) - length(SoundWave), 1)];
     else
-        VibWave = [VibWave; zeros(length(SoundWave) - length(VibWave), 1)];
+        VibWave = [VibWave(:); zeros(length(SoundWave) - length(VibWave), 1)];
     end
 end
 
 % Combine sound and vibration into stereo output
-OutputWave = [SoundWave, VibWave]';
+OutputWave = [SoundWave(:), VibWave(:)]'; % (:) makes sures vertical
 
 % put into workspace
 assignin('base', 'OutputWave', OutputWave);
