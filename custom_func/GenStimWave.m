@@ -48,10 +48,22 @@ if ismember(StimRow.MMType,{'OA','SA'})
                 Fs,Spk,Gain,Ref,CalTable);
             SoundWave = SoundWave(:);
         case "AM Noise"
-            %pass
-            
+            S = StimRow;Spk = 1;
+            SoundWave     =   genamnoise(S.Duration/1000,S.AudIntensity,S.ModFreq,S.ModDepth,S.AudFreqMin,S.AudFreqMax,S.LogDensity,...
+                S.MaskBand,S.TransTime,S.TransDur,S.RiseTime*0.001,S.FallTime*0.001,...
+                Fs,Spk,[],[],CalTable);
+            SoundWave = SoundWave(:);
+
         case "Click Train"
             %pass
+        case "Pure Tone"
+            S = StimRow;
+            SoundWave     =  ...
+                genPureTone(S.Duration*0.001, ... % ms-> s
+                            S.AudIntensity, ... % dB SPL
+                            S.AudFreq, ... % Hz
+                            S.RiseTime*0.001, S.FallTime*0.001,... % ms -> s
+                            Fs,CalTable);
     end
 end
 
@@ -83,14 +95,14 @@ end
 if length(SoundWave) ~= length(VibWave)
     % If not, pad the shorter waveform with zeros
     if length(SoundWave) < length(VibWave)
-        SoundWave = [SoundWave; zeros(length(VibWave) - length(SoundWave), 1)];
+        SoundWave = [SoundWave(:); zeros(length(VibWave) - length(SoundWave), 1)];
     else
-        VibWave = [VibWave; zeros(length(SoundWave) - length(VibWave), 1)];
+        VibWave = [VibWave(:); zeros(length(SoundWave) - length(VibWave), 1)];
     end
 end
 
 % Combine sound and vibration into stereo output
-OutputWave = [SoundWave, VibWave]';
+OutputWave = [SoundWave(:), VibWave(:)]'; % (:) makes sures vertical
 
 % put into workspace
 assignin('base', 'OutputWave', OutputWave);
@@ -267,6 +279,21 @@ else
     Sig(tail,i) = Env2' .* Sig(tail,i);
     end
 end
+end
+
+function Snd = genPureTone(dur, dBSPL, freq, RiseTime, FallTime,...
+                            Fs, CalTable)
+
+RiseFall = [RiseTime,FallTime];
+if (isempty(RiseFall)); RiseFall = 5e-3;end
+
+    amp = getamp(CalTable,freq,dBSPL) ;
+    tt = 0:1/Fs:dur;
+    Snd = amp*sin(2*pi*freq.*tt);
+
+    Nenv			=	round(RiseFall .*Fs );
+    Snd				=	applyEnvelope(Snd',Nenv)';
+
 end
 
 function amp = getamp(CalTable,freq,dBSPL) 
