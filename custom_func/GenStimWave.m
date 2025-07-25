@@ -56,6 +56,14 @@ if ismember(StimRow.MMType,{'OA','SA'})
 
         case "Click Train"
             %pass
+        case "Pure Tone"
+            S = StimRow;
+            SoundWave     =  ...
+                genPureTone(S.Duration*0.001, ... % ms-> s
+                            S.AudIntensity, ... % dB SPL
+                            S.AudFreq, ... % Hz
+                            S.RiseTime*0.001, S.FallTime*0.001,... % ms -> s
+                            Fs,CalTable);
     end
 end
 
@@ -271,6 +279,21 @@ else
     Sig(tail,i) = Env2' .* Sig(tail,i);
     end
 end
+end
+
+function Snd = genPureTone(dur, dBSPL, freq, RiseTime, FallTime,...
+                            Fs, CalTable)
+
+RiseFall = [RiseTime,FallTime];
+if (isempty(RiseFall)); RiseFall = 5e-3;end
+
+    amp = getamp(CalTable,freq,dBSPL) ;
+    tt = 0:1/Fs:dur;
+    Snd = amp*sin(2*pi*freq.*tt);
+
+    Nenv			=	round(RiseFall .*Fs );
+    Snd				=	applyEnvelope(Snd',Nenv)';
+
 end
 
 function amp = getamp(CalTable,freq,dBSPL) 
