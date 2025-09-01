@@ -56,24 +56,19 @@ function OnAn()
     BpodSystem.Data.StimTable = StimTable;
     BpodSystem.Data.StimParams = StimParams;
     
-    %% Initialize plots (Yudi: not yet coded)
-    
-    % Initialize the outcome plot 
-    outcomePlot = LiveOutcomePlot([1 2], {'Left', 'Right'}, trialTypes, 90); % Create an instance of the LiveOutcomePlot GUI
+    %% Initialize plots
+    % Initialize the outcome plot 1
+    trialTypes = ones(1, NumTrials);% Only one trial type, all outcomes are 1
+    outcomePlot = LiveOutcomePlot([1], {'Outcome'}, trialTypes, NumTrials); % Create an instance of the LiveOutcomePlot GUI
     % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
     % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
     % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
     % Arg4 = nTrialsToShow, the number of trials to show
-    outcomePlot.CorrectStateNames = {'LeftRewardDelay', 'RightRewardDelay'}; % List of state names where choice was correct
-                                                            % State names are set when states are defined below.
-    outcomePlot.RewardStateNames = {'LeftReward', 'RightReward'}; % List of state names where reward was delivered
-    outcomePlot.PunishStateNames = {'PunishTimeout'}; % List of state names where choice was incorrect and negatively reinforced
+    outcomePlot.RewardStateNames = {'Reward'}; % List of state names where reward was delivered
+    outcomePlot.CorrectStateNames = {'Reward'}; % States where correct response was made
+    outcomePlot.ErrorStateNames = {'Checking'}; % States where incorrect response was made (timeout)
+    outcomePlot.PunishStateNames = {}; % No punishment states in this protocol
 
-    % Initialize Bpod notebook (for manual data annotation)                                                          
-    BpodNotebook('init'); 
-
-    % Initialize the pokes plot
-    PokesPlot('init', getStateColors, getPokeColors);
     %% Prepare and start first trial
     genAndLoadStimulus(1);
     [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial] = PrepareStateMachine(S, 1, updateFlag); % Prepare state machine for trial 1 with empty "current events" variable
@@ -115,7 +110,8 @@ function OnAn()
 
             % Save data
             SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
-        end        
+        end  
+        outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
     end
 
     function [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial] = PrepareStateMachine(S, currentTrial, updateFlag)
