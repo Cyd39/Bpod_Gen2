@@ -29,7 +29,7 @@ function OnAn()
     S.GUI.MaxITI = StimParams.Behave.MaxITI; % seconds
     S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
-    S.GUI.ValveTime = StimParams.Behave.ValveTime; % seconds
+    S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
     % Cut-off period for NoLick state
     S.CutOffPeriod = 60; % seconds
@@ -71,7 +71,14 @@ function OnAn()
 
     %% Prepare and start first trial
     genAndLoadStimulus(1);
-    [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial] = PrepareStateMachine(S, 1, updateFlag); % Prepare state machine for trial 1 with empty "current events" variable
+    [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial, RewardAmount] = PrepareStateMachine(S, 1, updateFlag); % Prepare state machine for trial 1 with empty "current events" variable
+    
+    % Store trial parameters before starting the trial
+    BpodSystem.Data.ThisITI(1) = ThisITI;
+    BpodSystem.Data.QuietTime(1) = QuietTime;
+    BpodSystem.Data.isCatchTrial(1) = isCatchTrial;
+    BpodSystem.Data.RewardAmount(1) = RewardAmount;
+    
     displayTrialInfo(1, ThisITI, QuietTime,isCatchTrial);
     trialManager.startTrial(sma); % Sends & starts running first trial's state machine. A MATLAB timer object updates the 
                                   % console UI, while code below proceeds in parallel.
@@ -82,7 +89,14 @@ function OnAn()
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         if currentTrial < NumTrials
             genAndLoadStimulus(currentTrial+1);
-            [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial] = PrepareStateMachine(S, currentTrial+1, updateFlag); 
+            [sma, S, updateFlag, NextITI, NextQuietTime, NextisCatchTrial, NextRewardAmount] = PrepareStateMachine(S, currentTrial+1, updateFlag); 
+            
+            % Store next trial parameters
+            BpodSystem.Data.ThisITI(currentTrial+1) = NextITI;
+            BpodSystem.Data.QuietTime(currentTrial+1) = NextQuietTime;
+            BpodSystem.Data.isCatchTrial(currentTrial+1) = NextisCatchTrial;
+            BpodSystem.Data.RewardAmount(currentTrial+1) = NextRewardAmount;
+            
             SendStateMachine(sma, 'RunASAP');   % Send the next trial's state machine during the current trial
         end
         RawEvents = trialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
@@ -99,11 +113,7 @@ function OnAn()
             BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct(had before)
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
-            % Save trial information
-            BpodSystem.Data.ThisITI(currentTrial) = ThisITI;
-            BpodSystem.Data.QuietTime(currentTrial) = QuietTime;
-            BpodSystem.Data.isCatchTrial(currentTrial) = isCatchTrial;
-
+            % Trial parameters were already stored before the trial started
             % Update plots
             %PokesPlot('update'); % Update Pokes Plot
             %outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
@@ -114,7 +124,7 @@ function OnAn()
         outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
     end
 
-    function [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial] = PrepareStateMachine(S, currentTrial, updateFlag)
+    function [sma, S, updateFlag, ThisITI, QuietTime,isCatchTrial, RewardAmount] = PrepareStateMachine(S, currentTrial, updateFlag)
         if updateFlag
             S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
             updateFlag = false; % reset flag
@@ -126,7 +136,10 @@ function OnAn()
         ThisITI = ITIBefore + ITIAfter;
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
         TimerDuration = ITIAfter+StimDur;
-        ValveTime = S.GUI.ValveTime;
+        RewardAmount = S.GUI.RewardAmount;
+        disp(['Trial ' num2str(currentTrial) ': Reward Amount = ' num2str(RewardAmount) ' µL']);
+        ValveTime = BpodLiquidCalibration('GetValveTimes', RewardAmount, 1);
+        ValveTime = ValveTime(1);
         ResWin = S.GUI.ResWin;
         CutOff = S.CutOffPeriod;
 
