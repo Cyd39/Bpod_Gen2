@@ -1,4 +1,4 @@
-function TestEverything()
+function Detection()
     global BpodSystem
 
     % Initialize HiFi module

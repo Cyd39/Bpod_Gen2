@@ -59,7 +59,7 @@ function OnAn()
     %% Initialize plots
     % Initialize the outcome plot 1
     trialTypes = ones(1, NumTrials);% Only one trial type, all outcomes are 1
-    outcomePlot = LiveOutcomePlot([1], {'Outcome'}, trialTypes, NumTrials); % Create an instance of the LiveOutcomePlot GUI
+    outcomePlot = LiveOutcomePlot(1, {'Outcome'}, trialTypes, NumTrials); % Create an instance of the LiveOutcomePlot GUI
     % Arg1 = trialTypeManifest, a list of possible trial types (even if not yet in trialTypes).
     % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
     % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
