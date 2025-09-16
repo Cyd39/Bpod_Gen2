@@ -24,7 +24,7 @@ function Detection()
     S.GUI.MaxITI = StimParams.Behave.MaxITI; % seconds
     S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
-    S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % seconds
+    S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
 
     % Cut-off period for NoLick state
