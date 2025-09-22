@@ -1,0 +1,24 @@
+{
+    "data_settings": {
+        "sampling_rate": 1000,
+        "file_format": "mat",
+        "data_columns": ["trial_num", "response", "rt", "correct"]
+    },
+    "analysis_settings": {
+        "real_time": {
+            "enabled": true,
+            "analysis_types": ["performance", "reaction_time"],
+            "update_interval": 0.1
+        },
+        "post_hoc": {
+            "enabled": true,
+            "analysis_types": ["performance", "psychometric", "chronometric"],
+            "statistical_tests": ["t_test", "anova"]
+        }
+    },
+    "output_settings": {
+        "save_format": "mat",
+        "figure_format": "png",
+        "auto_generate_report": true
+    }
+}
