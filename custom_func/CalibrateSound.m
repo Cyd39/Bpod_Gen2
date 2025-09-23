@@ -3,7 +3,8 @@ if nargin <1
     freq_list = logspace(log10(1000), ...
                          log10(128000), ...
                          7*12+1);
-    freq_list = freq_list(freq_list<=80000);
+    freq_list = freq_list(freq_list<80000);
+    freq_list = [freq_list,80e3];
 end
 
 HifiCOM = 'COM3';
@@ -41,16 +42,24 @@ CalDist = nan(n_freq,1);
 CalBG = nan(n_freq,1);
 for ff = 1:length(freq_list)
     freq = freq_list(ff);
+    disp(['Calibrating ' num2str(freq), ' Hz.'])
     % set freq HiFi module
     H.SynthFrequency = freq;
     % set freq RZ6    
     RP.SetTagVal('CalFreq',freq);
+    RP.SetTagVal('CalBW',freq*0.1);
     % check freq RZ6 is set
     CalFreq(ff) = RP.GetTagVal('CalFreq');
-    pause(0.2);
+    if ff == 1; pause(1);end
+    pause(0.1);
 
     % read in dBV from microphone
-    CalDB(ff) = RP.GetTagVal('CalDB');
+    CalDB_temp = nan(10,1);
+    for i = 1:10
+        CalDB_temp(i) = RP.GetTagVal('CalDB');
+        pause(0.01);
+    end
+    CalDB(ff) = mean(CalDB_temp);
     % read in distortion from microphone
     CalDist(ff) = RP.GetTagVal('CalDist');
 
@@ -58,14 +67,19 @@ for ff = 1:length(freq_list)
 end
 
 H.SynthAmplitude = 0; % stop sound
-
+disp("Measuring background.")
 for ff = 1:length(freq_list)
     freq = freq_list(ff);
     % set freq RZ6    
     RP.SetTagVal('CalFreq',freq);
     pause(0.1);
     % read in dBV from microphone
-    CalBG(ff) = RP.GetTagVal('CalDB');
+    CalDB_temp = nan(10,1);
+    for i = 1:10
+        CalDB_temp(i) = RP.GetTagVal('CalDB');
+        pause(0.01);
+    end
+    CalBG(ff) = mean(CalDB_temp);
 end
 
 CalTable = table(CalFreq,CalAmp,CalDB,CalDist,CalBG);
