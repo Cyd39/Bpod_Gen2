@@ -761,7 +761,8 @@ function StimParams = StimParamGui()
                         StimParams.Sound.AM.CarrierFreq = str2double(get(h.AM.CarrierFreq, 'String'));
                         StimParams.Sound.AM.BandWidth = str2double(get(h.AM.BandWidth, 'String'));
                         StimParams.Sound.AM.TransTime = str2double(get(h.AM.TransitionTime, 'String'))/1000;
-                        StimParams.Sound.AM.TransDur = str2double(get(h.AM.TransitionDuration, 'String'))/1000;                   
+                        StimParams.Sound.AM.TransDur = str2double(get(h.AM.TransitionDuration, 'String'))/1000;
+                        StimParams.Sound.AM.BoundaryFreq = str2double(get(h.AM.BoundaryFreq, 'String'));                   
 
                     case 2 % NoiseBurst
                         % StimParams.Sound.Duration = str2double(get(h.Noise.Duration, 'String'));
@@ -972,6 +973,9 @@ function StimParams = StimParamGui()
                             '- Range with step: "100:50:300"']));
                     end
                 end
+
+                % Handle Vibration Boundary Frequency input
+                StimParams.Vibration.BoundaryFreq = str2double(get(h.Vib.BoundaryFreq, 'String'));
             end
 
             % Behavior parameters
@@ -996,6 +1000,12 @@ function StimParams = StimParamGui()
                 error('Reward probability must be a number between 0 and 1');
             end
             StimParams.Behave.RewardProbability = rewardProb;
+
+            % Get correct spout selection
+            correctSpout = get(h.Behave.CorrectSpout, 'Value');
+            correctSpoutStr = get(h.Behave.CorrectSpout, 'String');
+            StimParams.Behave.CorrectSpout = correctSpout;
+            StimParams.Behave.CorrectSpoutName = correctSpoutStr{correctSpout};
 
             % Save and display parameters
             guidata(h_gui, StimParams);

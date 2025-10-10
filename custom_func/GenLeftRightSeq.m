@@ -1,0 +1,2 @@
+function LeftRightSeq = GenLeftRightSeq(StimParams)
+    
