@@ -1014,6 +1014,8 @@ function StimParams = StimParamGui()
             StimParams.Behave.ResWin = str2double(get(h.Behave.ResWin, 'String'));
             StimParams.Behave.RewardAmount = str2double(get(h.Behave.RewardAmount, 'String'));
             StimParams.Behave.NumTrials = str2double(get(h.Behave.NumTrials, 'String'));
+            StimParams.Behave.BoundaryProbability = str2double(get(h.Behave.BoundaryProbability, 'String'));
+            StimParams.Behave.BoundaryRewardProbability = str2double(get(h.Behave.BoundaryRewardProbability, 'String'));
             
             % Validate catch trial proportion
             propCatch = str2double(get(h.Behave.PropCatch, 'String'));
