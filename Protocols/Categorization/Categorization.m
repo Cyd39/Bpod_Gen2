@@ -11,10 +11,11 @@ function Categorization()
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     NumTrials = StimParams.Behave.NumTrials;
+    propCatch = StimParams.Behave.PropCatch;
     StimDur = StimParams.Duration/1000;
     
     % Generate Stimuli parameter table
-    StimTable = GenStimSeq(StimParams);
+    StimTable = GenLeftRightSeq(StimParams);
 
     % Load calibration table
     CalFile = 'Calibration Files\CalTable_20250707.mat';

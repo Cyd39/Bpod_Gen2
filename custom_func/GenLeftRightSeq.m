@@ -1,18 +1,20 @@
 function LeftRightSeq = GenLeftRightSeq(StimParams)
 % GenLeftRightSeq - Generate high and low frequency stimulus sequence tables for each trial
+% Each frequency table uses independent indexing and does not include catch trials
+% Catch trials are handled at the trial level in the main protocol
 % Input:
 %   Par - Structure containing parameters from StimParamGui
 % Output:
 %   LeftRightSeq - Structure containing:
-%     .HighFreqTable - Table containing high frequency stimulus parameters
-%     .LowFreqTable - Table containing low frequency stimulus parameters
+%     .HighFreqTable - Table containing high frequency stimulus parameters (independent indexing)
+%     .LowFreqTable - Table containing low frequency stimulus parameters (independent indexing)
+%     .BoundaryFreqTable - Table containing boundary frequency stimulus parameters (independent indexing)
 %     .FrequencyBoundary - Frequency boundary value
 %     .HighFreqSide - Side associated with high frequency ('Left' or 'Right')
 %     .LowFreqSide - Side associated with low frequency ('Left' or 'Right')    
 
 % get general parameters
-nTrials = StimParams.Behave.NumTrials;
-propCatch = StimParams.Behave.PropCatch;
+nTrials = StimParams.Behave.NumTrials;l
 sessionTypeName = StimParams.Session.TypeName;
 
 % get frequency boundary and side configuration based on session type
@@ -67,19 +69,6 @@ end
 
 % Generate boundary frequency table
 boundaryFreqTable = makeBoundaryTable(StimParams, frequencyBoundary);
-
-% Add catch trials to all tables if needed
-if propCatch > 0
-    if ~isempty(highFreqTable)
-        highFreqTable = addCatchTrials(highFreqTable, nTrials, propCatch);
-    end
-    if ~isempty(lowFreqTable)
-        lowFreqTable = addCatchTrials(lowFreqTable, nTrials, propCatch);
-    end
-    if ~isempty(boundaryFreqTable)
-        boundaryFreqTable = addCatchTrials(boundaryFreqTable, nTrials, propCatch);
-    end
-end
 
 % Add MMType column to all tables
 if ~isempty(highFreqTable)
@@ -394,53 +383,6 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
         lowFreqTable = table();
     end
 end 
-
-% Add catch trials to the stimulus table
-function StimTable = addCatchTrials(StimTable, nTrials, propCatch)
-    % Calculate number of catch trials
-    nCatch = floor(nTrials * propCatch);
-    nOrigTrials = nTrials - nCatch;
-    
-    % First trim table to match nOrigTrials
-    if height(StimTable) > nOrigTrials
-        StimTable = StimTable(1:nOrigTrials, :);
-    end
-    
-    % Create catch trial template with null values
-    catchTrial = table('Size', [1, width(StimTable)], 'VariableTypes', varfun(@class, StimTable, 'OutputFormat', 'cell'));
-    catchTrial.Properties.VariableNames = StimTable.Properties.VariableNames;
-    
-    % Fill catch trial with specific values based on column existence
-    for i = 1:width(catchTrial)
-        if strcmp(catchTrial.Properties.VariableNames{i}, 'AudIntensity')
-            catchTrial.AudIntensity = -inf;
-        elseif strcmp(catchTrial.Properties.VariableNames{i}, 'VibAmp') || strcmp(catchTrial.Properties.VariableNames{i}, 'VibFreq')
-            catchTrial.VibAmp = 0;
-            catchTrial.VibFreq = 0;
-        end
-    end
-    
-    % Create a new table with nTrials rows
-    newStimTable = table('Size', [nTrials, width(StimTable)], 'VariableTypes', varfun(@class, StimTable, 'OutputFormat', 'cell'));
-    newStimTable.Properties.VariableNames = StimTable.Properties.VariableNames;
-    
-    % Randomly select positions for original trials
-    origPositions = randperm(nTrials, nOrigTrials);
-    origPositions = sort(origPositions);
-    
-    % Place original trials in their positions
-    for i = 1:nOrigTrials
-        newStimTable(origPositions(i),:) = StimTable(i,:);
-    end
-    
-    % Fill remaining positions with catch trials
-    remainingPositions = setdiff(1:nTrials, origPositions);
-    for i = 1:length(remainingPositions)
-        newStimTable(remainingPositions(i),:) = catchTrial;
-    end
-    
-    StimTable = newStimTable;
-end
 
 % Helper function to add Rewarded column based on reward probability
 function tableWithRewarded = addRewardedColumn(inputTable, StimParams)
