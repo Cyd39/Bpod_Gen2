@@ -193,9 +193,15 @@ end
 function StimTable = makeVibTable(StimParams)
     % get general parameters
     nTrials = StimParams.Behave.NumTrials;
+    propCatch = StimParams.Behave.PropCatch;
     vibTypeName = StimParams.Vibration.TypeName;
     vibAmp = StimParams.Vibration.Amplitude;
     vibFreq = StimParams.Vibration.Frequency;
+    
+    % Get reward probability and boundary frequency parameters
+    rewardProbability = StimParams.Behave.RewardProbability; % 0-1
+    boundaryRewardProbability = StimParams.Behave.BoundaryRewardProbability; % 0-1 - reward probability for boundary frequency
+    boundaryFreq = StimParams.Vibration.BoundaryFreq; % Hz - frequency boundary for left/right decision
 
     % Create unique combinations of parameters
     [vibAmp, vibFreq] = ndgrid(vibAmp, vibFreq);
@@ -222,17 +228,41 @@ function StimTable = makeVibTable(StimParams)
         currentRow = currentRow + blockSize;
     end
 
-    % Add in catch trials
-    if propCatch > 0
-        StimTable = addCatchTrials(StimTable, nTrials, propCatch);
-    end
-
     % Add remaining rows
     if remainingRows > 0
         randomIndices = randi(blockSize, remainingRows, 1);
         remainingBlock = stimTableUnq(randomIndices, :);
         StimTable(currentRow:end, :) = remainingBlock;
     end
+
+    % Add CorrectSide column based on frequency boundary
+    % 1 = left (low frequency), 2 = right (high frequency), 3 = boundary frequency
+    StimTable.CorrectSide = ones(height(StimTable), 1); % Initialize to 1 (low frequency)
+    StimTable.CorrectSide(StimTable.VibFreq > boundaryFreq) = 2; % High frequency
+    StimTable.CorrectSide(StimTable.VibFreq == boundaryFreq) = 3; % Boundary frequency
+
+    % Add in catch trials
+    if propCatch > 0
+        StimTable = addCatchTrials(StimTable, nTrials, propCatch);
+    end
+    
+    % Add Rewarded column based on reward probability (after catch trials are added)
+    % Different reward probabilities for different frequency categories
+    randomValues = rand(height(StimTable), 1);
+    StimTable.Rewarded = zeros(height(StimTable), 1); % Initialize to 0
+    
+    % Apply reward probability based on CorrectSide
+    % CorrectSide = 1 (low frequency) or 2 (high frequency): use regular reward probability
+    regularTrials = (StimTable.CorrectSide == 1) | (StimTable.CorrectSide == 2);
+    StimTable.Rewarded(regularTrials) = double(randomValues(regularTrials) <= rewardProbability);
+    
+    % CorrectSide = 3 (boundary frequency): use boundary reward probability
+    boundaryTrials = (StimTable.CorrectSide == 3);
+    StimTable.Rewarded(boundaryTrials) = double(randomValues(boundaryTrials) <= boundaryRewardProbability);
+    
+    % Ensure catch trials are never rewarded (VibFreq = 0)
+    catchTrials = (StimTable.VibFreq == 0);
+    StimTable.Rewarded(catchTrials) = 0;
 
      % Add other parameters
      StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
@@ -260,6 +290,13 @@ function StimTable = addCatchTrials(StimTable, nTrials, propCatch)
         elseif strcmp(catchTrial.Properties.VariableNames{i}, 'VibAmp') || strcmp(catchTrial.Properties.VariableNames{i}, 'VibFreq')
             catchTrial.VibAmp = 0;
             catchTrial.VibFreq = 0;
+        elseif strcmp(catchTrial.Properties.VariableNames{i}, 'CorrectSide')
+            % For catch trials, we need to determine CorrectSide based on VibFreq
+            % Since catch trials have VibFreq = 0, we'll set CorrectSide based on boundary
+            % If boundaryFreq > 0, then VibFreq = 0 < boundaryFreq, so CorrectSide = 1 (low frequency)
+            catchTrial.CorrectSide = 1; % Default to low frequency for catch trials (VibFreq = 0)
+        elseif strcmp(catchTrial.Properties.VariableNames{i}, 'Rewarded')
+            catchTrial.Rewarded = 0; % Catch trials are never rewarded
         end
     end
     

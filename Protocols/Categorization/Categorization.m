@@ -11,11 +11,10 @@ function Categorization()
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     NumTrials = StimParams.Behave.NumTrials;
-    propCatch = StimParams.Behave.PropCatch;
     StimDur = StimParams.Duration/1000;
     
     % Generate Stimuli parameter table
-    StimTable = GenLeftRightSeq(StimParams);
+    StimTable = GenStimSeq(StimParams);
 
     % Load calibration table
     CalFile = 'Calibration Files\CalTable_20250707.mat';
@@ -82,8 +81,10 @@ function Categorization()
         TimerDuration = ITIAfter+StimDur;
         RewardAmount = S.GUI.RewardAmount;
         disp(['Trial ' num2str(currentTrial) ': Liquid Volume = ' num2str(RewardAmount) ' µL']);
-        ValveTime = BpodLiquidCalibration('GetValveTimes', RewardAmount, 1);
-        ValveTime = ValveTime(1);
+        % Get valve times for both left (valve 1) and right (valve 2) ports
+        ValveTimes = BpodLiquidCalibration('GetValveTimes', RewardAmount, [1 2]);
+        LeftValveTime = ValveTimes(1);
+        RightValveTime = ValveTimes(2);
         ResWin = S.GUI.ResWin;
         CutOff = CutOffPeriod;
         
@@ -93,13 +94,15 @@ function Categorization()
         % Create state machine
         sma = NewStateMachine();
       
-        % Set condition for BNC1 state
-        sma = SetCondition(sma, 1, 'BNC1', 0); % Condition 1: BNC1 is HIGH (licking detected)
-        sma = SetCondition(sma, 2, 'BNC1', 1); % Condition 2: BNC1 is LOW (no licking detected)
+        % Set conditions for lick detection
+        sma = SetCondition(sma, 1, 'Port1', 0); % Condition 1: Port1 is LOW (left lick port out)
+        sma = SetCondition(sma, 2, 'Port2', 0); % Condition 2: Port2 is LOW (right lick port out)
+        sma = SetCondition(sma, 3, 'Port1', 1); % Condition 3: Port1 is HIGH (left lick port in)
+        sma = SetCondition(sma, 4, 'Port2', 1); % Condition 4: Port2 is HIGH (right lick port in)
 
         % Set timer and condition for the cut-off period
         sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', CutOff);
-        sma = SetCondition(sma, 3, 'GlobalTimer1', 0); % Condition 3: GlobalTimer1 has ended
+        sma = SetCondition(sma, 5, 'GlobalTimer1', 0); % Condition 5: GlobalTimer1 has ended
         
         % Add states
         % Ready state under different conditions
@@ -110,24 +113,24 @@ function Categorization()
                 'OutputActions', {'GlobalTimerTrig', 1});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick','Tup', 'Stimulus','Condition3', 'Stimulus'}, ... % Use condition to detect BNC1 state
+                'StateChangeConditions', {'Port1In', 'ResetNoLick','Port2In', 'ResetNoLick','Tup', 'Stimulus','Condition5', 'Stimulus'}, ... % Use port detection for lick monitoring
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'ResetNoLick', ...
                 'Timer', 0, ...
-                'StateChangeConditions', {'Condition2', 'NoLick','Condition3', 'Stimulus'}, ... % Reset NoLick Timer
+                'StateChangeConditions', {'Condition1', 'NoLick','Condition2', 'NoLick','Condition5', 'Stimulus'}, ... % Reset NoLick Timer when both ports are out
                 'OutputActions', {});
         else
             sma = AddState(sma, 'Name', 'Ready', ...
                 'Timer', ITIBefore, ...
-                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick','Tup', 'Stimulus'}, ...
+                'StateChangeConditions', {'Port1In', 'ResetNoLick','Port2In', 'ResetNoLick','Tup', 'Stimulus'}, ...
                 'OutputActions', {'GlobalTimerTrig', 1});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'Condition1', 'ResetNoLick','BNC1High','ResetNoLick', 'Tup', 'Stimulus','Condition3', 'Stimulus'}, ... % Use condition to detect BNC1 state
+                'StateChangeConditions', {'Port1In', 'ResetNoLick','Port2In', 'ResetNoLick', 'Tup', 'Stimulus','Condition5', 'Stimulus'}, ... % Use port detection for lick monitoring
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'ResetNoLick', ...
                 'Timer', 0, ...
-                'StateChangeConditions', {'Condition2', 'NoLick','Condition3', 'Stimulus'}, ... % Reset NoLick Timer
+                'StateChangeConditions', {'Condition1', 'NoLick','Condition2', 'NoLick','Condition5', 'Stimulus'}, ... % Reset NoLick Timer when both ports are out
                 'OutputActions', {});
         end
 
@@ -140,41 +143,88 @@ function Categorization()
             'StateChangeConditions', {'Tup', 'Response'}, ...
             'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
 
-        % If it is a catch trial, there is no jumping into the reward state
+        % Determine correct response based on stimulus type
+        % For categorization task, we need to define which stimulus types should go left vs right
         isCatchTrial = false;
+        correctResponse = 'left'; % Default to left response
+        
         if strcmp(char(StimTable.MMType(currentTrial)), 'OO')
             isCatchTrial = true;
             disp('catch trial')
+        else
+            % Define categorization rules based on stimulus type
+            % This is a simple example - you can modify this logic based on your specific categorization task
+            if strcmp(char(StimTable.MMType(currentTrial)), 'SS') || strcmp(char(StimTable.MMType(currentTrial)), 'VV')
+                correctResponse = 'left';  % Sound or vibration only -> left
+            else
+                correctResponse = 'right'; % Bimodal stimuli -> right
+            end
+            disp(['Trial ' num2str(currentTrial) ': Correct response = ' correctResponse]);
         end
         
         if isCatchTrial
-            % NoReward state
+            % Catch trial - no reward for any response
             sma = AddState(sma, 'Name', 'Response', ...
                 'Timer', ResWin, ...
-                'StateChangeConditions', {'Tup', 'Checking'}, ...
+                'StateChangeConditions', {'Port1In', 'Checking', 'Port2In', 'Checking', 'Tup', 'Checking'}, ...
                 'OutputActions', {});
         else
-            % Response state
-            sma = AddState(sma, 'Name', 'Response', ...
-                'Timer', ResWin, ...
-                'StateChangeConditions', {'BNC1High', 'Reward', 'Tup', 'Checking'}, ...
-                'OutputActions', {});
+            % Response state with left/right choice
+            if strcmp(correctResponse, 'left')
+                sma = AddState(sma, 'Name', 'Response', ...
+                    'Timer', ResWin, ...
+                    'StateChangeConditions', {'Port1In', 'LeftReward', 'Port2In', 'WrongChoice', 'Tup', 'Checking'}, ...
+                    'OutputActions', {});
+            else
+                sma = AddState(sma, 'Name', 'Response', ...
+                    'Timer', ResWin, ...
+                    'StateChangeConditions', {'Port1In', 'WrongChoice', 'Port2In', 'RightReward', 'Tup', 'Checking'}, ...
+                    'OutputActions', {});
+            end
         end
 
-        % Reward state
-        sma = AddState(sma, 'Name', 'Reward', ...
-            'Timer', ValveTime, ...
+        % Left reward state
+        sma = AddState(sma, 'Name', 'LeftReward', ...
+            'Timer', LeftValveTime, ...
+            'StateChangeConditions', {'Tup', 'DrinkingLeft'}, ...
+            'OutputActions', {'ValveState', 1}); % Valve 1 for left port
+        
+        % Right reward state
+        sma = AddState(sma, 'Name', 'RightReward', ...
+            'Timer', RightValveTime, ...
+            'StateChangeConditions', {'Tup', 'DrinkingRight'}, ...
+            'OutputActions', {'ValveState', 2}); % Valve 2 for right port (bit 2 = 2)
+        
+        % Wrong choice state (timeout)
+        sma = AddState(sma, 'Name', 'WrongChoice', ...
+            'Timer', 2, ... % 2 second timeout for wrong choice
             'StateChangeConditions', {'Tup', 'Checking'}, ...
-            'OutputActions', {'Valve1', 1});
+            'OutputActions', {});
+        
+        % Drinking states
+        sma = AddState(sma, 'Name', 'DrinkingLeft', ...
+            'Timer', 0, ...
+            'StateChangeConditions', {'Port1Out', 'DrinkingGrace'}, ...
+            'OutputActions', {});
+        
+        sma = AddState(sma, 'Name', 'DrinkingRight', ...
+            'Timer', 0, ...
+            'StateChangeConditions', {'Port2Out', 'DrinkingGrace'}, ...
+            'OutputActions', {});
+        
+        sma = AddState(sma, 'Name', 'DrinkingGrace', ...
+            'Timer', 0.5, ... % 0.5 second grace period
+            'StateChangeConditions', {'Tup', 'Checking', 'Port1In', 'DrinkingLeft', 'Port2In', 'DrinkingRight'}, ...
+            'OutputActions', {});
 
         
-        % Set condition to check if GlobalTimer1 has ended
-        sma = SetCondition(sma, 4, 'GlobalTimer2', 0); % Condition 4: GlobalTimer2 has ended
+        % Set condition to check if GlobalTimer2 has ended
+        sma = SetCondition(sma, 6, 'GlobalTimer2', 0); % Condition 6: GlobalTimer2 has ended
         
-        % Here is the part need to be modified(maybe need to set a timer for the checking state)
+        % Checking state - wait for trial to complete
         sma = AddState(sma, 'Name', 'Checking', ...
             'Timer', 0, ...  
-            'StateChangeConditions', {'Condition4', 'exit'}, ...
+            'StateChangeConditions', {'Condition6', 'exit'}, ...
             'OutputActions', {});
         
         % Send state machine to Bpod device
@@ -198,9 +248,12 @@ function Categorization()
             BpodSystem.Data.QuietTime(currentTrial) = QuietTime;
             BpodSystem.Data.TimerDuration(currentTrial) = TimerDuration;
             BpodSystem.Data.RewardAmount(currentTrial) = RewardAmount;
-            BpodSystem.Data.ValveTime(currentTrial) = ValveTime;
+            BpodSystem.Data.LeftValveTime(currentTrial) = LeftValveTime;
+            BpodSystem.Data.RightValveTime(currentTrial) = RightValveTime;
             BpodSystem.Data.ResWin(currentTrial) = ResWin;
             BpodSystem.Data.CutOff(currentTrial) = CutOff;
+            BpodSystem.Data.CorrectResponse(currentTrial) = correctResponse;
+            BpodSystem.Data.IsCatchTrial(currentTrial) = isCatchTrial;
                         
             SaveBpodSessionData;
         end
