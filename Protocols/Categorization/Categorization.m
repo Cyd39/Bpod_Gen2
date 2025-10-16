@@ -143,23 +143,27 @@ function Categorization()
             'StateChangeConditions', {'Tup', 'Response'}, ...
             'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
 
-        % Determine correct response based on stimulus type
-        % For categorization task, we need to define which stimulus types should go left vs right
-        isCatchTrial = false;
-        correctResponse = 'left'; % Default to left response
+        % Determine correct response and reward status from StimTable
+        correctSide = StimTable.CorrectSide(currentTrial);
+        isRewarded = StimTable.Rewarded(currentTrial);
+        isCatchTrial = (StimTable.VibFreq(currentTrial) == 0); % Catch trial if VibFreq = 0
         
-        if strcmp(char(StimTable.MMType(currentTrial)), 'OO')
-            isCatchTrial = true;
-            disp('catch trial')
+        % Convert CorrectSide to response direction
+        if correctSide == 1
+            correctResponse = 'left';
+        elseif correctSide == 2
+            correctResponse = 'right';
+        elseif correctSide == 3
+            correctResponse = 'boundary'; % Special case for boundary frequency
         else
-            % Define categorization rules based on stimulus type
-            % This is a simple example - you can modify this logic based on your specific categorization task
-            if strcmp(char(StimTable.MMType(currentTrial)), 'SS') || strcmp(char(StimTable.MMType(currentTrial)), 'VV')
-                correctResponse = 'left';  % Sound or vibration only -> left
-            else
-                correctResponse = 'right'; % Bimodal stimuli -> right
-            end
-            disp(['Trial ' num2str(currentTrial) ': Correct response = ' correctResponse]);
+            correctResponse = 'left'; % Default fallback
+        end
+        
+        % Display trial information
+        if isCatchTrial
+            disp(['Trial ' num2str(currentTrial) ': Catch trial (VibFreq = 0)']);
+        else
+            disp(['Trial ' num2str(currentTrial) ': CorrectSide = ' num2str(correctSide) ', Correct response = ' correctResponse ', Rewarded = ' num2str(isRewarded)]);
         end
         
         if isCatchTrial
@@ -169,17 +173,46 @@ function Categorization()
                 'StateChangeConditions', {'Port1In', 'Checking', 'Port2In', 'Checking', 'Tup', 'Checking'}, ...
                 'OutputActions', {});
         else
-            % Response state with left/right choice
+            % Response state with left/right choice based on CorrectSide
             if strcmp(correctResponse, 'left')
-                sma = AddState(sma, 'Name', 'Response', ...
-                    'Timer', ResWin, ...
-                    'StateChangeConditions', {'Port1In', 'LeftReward', 'Port2In', 'WrongChoice', 'Tup', 'Checking'}, ...
-                    'OutputActions', {});
-            else
-                sma = AddState(sma, 'Name', 'Response', ...
-                    'Timer', ResWin, ...
-                    'StateChangeConditions', {'Port1In', 'WrongChoice', 'Port2In', 'RightReward', 'Tup', 'Checking'}, ...
-                    'OutputActions', {});
+                % Left is correct
+                if isRewarded
+                    sma = AddState(sma, 'Name', 'Response', ...
+                        'Timer', ResWin, ...
+                        'StateChangeConditions', {'Port1In', 'LeftReward', 'Port2In', 'WrongChoice', 'Tup', 'Checking'}, ...
+                        'OutputActions', {});
+                else
+                    sma = AddState(sma, 'Name', 'Response', ...
+                        'Timer', ResWin, ...
+                        'StateChangeConditions', {'Port1In', 'LeftNoReward', 'Port2In', 'WrongChoice', 'Tup', 'Checking'}, ...
+                        'OutputActions', {});
+                end
+            elseif strcmp(correctResponse, 'right')
+                % Right is correct
+                if isRewarded
+                    sma = AddState(sma, 'Name', 'Response', ...
+                        'Timer', ResWin, ...
+                        'StateChangeConditions', {'Port1In', 'WrongChoice', 'Port2In', 'RightReward', 'Tup', 'Checking'}, ...
+                        'OutputActions', {});
+                else
+                    sma = AddState(sma, 'Name', 'Response', ...
+                        'Timer', ResWin, ...
+                        'StateChangeConditions', {'Port1In', 'WrongChoice', 'Port2In', 'RightNoReward', 'Tup', 'Checking'}, ...
+                        'OutputActions', {});
+                end
+            elseif strcmp(correctResponse, 'boundary')
+                % Boundary frequency - both responses are correct, but reward depends on isRewarded
+                if isRewarded
+                    sma = AddState(sma, 'Name', 'Response', ...
+                        'Timer', ResWin, ...
+                        'StateChangeConditions', {'Port1In', 'LeftReward', 'Port2In', 'RightReward', 'Tup', 'Checking'}, ...
+                        'OutputActions', {});
+                else
+                    sma = AddState(sma, 'Name', 'Response', ...
+                        'Timer', ResWin, ...
+                        'StateChangeConditions', {'Port1In', 'LeftNoReward', 'Port2In', 'RightNoReward', 'Tup', 'Checking'}, ...
+                        'OutputActions', {});
+                end
             end
         end
 
@@ -199,6 +232,18 @@ function Categorization()
         sma = AddState(sma, 'Name', 'WrongChoice', ...
             'Timer', 2, ... % 2 second timeout for wrong choice
             'StateChangeConditions', {'Tup', 'Checking'}, ...
+            'OutputActions', {});
+        
+        % Left no reward state (correct response but no reward)
+        sma = AddState(sma, 'Name', 'LeftNoReward', ...
+            'Timer', 0.5, ... % Brief pause for correct response without reward
+            'StateChangeConditions', {'Tup', 'DrinkingLeft'}, ...
+            'OutputActions', {});
+        
+        % Right no reward state (correct response but no reward)
+        sma = AddState(sma, 'Name', 'RightNoReward', ...
+            'Timer', 0.5, ... % Brief pause for correct response without reward
+            'StateChangeConditions', {'Tup', 'DrinkingRight'}, ...
             'OutputActions', {});
         
         % Drinking states
@@ -252,7 +297,9 @@ function Categorization()
             BpodSystem.Data.RightValveTime(currentTrial) = RightValveTime;
             BpodSystem.Data.ResWin(currentTrial) = ResWin;
             BpodSystem.Data.CutOff(currentTrial) = CutOff;
+            BpodSystem.Data.CorrectSide(currentTrial) = correctSide;
             BpodSystem.Data.CorrectResponse(currentTrial) = correctResponse;
+            BpodSystem.Data.IsRewarded(currentTrial) = isRewarded;
             BpodSystem.Data.IsCatchTrial(currentTrial) = isCatchTrial;
                         
             SaveBpodSessionData;

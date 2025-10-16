@@ -14,7 +14,7 @@ function LeftRightSeq = GenLeftRightSeq(StimParams)
 %     .LowFreqSide - Side associated with low frequency ('Left' or 'Right')    
 
 % get general parameters
-nTrials = StimParams.Behave.NumTrials;l
+nTrials = StimParams.Behave.NumTrials;
 sessionTypeName = StimParams.Session.TypeName;
 
 % get frequency boundary and side configuration based on session type
