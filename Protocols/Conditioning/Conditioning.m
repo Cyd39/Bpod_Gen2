@@ -4,6 +4,7 @@
 % Stimuli will be played until the animal licks the spout
 % Animal will be rewarded for licking the correct spout
 % Animal will not be punished for licking the wrong spout
+% Ramp duration should be set to 0.
 function Conditioning()
     global BpodSystem
 
@@ -124,28 +125,49 @@ function Conditioning()
 
         % If trial data was returned from last trial, update plots and save data
         if ~isempty(fieldnames(RawEvents)) 
+            % Critical data processing (must be fast)
             BpodSystem.Data = AddTrialEvents(BpodSystem.Data,RawEvents); % Computes trial events from raw data
             BpodSystem.Data.TrialSettings(currentTrial) = S; % Adds the settings used for the current trial to the Data struct
-            % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
-            % Trial parameters were already stored before the trial started
             
-            % Calculate and store reaction time
+            % Calculate reaction time (fast operation)
             reactionTime = calculateReactionTime(RawEvents, currentTrial);
             if ~isnan(reactionTime)
-                reactionTimes(end+1) = reactionTime;
-                trialNumbers(end+1) = currentTrial;
-                correctSides(end+1) = BpodSystem.Data.CorrectSide(currentTrial);
                 BpodSystem.Data.ReactionTime(currentTrial) = reactionTime;
-                
-                % Update reaction time plot
-                updateReactionTimePlot(reactionTimePlot, trialNumbers, reactionTimes, correctSides);
             end
             
-            % Save data
-            SaveBpodSessionData; % Saves the field BpodSystem.Data to the current data file
-        end  
-        outcomePlot.update(trialTypes, BpodSystem.Data); % Update the outcome plot
+            % Save data (critical for data integrity)
+            SaveBpodSessionData;
+            
+            % Non-critical plotting operations (can be deferred)
+            if mod(currentTrial, 5) == 0 || currentTrial == NumTrials % Update plots every 5 trials or at end
+                try
+                    % Update reaction time data
+                    if ~isnan(reactionTime)
+                        reactionTimes(end+1) = reactionTime;
+                        trialNumbers(end+1) = currentTrial;
+                        correctSides(end+1) = BpodSystem.Data.CorrectSide(currentTrial);
+                        
+                        % Update reaction time plot
+                        updateReactionTimePlot(reactionTimePlot, trialNumbers, reactionTimes, correctSides);
+                    end
+                    
+                    % Update outcome plot
+                    outcomePlot.update(trialTypes, BpodSystem.Data);
+                catch ME
+                    disp(['Plot update error: ' ME.message]);
+                end
+            end
+        end
+
+        % Handle pause condition
+        HandlePauseCondition;  
+
+        % Check if session should end
+        if BpodSystem.Status.BeingUsed == 0
+            disp('End of session');
+            return
+        end
     end
 
     function [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount] = PrepareStateMachine(S, currentTrial, updateFlag)
@@ -183,12 +205,6 @@ function Conditioning()
 
         % Create state machine
         sma = NewStateMachine();
-
-        % Set condition for BNC1 state
-        sma = SetCondition(sma, 1, 'BNC1', 0); % Condition 1: BNC1 is HIGH (licking detected on left spout)
-        sma = SetCondition(sma, 2, 'BNC1', 1); % Condition 2: BNC1 is LOW (no licking detected on left spout)
-        sma = SetCondition(sma, 3, 'BNC2', 0); % Condition 3: BNC2 is HIGH (licking detected on right spout)
-        sma = SetCondition(sma, 4, 'BNC2', 1); % Condition 4: BNC2 is LOW (no licking detected on right spout)
       
         % Add states
         % Ready state - simple ITI before stimulus
@@ -202,19 +218,19 @@ function Conditioning()
             % Left is correct - only respond to left lick
             sma = AddState(sma, 'Name', 'Stimulus', ...
                 'Timer', 0, ... % No timer - stimulus plays until correct lick
-                'StateChangeConditions', {'Condition1', 'LeftReward', 'Condition3', 'WrongLick'}, ...
+                'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'WrongLick'}, ...
                 'OutputActions', {'HiFi1', ['P' 0]});
         elseif strcmp(correctResponse, 'right')
             % Right is correct - only respond to right lick
             sma = AddState(sma, 'Name', 'Stimulus', ...
                 'Timer', 0, ... % No timer - stimulus plays until correct lick
-                'StateChangeConditions', {'Condition1', 'WrongLick', 'Condition3', 'RightReward'}, ...
+                'StateChangeConditions', {'BNC1High', 'WrongLick', 'BNC2High', 'RightReward'}, ...
                 'OutputActions', {'HiFi1', ['P' 0]});
         elseif strcmp(correctResponse, 'boundary')
             % Boundary frequency - both sides are correct
             sma = AddState(sma, 'Name', 'Stimulus', ...
                 'Timer', 0, ... % No timer - stimulus plays until any lick
-                'StateChangeConditions', {'Condition1', 'LeftReward', 'Condition3', 'RightReward'}, ...
+                'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'RightReward'}, ...
                 'OutputActions', {'HiFi1', ['P' 0]});
         end
 
@@ -262,73 +278,92 @@ function Conditioning()
     end
 
     function reactionTime = calculateReactionTime(RawEvents, currentTrial)
-        % Calculate reaction time from stimulus start to first lick
+        % Calculate reaction time from stimulus start to first lick (optimized)
         reactionTime = NaN;
         
         try
-            % Find stimulus start time (Stimulus state start)
-            stimulusStartTime = NaN;
-            if isfield(RawEvents.States, 'Stimulus')
-                stimulusStartTime = RawEvents.States.Stimulus(1, 1);
+            % Quick check for required fields
+            if ~isfield(RawEvents, 'States') || ~isfield(RawEvents, 'Events')
+                return;
             end
             
-            % Find first lick time (BNC1 or BNC2 event)
+            % Find stimulus start time (Stimulus state start)
+            if isfield(RawEvents.States, 'Stimulus') && ~isempty(RawEvents.States.Stimulus)
+                stimulusStartTime = RawEvents.States.Stimulus(1, 1);
+            else
+                return;
+            end
+            
+            % Find first lick time (BNC1 or BNC2 event) - check both simultaneously
             firstLickTime = NaN;
-            if isfield(RawEvents.Events, 'BNC1')
+            if isfield(RawEvents.Events, 'BNC1') && ~isempty(RawEvents.Events.BNC1)
                 firstLickTime = RawEvents.Events.BNC1(1);
-            elseif isfield(RawEvents.Events, 'BNC2')
-                firstLickTime = RawEvents.Events.BNC2(1);
+            end
+            if isfield(RawEvents.Events, 'BNC2') && ~isempty(RawEvents.Events.BNC2)
+                bnc2Time = RawEvents.Events.BNC2(1);
+                if isnan(firstLickTime) || bnc2Time < firstLickTime
+                    firstLickTime = bnc2Time;
+                end
             end
             
             % Calculate reaction time
-            if ~isnan(stimulusStartTime) && ~isnan(firstLickTime)
+            if ~isnan(firstLickTime)
                 reactionTime = firstLickTime - stimulusStartTime;
-                disp(['Trial ' num2str(currentTrial) ': Reaction Time = ' num2str(reactionTime, '%.3f') ' seconds']);
-            else
-                disp(['Trial ' num2str(currentTrial) ': Could not calculate reaction time']);
+                % Only display every 10th trial to reduce console output
+                if mod(currentTrial, 10) == 0
+                    disp(['Trial ' num2str(currentTrial) ': Reaction Time = ' num2str(reactionTime, '%.3f') ' seconds']);
+                end
             end
             
-        catch ME
-            disp(['Error calculating reaction time for trial ' num2str(currentTrial) ': ' ME.message]);
+        catch
+            % Silent error handling to avoid console spam
         end
     end
 
     function updateReactionTimePlot(plotHandle, trialNumbers, reactionTimes, correctSides)
-        % Update the reaction time plot with new data
+        % Update the reaction time plot with new data (optimized)
         try
+            % Only update if we have data
+            if isempty(trialNumbers) || isempty(reactionTimes)
+                return;
+            end
+            
             % Clear previous plot
             cla(plotHandle);
             
             % Define colors for different correct sides
             colors = [1 0 0; 0 0 1; 0 1 0]; % Red for left(1), Blue for right(2), Green for boundary(3)
             
-            % Plot points with different colors based on correct side
-            for i = 1:length(trialNumbers)
-                colorIdx = min(correctSides(i), 3); % Ensure index is within bounds
-                plot(plotHandle, trialNumbers(i), reactionTimes(i), 'o', ...
-                    'Color', colors(colorIdx, :), 'MarkerSize', 8, 'MarkerFaceColor', colors(colorIdx, :));
+            % Plot points with different colors based on correct side (vectorized)
+            for side = 1:3
+                idx = correctSides == side;
+                if any(idx)
+                    plot(plotHandle, trialNumbers(idx), reactionTimes(idx), 'o', ...
+                        'Color', colors(side, :), 'MarkerSize', 6, 'MarkerFaceColor', colors(side, :), ...
+                        'DisplayName', ['Side ' num2str(side)]);
+                end
             end
             
-            % Add trend line
-            if length(trialNumbers) > 1
+            % Add trend line (only if enough data points)
+            if length(trialNumbers) > 3
                 p = polyfit(trialNumbers, reactionTimes, 1);
                 trendLine = polyval(p, trialNumbers);
-                plot(plotHandle, trialNumbers, trendLine, 'k--', 'LineWidth', 2);
+                plot(plotHandle, trialNumbers, trendLine, 'k--', 'LineWidth', 1.5, 'DisplayName', 'Trend');
             end
             
             % Add legend
-            legend(plotHandle, {'Left (1)', 'Right (2)', 'Boundary (3)', 'Trend'}, 'Location', 'best');
+            legend(plotHandle, 'Location', 'best', 'FontSize', 8);
             
             % Update axis limits
             if ~isempty(reactionTimes)
                 ylim(plotHandle, [0, max(reactionTimes) * 1.1]);
             end
             
-            % Refresh plot
-            drawnow;
+            % Refresh plot (less frequent)
+            drawnow limitrate;
             
-        catch ME
-            disp(['Error updating reaction time plot: ' ME.message]);
+        catch
+            % Silent error handling
         end
     end
 
