@@ -97,7 +97,7 @@ function Conditioning()
     outcomePlot.PunishStateNames = {}; % No punishment states in this protocol
     
     % Initialize reaction time plot
-    figure('Name', 'Reaction Time Analysis', 'Position', [100, 100, 800, 400]);
+    reactionTimeFig = figure('Name', 'Reaction Time Analysis', 'Position', [100, 100, 800, 400]);
     reactionTimePlot = axes;
     reactionTimes = []; % Store reaction times
     trialNumbers = [];  % Store trial numbers
@@ -194,6 +194,17 @@ function Conditioning()
             catch
                 disp('Warning: Could not stop HiFi playback');
             end
+            
+            % Close only our custom figures (not Bpod GUI)
+            try
+                if exist('reactionTimeFig', 'var') && isvalid(reactionTimeFig)
+                    close(reactionTimeFig);
+                    disp('Reaction time plot closed');
+                end
+            catch
+                disp('Warning: Could not close reaction time plot');
+            end
+            
             return
         end
     end
@@ -410,6 +421,16 @@ function Conditioning()
         disp('HiFi object cleared');
     catch
         disp('Warning: Could not clear HiFi object');
+    end
+    
+    % Close only our custom figures (not Bpod GUI)
+    try
+        if exist('reactionTimeFig', 'var') && isvalid(reactionTimeFig)
+            close(reactionTimeFig);
+            disp('Reaction time plot closed');
+        end
+    catch
+        disp('Warning: Could not close reaction time plot');
     end
 
 end
