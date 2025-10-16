@@ -13,9 +13,30 @@ function Conditioning()
     % Create trial manager object
     trialManager = BpodTrialManager;
 
-    % Initialize HiFi module
-    H = BpodHiFi('COM3'); 
-    H.SamplingRate = 192000; 
+    % Initialize HiFi module with error handling
+    try
+        H = BpodHiFi('COM3'); 
+        H.SamplingRate = 192000;
+        disp('HiFi module connected successfully');
+    catch ME
+        disp(['Error connecting to HiFi: ' ME.message]);
+        disp('Trying to clear existing connections...');
+        
+        % Clear existing connections
+        clear all;
+        fclose('all');
+        delete(instrfindall);
+        pause(1);
+        
+        % Retry connection
+        try
+            H = BpodHiFi('COM3'); 
+            H.SamplingRate = 192000;
+            disp('HiFi module connected on retry');
+        catch
+            error('Failed to connect to HiFi module. Please check COM3 port and restart MATLAB.');
+        end
+    end 
 
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
@@ -166,6 +187,13 @@ function Conditioning()
         % Check if session should end
         if BpodSystem.Status.BeingUsed == 0
             disp('End of session');
+            % Stop HiFi playback and clean up
+            try
+                H.stop();
+                disp('HiFi playback stopped');
+            catch
+                disp('Warning: Could not stop HiFi playback');
+            end
             return
         end
     end
@@ -365,6 +393,23 @@ function Conditioning()
         catch
             % Silent error handling
         end
+    end
+
+    %% Session cleanup
+    % Ensure HiFi playback is stopped and resources are cleaned up
+    try
+        H.stop();
+        disp('Session ended - HiFi playback stopped');
+    catch
+        disp('Warning: Could not stop HiFi playback at session end');
+    end
+    
+    % Clear HiFi object to release serial port
+    try
+        clear H;
+        disp('HiFi object cleared');
+    catch
+        disp('Warning: Could not clear HiFi object');
     end
 
 end
