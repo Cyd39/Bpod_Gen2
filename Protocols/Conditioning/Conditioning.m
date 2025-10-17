@@ -35,51 +35,7 @@ function Conditioning()
         
     catch ME
         disp(['Error connecting to HiFi: ' ME.message]);
-        disp('Trying to clear existing connections...');
-        
-
-        % Only close COM3 connections, not all serial ports
-        try
-            com3_objects = instrfind('Port', 'COM3');
-            if ~isempty(com3_objects)
-                fclose(com3_objects);
-                delete(com3_objects);
-                disp('COM3 connections cleared');
-            end
-        catch
-            % Fallback: use instrfind if serialportfind is not available
-            com3_objects = instrfind('Port', 'COM3');
-            if ~isempty(com3_objects)
-                fclose(com3_objects);
-                delete(com3_objects);
-                disp('COM3 connections cleared (using instrfind)');
-            end
-        end
-        pause(1);
-        
-        % Retry connection
-        try
-            H = BpodHiFi('COM3'); 
-            H.SamplingRate = 192000;
-            disp('HiFi module connected on retry');
-            
-            % Set up HiFi envelope for both sound and vibration ramping
-            % This envelope applies to both channels of the stereo output
-            if isfield(StimParams, 'Ramp') && StimParams.Ramp > 0
-                hifiEnvelope = GenHiFiEnvelope(StimParams.Duration, StimParams.Ramp, H.SamplingRate);
-                H.AMenvelope = hifiEnvelope;
-                disp(['HiFi envelope set: ' num2str(StimParams.Ramp) 'ms ramps for both sound and vibration']);
-            else
-                H.AMenvelope = []; % No envelope
-                disp('No HiFi envelope - no ramping applied');
-            end
-            
-            % Set up automatic cleanup when function exits
-            cleanupObj = onCleanup(@() cleanupHiFiConnection(H));
-            
-        catch
-            error('Failed to connect to HiFi module. Please check COM3 port and restart MATLAB.');
-        end
+        error('Failed to connect to HiFi module. Please check COM3 port and restart MATLAB.');
     end 
 
     % get parameters from StimParamGui
