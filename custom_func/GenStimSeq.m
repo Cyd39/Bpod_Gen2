@@ -60,7 +60,7 @@ end
 
 % Add Duration and RampDur columns
 StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
-StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
+StimTable.RampDur = zeros(height(StimTable), 1); % Set all ramp durations to 0 - using HiFi envelope instead
 
 % Save StimTable to workspace
 assignin('base', 'StimTable', StimTable);
