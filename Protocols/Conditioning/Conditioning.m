@@ -18,14 +18,24 @@ function Conditioning()
         H = BpodHiFi('COM3'); 
         H.SamplingRate = 192000;
         disp('HiFi module connected successfully');
+        
+        % Set up automatic cleanup when function exits
+        cleanupObj = onCleanup(@() cleanupHiFiConnection(H));
+        
     catch ME
         disp(['Error connecting to HiFi: ' ME.message]);
         disp('Trying to clear existing connections...');
         
-        % Clear existing connections
+        % Clear existing connections - only COM3
         clear all;
         fclose('all');
-        delete(instrfindall);
+        % Only close COM3 connections, not all serial ports
+        com3_objects = serialportfind('Port', 'COM3');
+        if ~isempty(com3_objects)
+            fclose(com3_objects);
+            delete(com3_objects);
+            disp('COM3 connections cleared');
+        end
         pause(1);
         
         % Retry connection
@@ -124,7 +134,11 @@ function Conditioning()
 
     %% Main loop, runs once per trial
     for currentTrial = 1:NumTrials       
-        if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
+        if BpodSystem.Status.BeingUsed == 0
+            % Clean up HiFi connection before exiting
+            CleanupHiFi();
+            return; 
+        end % If user hit console "stop" button, end session
         if currentTrial < NumTrials
             genAndLoadStimulus(currentTrial+1);
             [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount] = PrepareStateMachine(S, currentTrial+1, updateFlag); 
@@ -138,7 +152,11 @@ function Conditioning()
             SendStateMachine(sma, 'RunASAP');   % Send the next trial's state machine during the current trial
         end
         RawEvents = trialManager.getTrialData; % Hangs here until trial is over, then retrieves full trial's raw data
-        if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session 
+        if BpodSystem.Status.BeingUsed == 0
+            % Clean up HiFi connection before exiting
+            CleanupHiFi();
+            return; 
+        end % If user hit console "stop" button, end session 
         HandlePauseCondition; % Checks to see if the protocol is paused. If so, waits until user resumes.
         if currentTrial < NumTrials
             trialManager.startTrial(); % Start processing the next trial's events (call with no argument since SM was already sent)
@@ -188,12 +206,7 @@ function Conditioning()
         if BpodSystem.Status.BeingUsed == 0
             disp('End of session');
             % Stop HiFi playback and clean up
-            try
-                H.stop();
-                disp('HiFi playback stopped');
-            catch
-                disp('Warning: Could not stop HiFi playback');
-            end
+            CleanupHiFi();
             
             % Close only our custom figures (not Bpod GUI)
             try
@@ -433,4 +446,18 @@ function Conditioning()
         disp('Warning: Could not close reaction time plot');
     end
 
+end
+
+function cleanupHiFiConnection(H)
+% Cleanup function for HiFi connection
+% This function is called automatically when the main function exits
+    try
+        if exist('H', 'var') && ~isempty(H)
+            H.stop();
+            clear H;
+            disp('HiFi connection automatically cleaned up');
+        end
+    catch
+        disp('Warning: Could not automatically clean up HiFi connection');
+    end
 end
