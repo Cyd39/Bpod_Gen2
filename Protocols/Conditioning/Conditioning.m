@@ -25,7 +25,7 @@ function Conditioning()
         % Set up HiFi envelope for both sound and vibration ramping
         % This envelope applies to both channels of the stereo output
         if isfield(StimParams, 'Ramp') && StimParams.Ramp > 0
-            hifiEnvelope = GenHiFiEnvelope(StimParams.Duration, StimParams.Ramp, H.SamplingRate);
+            hifiEnvelope = GenHiFiEnvelope(StimParams.Ramp, H.SamplingRate);
             H.AMenvelope = hifiEnvelope;
             disp(['HiFi envelope set: ' num2str(StimParams.Ramp) 'ms ramps for both sound and vibration']);
         else
@@ -45,6 +45,7 @@ function Conditioning()
     
     % Generate Stimuli parameter table
     StimTable = GenStimSeq(StimParams);
+    StimTable.Ramp = zeros(height(StimTable),1);
 
     % Load calibration table
     CalFile = 'Calibration Files\CalTable_20250707.mat';
@@ -305,6 +306,7 @@ function Conditioning()
     function genAndLoadStimulus(currentTrial)
         % Generate sound&vibration waveform
         soundWave = GenStimWave(StimTable(currentTrial,:),CalTable);
+        soundWave = soundWave(:,1:end-1); % remove the last sample.
         disp(StimTable(currentTrial,:));
 
         % Load the sound wave into BpodHiFi with loop mode

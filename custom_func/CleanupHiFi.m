@@ -17,20 +17,13 @@ function CleanupHiFi()
             disp('HiFi object cleared - COM port released');
         else
             disp('No HiFi object found in workspace');
+            H = BpodHiFi('COM3');
+            H.stop();
+            disp('HiFi playback stopped');
+            clear('H');
+            disp('HiFi object cleared - COM port released');
         end
-        
-        % Additional cleanup - close any COM3 connections
-        try
-            com3_objects = serialportfind('Port', 'COM3');
-        catch
-            com3_objects = instrfind('Port', 'COM3');
-        end
-        if ~isempty(com3_objects)
-            fclose(com3_objects);
-            delete(com3_objects);
-            disp('COM3 port connections closed');
-        end
-        
+               
     catch ME
         disp(['Warning: Error during HiFi cleanup: ' ME.message]);
         
