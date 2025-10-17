@@ -20,7 +20,11 @@ function CleanupHiFi()
         end
         
         % Additional cleanup - close any COM3 connections
-        com3_objects = serialportfind('Port', 'COM3');
+        try
+            com3_objects = serialportfind('Port', 'COM3');
+        catch
+            com3_objects = instrfind('Port', 'COM3');
+        end
         if ~isempty(com3_objects)
             fclose(com3_objects);
             delete(com3_objects);
@@ -34,7 +38,11 @@ function CleanupHiFi()
         try
             fclose('all');
             % Only close COM3 connections, preserve other serial ports
-            com3_objects = serialportfind('Port', 'COM3');
+            try
+                com3_objects = serialportfind('Port', 'COM3');
+            catch
+                com3_objects = instrfind('Port', 'COM3');
+            end
             if ~isempty(com3_objects)
                 fclose(com3_objects);
                 delete(com3_objects);

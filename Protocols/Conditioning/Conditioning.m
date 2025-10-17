@@ -41,11 +41,21 @@ function Conditioning()
         clear all;
         fclose('all');
         % Only close COM3 connections, not all serial ports
-        com3_objects = serialportfind('Port', 'COM3');
-        if ~isempty(com3_objects)
-            fclose(com3_objects);
-            delete(com3_objects);
-            disp('COM3 connections cleared');
+        try
+            com3_objects = instrfind('Port', 'COM3');
+            if ~isempty(com3_objects)
+                fclose(com3_objects);
+                delete(com3_objects);
+                disp('COM3 connections cleared');
+            end
+        catch
+            % Fallback: use instrfind if serialportfind is not available
+            com3_objects = instrfind('Port', 'COM3');
+            if ~isempty(com3_objects)
+                fclose(com3_objects);
+                delete(com3_objects);
+                disp('COM3 connections cleared (using instrfind)');
+            end
         end
         pause(1);
         
