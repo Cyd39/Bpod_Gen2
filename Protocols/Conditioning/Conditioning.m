@@ -13,6 +13,9 @@ function Conditioning()
     % Create trial manager object
     trialManager = BpodTrialManager;
 
+    % get parameters from StimParamGui first
+    StimParams = BpodSystem.ProtocolSettings.StimParams;
+
     % Initialize HiFi module with error handling
     try
         H = BpodHiFi('COM3'); 
@@ -36,10 +39,7 @@ function Conditioning()
     catch ME
         disp(['Error connecting to HiFi: ' ME.message]);
         error('Failed to connect to HiFi module. Please check COM3 port and restart MATLAB.');
-    end 
-
-    % get parameters from StimParamGui
-    StimParams = BpodSystem.ProtocolSettings.StimParams;
+    end
     NumTrials = StimParams.Behave.NumTrials;
     StimDur = StimParams.Duration/1000;
     
