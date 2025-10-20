@@ -48,7 +48,7 @@ function Conditioning()
     StimTable.Ramp = zeros(height(StimTable),1);
 
     % Load calibration table
-    CalFile = 'Calibration Files\CalTable_20250707.mat';
+    CalFile = 'Calibration Files\CalTable_20250923.mat';
     load(CalFile,'CalTable');
     
     % Setup default parameters
