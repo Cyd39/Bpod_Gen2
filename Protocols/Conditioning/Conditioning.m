@@ -250,11 +250,26 @@ function Conditioning()
         sma = NewStateMachine();
       
         % Add states
-        % Ready state - simple ITI before stimulus
-        sma = AddState(sma, 'Name', 'Ready', ...
-            'Timer', ITIBefore, ...
-            'StateChangeConditions', {'Tup', 'Stimulus'}, ...
-            'OutputActions', {}); 
+        if currentTrial == 1
+            % First trial: add water suspension state
+            % Ready state - simple ITI before water suspension
+            sma = AddState(sma, 'Name', 'Ready', ...
+                'Timer', ITIBefore, ...
+                'StateChangeConditions', {'Tup', 'WaterSuspension'}, ...
+                'OutputActions', {});
+            
+            % Water suspension state - brief water drop to attract animal
+            sma = AddState(sma, 'Name', 'WaterSuspension', ...
+                'Timer', 0.1, ... % Very brief valve opening (100ms)
+                'StateChangeConditions', {'Tup', 'Stimulus'}, ...
+                'OutputActions', {'ValveState', [1 2]}); % Open both valves briefly
+        else
+            % Subsequent trials: no water suspension
+            sma = AddState(sma, 'Name', 'Ready', ...
+                'Timer', ITIBefore, ...
+                'StateChangeConditions', {'Tup', 'Stimulus'}, ...
+                'OutputActions', {});
+        end 
 
         % Stimulus state - plays stimulus until animal licks correct side
         if strcmp(correctResponse, 'left')
@@ -318,7 +333,10 @@ function Conditioning()
 
     function displayTrialInfo(currentTrial, ThisITI, QuietTime, correctSide)
         disp(['Trial ' num2str(currentTrial) ': CorrectSide = ' num2str(correctSide) ' (always rewarded)']);
-        disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
+        disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);
+        if currentTrial == 1
+            disp(['Trial ' num2str(currentTrial) ': Water suspension enabled for first trial']);
+        end
     end
 
     function reactionTime = calculateReactionTime(RawEvents, currentTrial)
