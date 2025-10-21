@@ -72,7 +72,7 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.IsCorrect = [];
     BpodSystem.Data.CorrectCount = [];
     BpodSystem.Data.IsCatchTrial = [];
-    BpodSystem.Data.CurrentStimRow = [];
+    BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
     %% Prepare and start first trial
     [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur);
@@ -143,7 +143,7 @@ function SwitchWhenNCorrect()
             BpodSystem.Data.CutOff(currentTrial) = CutOff;
             
             % Save stimulus information
-            BpodSystem.Data.CurrentStimRow(currentTrial) = currentStimRow;
+            BpodSystem.Data.CurrentStimRow{currentTrial} = currentStimRow;
             BpodSystem.Data.CorrectSide(currentTrial) = correctSide;
             BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
             BpodSystem.Data.IsCatchTrial(currentTrial) = isCatchTrial;
