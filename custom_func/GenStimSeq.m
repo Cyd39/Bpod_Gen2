@@ -249,7 +249,7 @@ function StimTable = makeVibTable(StimParams)
     end
     
     % Initialize CorrectSide based on frequency relative to boundary
-    StimTable.CorrectSide = ones(height(StimTable), 1); % Initialize to low frequency spout
+    StimTable.CorrectSide = repmat(lowFreqSpout, height(StimTable), 1); % Initialize to low frequency spout
     StimTable.CorrectSide(StimTable.VibFreq > boundaryFreq) = highFreqSpout; % High frequency -> configured spout
     StimTable.CorrectSide(StimTable.VibFreq == boundaryFreq) = 3; % Boundary frequency -> both sides correct
     
