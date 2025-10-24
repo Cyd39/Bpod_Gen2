@@ -235,11 +235,30 @@ function StimTable = makeVibTable(StimParams)
         StimTable(currentRow:end, :) = remainingBlock;
     end
 
-    % Add CorrectSide column based on frequency boundary
-    % 1 = left (low frequency), 2 = right (high frequency), 3 = boundary frequency
-    StimTable.CorrectSide = ones(height(StimTable), 1); % Initialize to 1 (low frequency)
-    StimTable.CorrectSide(StimTable.VibFreq > boundaryFreq) = 2; % High frequency
-    StimTable.CorrectSide(StimTable.VibFreq == boundaryFreq) = 3; % Boundary frequency
+    % Add CorrectSide column based on frequency boundary and user configuration
+    % 1 = left, 2 = right, 3 = boundary frequency (both sides correct)
+    % Get side configuration from StimParamGui
+    if isfield(StimParams.Behave, 'CorrectSpout')
+        highFreqSpout = StimParams.Behave.CorrectSpout; % 1 = left, 2 = right
+        lowFreqSpout = 3 - highFreqSpout; % Opposite of high frequency spout
+    else
+        % Default configuration if not specified
+        highFreqSpout = 2; % Default: high frequency -> right
+        lowFreqSpout = 1;  % Default: low frequency -> left
+        warning('CorrectSpout not found in StimParams.Behave, using default configuration (high freq -> right, low freq -> left)');
+    end
+    
+    % Initialize CorrectSide based on frequency relative to boundary
+    StimTable.CorrectSide = ones(height(StimTable), 1); % Initialize to low frequency spout
+    StimTable.CorrectSide(StimTable.VibFreq > boundaryFreq) = highFreqSpout; % High frequency -> configured spout
+    StimTable.CorrectSide(StimTable.VibFreq == boundaryFreq) = 3; % Boundary frequency -> both sides correct
+    
+    % Display configuration for user verification
+    spoutNames = {'left', 'right'};
+    disp(['Frequency-Side Configuration:']);
+    disp(['  High frequency (>' num2str(boundaryFreq) ' Hz) -> ' spoutNames{highFreqSpout} ' spout']);
+    disp(['  Low frequency (<' num2str(boundaryFreq) ' Hz) -> ' spoutNames{lowFreqSpout} ' spout']);
+    disp(['  Boundary frequency (' num2str(boundaryFreq) ' Hz) -> both spouts correct']);
 
     % Add in catch trials
     if propCatch > 0
