@@ -97,17 +97,8 @@ function Conditioning()
     outcomePlot.ErrorStateNames = {'Checking'}; % States where incorrect response was made (timeout)
     outcomePlot.PunishStateNames = {}; % No punishment states in this protocol
     
-    % Initialize reaction time plot
-    reactionTimeFig = figure('Name', 'Reaction Time Analysis', 'Position', [100, 100, 800, 400]);
-    reactionTimePlot = axes;
-    reactionTimes = []; % Store reaction times
-    trialNumbers = [];  % Store trial numbers
-    correctSides = [];  % Store correct sides for color coding
-    hold(reactionTimePlot, 'on');
-    xlabel('Trial Number');
-    ylabel('Reaction Time (s)');
-    title('Real-time Reaction Time Analysis');
-    grid on;
+    % Reaction time calculation variables (no plotting)
+    % reactionTime is calculated and stored in BpodSystem.Data.ReactionTime
 
     %% Prepare and start first trial
     genAndLoadStimulus(1);
@@ -172,16 +163,6 @@ function Conditioning()
             % Non-critical plotting operations (can be deferred)
             if mod(currentTrial, 5) == 0 || currentTrial == NumTrials % Update plots every 5 trials or at end
                 try
-                    % Update reaction time data
-                    if ~isnan(reactionTime)
-                        reactionTimes(end+1) = reactionTime;
-                        trialNumbers(end+1) = currentTrial;
-                        correctSides(end+1) = BpodSystem.Data.CorrectSide(currentTrial);
-                        
-                        % Update reaction time plot
-                        updateReactionTimePlot(reactionTimePlot, trialNumbers, reactionTimes, correctSides);
-                    end
-                    
                     % Update outcome plot
                     outcomePlot.update(trialTypes, BpodSystem.Data);
                 catch ME
@@ -199,15 +180,7 @@ function Conditioning()
             % Stop HiFi playback and clean up
             CleanupHiFi();
             
-            % Close only our custom figures (not Bpod GUI)
-            try
-                if exist('reactionTimeFig', 'var') && isvalid(reactionTimeFig)
-                    close(reactionTimeFig);
-                    disp('Reaction time plot closed');
-                end
-            catch
-                disp('Warning: Could not close reaction time plot');
-            end
+            % No custom figures to close
             
             return
         end
@@ -382,52 +355,6 @@ function Conditioning()
         end
     end
 
-    function updateReactionTimePlot(plotHandle, trialNumbers, reactionTimes, correctSides)
-        % Update the reaction time plot with new data (optimized)
-        try
-            % Only update if we have data
-            if isempty(trialNumbers) || isempty(reactionTimes)
-                return;
-            end
-            
-            % Clear previous plot
-            cla(plotHandle);
-            
-            % Define colors for different correct sides
-            colors = [1 0 0; 0 0 1; 0 1 0]; % Red for left(1), Blue for right(2), Green for boundary(3)
-            
-            % Plot points with different colors based on correct side (vectorized)
-            for side = 1:3
-                idx = correctSides == side;
-                if any(idx)
-                    plot(plotHandle, trialNumbers(idx), reactionTimes(idx), 'o', ...
-                        'Color', colors(side, :), 'MarkerSize', 6, 'MarkerFaceColor', colors(side, :), ...
-                        'DisplayName', ['Side ' num2str(side)]);
-                end
-            end
-            
-            % Add trend line (only if enough data points)
-            if length(trialNumbers) > 3
-                p = polyfit(trialNumbers, reactionTimes, 1);
-                trendLine = polyval(p, trialNumbers);
-                plot(plotHandle, trialNumbers, trendLine, 'k--', 'LineWidth', 1.5, 'DisplayName', 'Trend');
-            end
-            
-            % Add legend
-            legend(plotHandle, 'Location', 'best', 'FontSize', 8);
-            
-            % Update axis limits
-            if ~isempty(reactionTimes)
-                ylim(plotHandle, [0, max(reactionTimes) * 1.1]);
-            end
-            
-            % Refresh plot (less frequent)
-            drawnow limitrate;
-            
-        catch
-            % Silent error handling
-        end
-    end
 
     %% Session cleanup
     % Ensure HiFi playback is stopped and resources are cleaned up
@@ -446,15 +373,7 @@ function Conditioning()
         disp('Warning: Could not clear HiFi object');
     end
     
-    % Close only our custom figures (not Bpod GUI)
-    try
-        if exist('reactionTimeFig', 'var') && isvalid(reactionTimeFig)
-            close(reactionTimeFig);
-            disp('Reaction time plot closed');
-        end
-    catch
-        disp('Warning: Could not close reaction time plot');
-    end
+    % No custom figures to close
 
 end
 
