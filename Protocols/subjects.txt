@@ -1,6 +1,6 @@
 human_test
-mouse_001
-mouse_002
-mouse_003
-M1
-M2
+Y001
+Y002
+Y003
+Y004
+
