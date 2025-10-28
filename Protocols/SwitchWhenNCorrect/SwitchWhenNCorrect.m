@@ -189,8 +189,8 @@ function SwitchWhenNCorrect()
                 else
                     % Animal did not lick - incorrect response
                     isCorrect = false;
-                    correctCount = 0; % Reset counter on incorrect response
-                    disp(['Trial ' num2str(currentTrial) ': Incorrect response. Count reset to 0.']);
+                    % Do NOT reset counter - keep cumulative count
+                    disp(['Trial ' num2str(currentTrial) ': Incorrect response. Count remains: ' num2str(correctCount)]);
                 end
             else
                 % Catch trial - no response expected
@@ -210,12 +210,12 @@ function SwitchWhenNCorrect()
                 % Switch to the other side
                 if currentSide == 1
                     currentSide = 2; % Switch to high frequency
-                    disp(['Switching to high frequency side after ' num2str(correctCount) ' correct trials']);
+                    disp(['Switching to high frequency side after ' num2str(correctCount) ' cumulative correct trials']);
                 else
                     currentSide = 1; % Switch to low frequency
-                    disp(['Switching to low frequency side after ' num2str(correctCount) ' correct trials']);
+                    disp(['Switching to low frequency side after ' num2str(correctCount) ' cumulative correct trials']);
                 end
-                correctCount = 0; % Reset counter
+                correctCount = 0; % Reset counter for new side
             end
             
             % Update indices for next trial (independent continuous indexing, no cycling)

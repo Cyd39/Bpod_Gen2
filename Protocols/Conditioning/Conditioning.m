@@ -185,19 +185,10 @@ function Conditioning()
                 BpodSystem.Data.ReactionTime(currentTrial) = reactionTime;
             end
             
-            % Check if response was correct and handle side switching
-            isCorrect = false;
-            if isfield(RawEvents.States, 'LeftReward') || isfield(RawEvents.States, 'RightReward')
-                % Animal licked correct side and got reward - correct response
-                isCorrect = true;
-                correctCount = correctCount + 1;
-                disp(['Trial ' num2str(currentTrial) ': Correct response! Count: ' num2str(correctCount)]);
-            else
-                % Animal did not lick correct side - incorrect response
-                isCorrect = false;
-                correctCount = 0; % Reset counter on incorrect response
-                disp(['Trial ' num2str(currentTrial) ': Incorrect response. Count reset to 0.']);
-            end
+            % Every trial ends with correct response (stimulus plays until animal licks correctly)
+            % So we always increment the counter
+            correctCount = correctCount + 1;
+            disp(['Trial ' num2str(currentTrial) ': Completed! Count: ' num2str(correctCount)]);
             
             % Save side tracking information
             BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
@@ -208,12 +199,12 @@ function Conditioning()
                 % Switch to the other side
                 if currentSide == 1
                     currentSide = 2; % Switch to high frequency
-                    disp(['Switching to high frequency side after ' num2str(correctCount) ' correct trials']);
+                    disp(['Switching to high frequency side after ' num2str(correctCount) ' completed trials']);
                 else
                     currentSide = 1; % Switch to low frequency
-                    disp(['Switching to low frequency side after ' num2str(correctCount) ' correct trials']);
+                    disp(['Switching to low frequency side after ' num2str(correctCount) ' completed trials']);
                 end
-                correctCount = 0; % Reset counter
+                correctCount = 0; % Reset counter for new side
             end
             
             % Update indices for next trial (independent continuous indexing, no cycling)
