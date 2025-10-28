@@ -20,6 +20,24 @@ function SwitchWhenNCorrect()
     % Generate LeftRight stimulus sequence tables
     LeftRightSeq = GenLeftRightSeq(StimParams);
     
+    % Get side configuration from StimParamGui (once at the beginning)
+    if isfield(StimParams.Behave, 'CorrectSpout')
+        highFreqSpout = StimParams.Behave.CorrectSpout; % 1 = left, 2 = right
+        lowFreqSpout = 3 - highFreqSpout; % Opposite of high frequency spout
+    else
+        % Default configuration if not specified
+        highFreqSpout = 2; % Default: high frequency -> right
+        lowFreqSpout = 1;  % Default: low frequency -> left
+        warning('CorrectSpout not found in StimParams.Behave, using default configuration (high freq -> right, low freq -> left)');
+    end
+    
+    % Display configuration for user verification
+    spoutNames = {'left', 'right'};
+    disp(['=== Side Configuration ===']);
+    disp(['High frequency -> ' spoutNames{highFreqSpout} ' spout']);
+    disp(['Low frequency -> ' spoutNames{lowFreqSpout} ' spout']);
+    disp(['==========================']);
+    
     % Load calibration table
     CalFile = 'Calibration Files\CalTable_20250923.mat';
     load(CalFile,'CalTable');
@@ -57,6 +75,18 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.LeftRightSeq = LeftRightSeq;
     BpodSystem.Data.StimParams = StimParams;
     
+    %% Initialize plots
+    % Initialize the outcome plot with different trial types for left/right spouts
+    trialTypes = ones(1, NumTrials); % Will be updated based on correctSide (1=left, 2=right)
+    outcomePlot = LiveOutcomePlot([1 2], {'Left Spout', 'Right Spout'}, trialTypes, NumTrials); % Create an instance of the LiveOutcomePlot GUI
+    % Arg1 = trialTypeManifest, a list of possible trial types (1=left, 2=right).
+    % Arg2 = trialTypeNames, a list of names for each trial type in trialTypeManifest
+    % Arg3 = trialTypes, a list of integers denoting precomputed trial types in the session
+    % Arg4 = nTrialsToShow, the number of trials to show
+    outcomePlot.RewardStateNames = {'Reward'}; % List of state names where reward was delivered
+    outcomePlot.CorrectStateNames = {'Reward'}; % States where correct response was made
+    outcomePlot.ErrorStateNames = {'Checking'}; % States where incorrect response was made (timeout)
+    
     % Initialize trial tracking variables
     currentSide = 1; % 1 = low frequency (left), 2 = high frequency (right)
     correctCount = 0; % Counter for correct trials on current side
@@ -75,7 +105,7 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
     %% Prepare and start first trial
-    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur);
+    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout);
     trialManager.startTrial(sma);
     
     %% Main loop, runs once per trial
@@ -93,7 +123,7 @@ function SwitchWhenNCorrect()
         
         % Prepare next trial's state machine if not the last trial
         if currentTrial < NumTrials
-            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur);
+            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout);
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
         
@@ -172,6 +202,9 @@ function SwitchWhenNCorrect()
             BpodSystem.Data.IsCorrect(currentTrial) = isCorrect;
             BpodSystem.Data.CorrectCount(currentTrial) = correctCount;
             
+            % Update trial type for outcome plot based on correct side
+            trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout
+            
             % Check if we need to switch sides
             if correctCount >= S.GUI.NCorrectToSwitch
                 % Switch to the other side
@@ -194,6 +227,9 @@ function SwitchWhenNCorrect()
                 % Continue reading beyond table length if needed
             end
             
+            % Update outcome plot
+            outcomePlot.update(trialTypes, BpodSystem.Data);
+            
             SaveBpodSessionData;
         end
     end
@@ -202,7 +238,7 @@ function SwitchWhenNCorrect()
     clear trialManager;
 end
 
-function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur)
+function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout)
     % Prepare state machine for the current trial
     
     % Sync parameters with GUI
@@ -212,16 +248,24 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     if currentSide == 1 % Low frequency side
         % Direct indexing (table length matches trial count)
         currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
-        correctSide = 1; % Left side for low frequency
+        correctSide = lowFreqSpout; % Use configured low frequency spout
     else % High frequency side
         % Direct indexing (table length matches trial count)
         currentStimRow = LeftRightSeq.HighFreqTable(highFreqIndex, :);
-        correctSide = 2; % Right side for high frequency
+        correctSide = highFreqSpout; % Use configured high frequency spout
     end
     
     % Generate sound&vibration waveform
     soundWave = GenStimWave(currentStimRow, CalTable);
-    disp(['Current side = ' num2str(currentSide) ', Correct side = ' num2str(correctSide)]);
+    
+    % Display trial info with configuration
+    spoutNames = {'left', 'right'};
+    if currentSide == 1
+        sideName = 'low freq';
+    else
+        sideName = 'high freq';
+    end
+    disp(['Current side = ' num2str(currentSide) ' (' sideName '), Correct side = ' num2str(correctSide) ' (' spoutNames{correctSide} ')']);
     if currentSide == 1
         disp(['Low freq index: ' num2str(lowFreqIndex)]);
     else
