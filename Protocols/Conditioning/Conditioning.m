@@ -43,9 +43,26 @@ function Conditioning()
     NumTrials = StimParams.Behave.NumTrials;
     StimDur = StimParams.Duration/1000;
     
-    % Generate Stimuli parameter table
-    StimTable = GenStimSeq(StimParams);
-    StimTable.Ramp = zeros(height(StimTable),1);
+    % Generate LeftRight stimulus sequence tables
+    LeftRightSeq = GenLeftRightSeq(StimParams);
+    
+    % Get side configuration from StimParamGui (once at the beginning)
+    if isfield(StimParams.Behave, 'CorrectSpout')
+        highFreqSpout = StimParams.Behave.CorrectSpout; % 1 = left, 2 = right
+        lowFreqSpout = 3 - highFreqSpout; % Opposite of high frequency spout
+    else
+        % Default configuration if not specified
+        highFreqSpout = 2; % Default: high frequency -> right
+        lowFreqSpout = 1;  % Default: low frequency -> left
+        warning('CorrectSpout not found in StimParams.Behave, using default configuration (high freq -> right, low freq -> left)');
+    end
+    
+    % Display configuration for user verification
+    spoutNames = {'left', 'right'};
+    disp(['=== Side Configuration ===']);
+    disp(['High frequency -> ' spoutNames{highFreqSpout} ' spout']);
+    disp(['Low frequency -> ' spoutNames{lowFreqSpout} ' spout']);
+    disp(['==========================']);
 
     % Load calibration table
     CalFile = 'Calibration Files\CalTable_20250923.mat';
@@ -59,6 +76,7 @@ function Conditioning()
     S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
     S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
+    S.GUI.NCorrectToSwitch = 5; % Number of correct trials needed to switch sides
     % Cut-off period for NoLick state
     S.CutOffPeriod = 60; % seconds
 
@@ -80,9 +98,19 @@ function Conditioning()
         disp('Parameters updated');
     end
 
-    % Save the StimTable and StimParams to SessionData
-    BpodSystem.Data.StimTable = StimTable;
+    % Save the LeftRightSeq and StimParams to SessionData
+    BpodSystem.Data.LeftRightSeq = LeftRightSeq;
     BpodSystem.Data.StimParams = StimParams;
+    
+    % Initialize trial tracking variables for side switching
+    currentSide = 1; % 1 = low frequency side, 2 = high frequency side (spout determined by CorrectSpout setting)
+    correctCount = 0; % Counter for correct trials on current side
+    highFreqIndex = 1; % Index for high frequency table (continuous)
+    lowFreqIndex = 1; % Index for low frequency table (continuous)
+    
+    % Initialize data arrays for side tracking
+    BpodSystem.Data.CurrentSide = [];
+    BpodSystem.Data.CorrectCount = [];
     
     %% Initialize plots
     % Initialize the outcome plot
@@ -101,8 +129,8 @@ function Conditioning()
     % reactionTime is calculated and stored in BpodSystem.Data.ReactionTime
 
     %% Prepare and start first trial
-    genAndLoadStimulus(1);
-    [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount] = PrepareStateMachine(S, 1, updateFlag); % Prepare state machine for trial 1 with empty "current events" variable
+    genAndLoadStimulus(1, currentSide, highFreqIndex, lowFreqIndex);
+    [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount] = PrepareStateMachine(S, 1, updateFlag, currentSide, highFreqIndex, lowFreqIndex, highFreqSpout, lowFreqSpout); % Prepare state machine for trial 1 with empty "current events" variable
     
     % Store trial parameters before starting the trial
     BpodSystem.Data.ThisITI(1) = ThisITI;
@@ -122,8 +150,8 @@ function Conditioning()
             return; 
         end % If user hit console "stop" button, end session
         if currentTrial < NumTrials
-            genAndLoadStimulus(currentTrial+1);
-            [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount] = PrepareStateMachine(S, currentTrial+1, updateFlag); 
+            genAndLoadStimulus(currentTrial+1, currentSide, highFreqIndex, lowFreqIndex);
+            [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount] = PrepareStateMachine(S, currentTrial+1, updateFlag, currentSide, highFreqIndex, lowFreqIndex, highFreqSpout, lowFreqSpout); 
             
             % Store next trial parameters
             BpodSystem.Data.ThisITI(currentTrial+1) = NextITI;
@@ -157,6 +185,46 @@ function Conditioning()
                 BpodSystem.Data.ReactionTime(currentTrial) = reactionTime;
             end
             
+            % Check if response was correct and handle side switching
+            isCorrect = false;
+            if isfield(RawEvents.States, 'LeftReward') || isfield(RawEvents.States, 'RightReward')
+                % Animal licked correct side and got reward - correct response
+                isCorrect = true;
+                correctCount = correctCount + 1;
+                disp(['Trial ' num2str(currentTrial) ': Correct response! Count: ' num2str(correctCount)]);
+            else
+                % Animal did not lick correct side - incorrect response
+                isCorrect = false;
+                correctCount = 0; % Reset counter on incorrect response
+                disp(['Trial ' num2str(currentTrial) ': Incorrect response. Count reset to 0.']);
+            end
+            
+            % Save side tracking information
+            BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
+            BpodSystem.Data.CorrectCount(currentTrial) = correctCount;
+            
+            % Check if we need to switch sides
+            if correctCount >= S.GUI.NCorrectToSwitch
+                % Switch to the other side
+                if currentSide == 1
+                    currentSide = 2; % Switch to high frequency
+                    disp(['Switching to high frequency side after ' num2str(correctCount) ' correct trials']);
+                else
+                    currentSide = 1; % Switch to low frequency
+                    disp(['Switching to low frequency side after ' num2str(correctCount) ' correct trials']);
+                end
+                correctCount = 0; % Reset counter
+            end
+            
+            % Update indices for next trial (independent continuous indexing, no cycling)
+            if currentSide == 1 % Low frequency side
+                lowFreqIndex = lowFreqIndex + 1;
+                % Continue reading beyond table length if needed
+            else % High frequency side
+                highFreqIndex = highFreqIndex + 1;
+                % Continue reading beyond table length if needed
+            end
+            
             % Save data (critical for data integrity)
             SaveBpodSessionData;
             
@@ -186,7 +254,7 @@ function Conditioning()
         end
     end
 
-    function [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount] = PrepareStateMachine(S, currentTrial, updateFlag)
+    function [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount] = PrepareStateMachine(S, currentTrial, updateFlag, currentSide, highFreqIndex, lowFreqIndex, highFreqSpout, lowFreqSpout)
         if updateFlag
             S = BpodParameterGUI('sync', S); % Sync parameters with BpodParameterGUI plugin
             updateFlag = false; % reset flag
@@ -205,8 +273,12 @@ function Conditioning()
         LeftValveTime = ValveTimes(1);
         RightValveTime = ValveTimes(2);
 
-        % Determine correct response from StimTable
-        correctSide = StimTable.CorrectSide(currentTrial);
+        % Determine correct response based on current side and configuration
+        if currentSide == 1 % Low frequency side
+            correctSide = lowFreqSpout; % Use configured low frequency spout
+        else % High frequency side
+            correctSide = highFreqSpout; % Use configured high frequency spout
+        end
         
         % Convert CorrectSide to response direction
         if correctSide == 1
@@ -275,11 +347,31 @@ function Conditioning()
             'OutputActions', {});
     end
 
-    function genAndLoadStimulus(currentTrial)
-        % Generate sound&vibration waveform
-        soundWave = GenStimWave(StimTable(currentTrial,:),CalTable);
+    function genAndLoadStimulus(currentTrial, currentSide, highFreqIndex, lowFreqIndex)
+        % Generate sound&vibration waveform based on current side
+        if currentSide == 1 % Low frequency side
+            currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
+        else % High frequency side
+            currentStimRow = LeftRightSeq.HighFreqTable(highFreqIndex, :);
+        end
+        
+        soundWave = GenStimWave(currentStimRow, CalTable);
         soundWave = soundWave(:,1:end-1); % remove the last sample.
-        disp(StimTable(currentTrial,:));
+        
+        % Display trial info with configuration
+        spoutNames = {'left', 'right'};
+        if currentSide == 1
+            sideName = 'low freq';
+        else
+            sideName = 'high freq';
+        end
+        disp(['Trial ' num2str(currentTrial) ': Current side = ' num2str(currentSide) ' (' sideName ')']);
+        if currentSide == 1
+            disp(['Low freq index: ' num2str(lowFreqIndex)]);
+        else
+            disp(['High freq index: ' num2str(highFreqIndex)]);
+        end
+        disp(currentStimRow);
 
         % Load the sound wave into BpodHiFi with loop mode
         % LoopMode = 1 (on), LoopDuration = 0 (loop indefinitely until stopped)
