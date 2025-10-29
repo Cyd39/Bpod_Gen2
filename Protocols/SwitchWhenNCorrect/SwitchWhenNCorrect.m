@@ -86,6 +86,9 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.LeftRightSeq = LeftRightSeq;
     BpodSystem.Data.StimParams = StimParams;
     
+    % Initialize StimTable as empty table (will be populated trial by trial)
+    BpodSystem.Data.StimTable = table();
+    
     %% Initialize plots
     % Initialize the outcome plot with different trial types for left/right spouts
     trialTypes = ones(1, NumTrials); % Will be updated based on correctSide (1=left, 2=right)
@@ -215,6 +218,18 @@ function SwitchWhenNCorrect()
             
             % Update trial type for outcome plot based on correct side
             trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout
+            
+            % Add current trial's stimRow to StimTable
+            currentStimRow = BpodSystem.Data.CurrentStimRow{currentTrial};
+            if ~isempty(currentStimRow)
+                if height(BpodSystem.Data.StimTable) == 0
+                    % First trial - create table
+                    BpodSystem.Data.StimTable = currentStimRow;
+                else
+                    % Append to existing table
+                    BpodSystem.Data.StimTable = [BpodSystem.Data.StimTable; currentStimRow];
+                end
+            end
             
             % Check if we need to switch sides
             if correctCount >= S.GUI.NCorrectToSwitch

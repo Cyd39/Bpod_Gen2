@@ -112,6 +112,12 @@ function Conditioning()
     BpodSystem.Data.CurrentSide = [];
     BpodSystem.Data.CorrectCount = [];
     
+    % Initialize StimTable as empty table (will be populated trial by trial)
+    BpodSystem.Data.StimTable = table();
+    
+    % Store each trial's stimRow for later saving to StimTable (cell array)
+    trialStimRows = cell(NumTrials, 1);
+    
     %% Initialize plots
     % Initialize the outcome plot
     trialTypes = ones(1, NumTrials); % Only one trial type, all outcomes are 1
@@ -129,7 +135,8 @@ function Conditioning()
     % reactionTime is calculated and stored in BpodSystem.Data.ReactionTime
 
     %% Prepare and start first trial
-    genAndLoadStimulus(1, currentSide, highFreqIndex, lowFreqIndex);
+    currentStimRow = genAndLoadStimulus(1, currentSide, highFreqIndex, lowFreqIndex);
+    trialStimRows{1} = currentStimRow; % Save for later addition to StimTable
     [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount] = PrepareStateMachine(S, 1, updateFlag, currentSide, highFreqIndex, lowFreqIndex, highFreqSpout, lowFreqSpout); % Prepare state machine for trial 1 with empty "current events" variable
     
     % Store trial parameters before starting the trial
@@ -150,7 +157,8 @@ function Conditioning()
             return; 
         end % If user hit console "stop" button, end session
         if currentTrial < NumTrials
-            genAndLoadStimulus(currentTrial+1, currentSide, highFreqIndex, lowFreqIndex);
+            nextStimRow = genAndLoadStimulus(currentTrial+1, currentSide, highFreqIndex, lowFreqIndex);
+            trialStimRows{currentTrial+1} = nextStimRow; % Save next trial's stimRow
             [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount] = PrepareStateMachine(S, currentTrial+1, updateFlag, currentSide, highFreqIndex, lowFreqIndex, highFreqSpout, lowFreqSpout); 
             
             % Store next trial parameters
@@ -193,6 +201,17 @@ function Conditioning()
             % Save side tracking information
             BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
             BpodSystem.Data.CorrectCount(currentTrial) = correctCount;
+            
+            % Add current trial's stimRow to StimTable
+            if ~isempty(trialStimRows{currentTrial})
+                if height(BpodSystem.Data.StimTable) == 0
+                    % First trial - create table
+                    BpodSystem.Data.StimTable = trialStimRows{currentTrial};
+                else
+                    % Append to existing table
+                    BpodSystem.Data.StimTable = [BpodSystem.Data.StimTable; trialStimRows{currentTrial}];
+                end
+            end
             
             % Check if we need to switch sides
             if correctCount >= S.GUI.NCorrectToSwitch
@@ -338,7 +357,7 @@ function Conditioning()
             'OutputActions', {});
     end
 
-    function genAndLoadStimulus(currentTrial, currentSide, highFreqIndex, lowFreqIndex)
+    function currentStimRow = genAndLoadStimulus(currentTrial, currentSide, highFreqIndex, lowFreqIndex)
         % Generate sound&vibration waveform based on current side
         if currentSide == 1 % Low frequency side
             currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
