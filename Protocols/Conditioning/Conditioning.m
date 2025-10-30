@@ -76,7 +76,7 @@ function Conditioning()
     S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
     S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
-    S.GUI.NCorrectToSwitch = 5; % Number of correct trials needed to switch sides
+    S.GUI.NCorrectToSwitch = 10; % Number of correct trials needed to switch sides
     % Cut-off period for NoLick state
     S.CutOffPeriod = 60; % seconds
 
