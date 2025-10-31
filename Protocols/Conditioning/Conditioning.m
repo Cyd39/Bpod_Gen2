@@ -41,7 +41,6 @@ function Conditioning()
         error('Failed to connect to HiFi module. Please check COM3 port and restart MATLAB.');
     end
     NumTrials = StimParams.Behave.NumTrials;
-    StimDur = StimParams.Duration/1000;
     
     % Generate LeftRight stimulus sequence tables
     LeftRightSeq = GenLeftRightSeq(StimParams);
@@ -77,8 +76,6 @@ function Conditioning()
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
     S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
     S.GUI.NCorrectToSwitch = 10; % Number of correct trials needed to switch sides
-    % Cut-off period for NoLick state
-    S.CutOffPeriod = 60; % seconds
 
     % Initialize parameter GUI
     BpodParameterGUI('init', S);

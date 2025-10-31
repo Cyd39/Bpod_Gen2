@@ -142,7 +142,7 @@ function SwitchWhenNCorrect()
         end
         
         % Get trial data
-        RawEvents = trialManager.getTrialData();
+        RawEvents = trialManager.getTrialData;
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
         % Handle pause condition
