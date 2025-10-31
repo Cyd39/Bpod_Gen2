@@ -31,8 +31,8 @@ if ismember(StimRow.MMType,{'OA','SA'})
             maskBand = 0;
             transTime = -inf;
             transDur = 0;
-            RiseTime = StimRow.RampDur * 0.001; % ms -> s
-            FallTime = StimRow.RampDur * 0.001; % ms -> s
+            RiseTime = 0; % No ramp - using HiFi envelope instead
+            FallTime = 0; % No ramp - using HiFi envelope instead
             Dur = StimRow.Duration/1000;
             
             % Temporary Gain matrix for testing
@@ -84,11 +84,9 @@ if ismember(StimRow.MMType,{'SO','SA'})
             VibWave = StimRow.VibAmp * sin(2*pi*StimRow.VibFreq*t);
     end
 
-    % Apply ramp to vibration
-    if StimRow.RampDur > 0
-        Nenv = round(StimRow.RampDur*10^-3*Fs);
-        VibWave = applyEnvelope(VibWave,Nenv);
-    end
+    % No ramp applied to vibration - using HiFi envelope instead
+    % Both sound and vibration signals will use HiFi module's AMenvelope
+    % for consistent ramp handling
 end
 
 % Check if the length of the sound and vibration waveforms are the same

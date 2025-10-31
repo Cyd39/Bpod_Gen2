@@ -1,4 +1,4 @@
-function TestEverything()
+function Detection()
     global BpodSystem
 
     % Initialize HiFi module
@@ -14,7 +14,7 @@ function TestEverything()
     StimTable = GenStimSeq(StimParams);
 
     % Load calibration table
-    CalFile = 'Calibration Files\CalTable_20250707.mat';
+    CalFile = 'Calibration Files\CalTable_20250923.mat';
     load(CalFile,'CalTable');
     
     % Setup default parameters
@@ -24,12 +24,11 @@ function TestEverything()
     S.GUI.MaxITI = StimParams.Behave.MaxITI; % seconds
     S.GUI.MinQuietTime = StimParams.Behave.MinQuietTime; % seconds
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
-    S.GUI.ValveTime = StimParams.Behave.ValveTime; % seconds
+    S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
 
     % Cut-off period for NoLick state
     CutOffPeriod = 60; % seconds
-
 
     % Initialize parameter GUI
     BpodParameterGUI('init', S);
@@ -77,7 +76,10 @@ function TestEverything()
         ThisITI = ITIBefore + ITIAfter;
         QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
         TimerDuration = ITIAfter+StimDur;
-        ValveTime = S.GUI.ValveTime;
+        RewardAmount = S.GUI.RewardAmount;
+        disp(['Trial ' num2str(currentTrial) ': Liquid Volume = ' num2str(RewardAmount) ' µL']);
+        ValveTime = BpodLiquidCalibration('GetValveTimes', RewardAmount, 1);
+        ValveTime = ValveTime(1);
         ResWin = S.GUI.ResWin;
         CutOff = CutOffPeriod;
         
@@ -191,6 +193,7 @@ function TestEverything()
             BpodSystem.Data.ThisITI(currentTrial) = ThisITI;
             BpodSystem.Data.QuietTime(currentTrial) = QuietTime;
             BpodSystem.Data.TimerDuration(currentTrial) = TimerDuration;
+            BpodSystem.Data.RewardAmount(currentTrial) = RewardAmount;
             BpodSystem.Data.ValveTime(currentTrial) = ValveTime;
             BpodSystem.Data.ResWin(currentTrial) = ResWin;
             BpodSystem.Data.CutOff(currentTrial) = CutOff;
