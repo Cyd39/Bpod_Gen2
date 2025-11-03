@@ -28,8 +28,24 @@ function waveform = ApplySinRamp(waveform, ramp_ms, samplingRate)
                 round(ramp_ms(2) * 1e-3 * samplingRate)];
     end
     
-    % Ensure waveform is column vector or column-major matrix
-    [sigLen, nChannels] = size(waveform);
+    % Check waveform format and transpose if needed
+    % GenStimWave returns 2×N format (rows=channels, cols=samples)
+    % ApplySinRamp expects N×M format (rows=samples, cols=channels)
+    [nRows, nCols] = size(waveform);
+    
+    % Auto-detect format: if fewer rows than columns and only 2 rows, likely GenStimWave format
+    needsTransposeBack = false;
+    if nRows < nCols && nRows == 2
+        % Transpose from GenStimWave format (2×N) to ApplySinRamp format (N×2)
+        waveform = waveform';
+        sigLen = nCols;  % Now rows are samples
+        nChannels = nRows;  % Now columns are channels
+        needsTransposeBack = true;  % Remember to transpose back at the end
+    else
+        % Assume standard format: rows=samples, cols=channels
+        sigLen = nRows;
+        nChannels = nCols;
+    end
     
     % Check if signal is long enough for the envelope
     if sigLen < 2 * max(NEnv)
@@ -56,5 +72,10 @@ function waveform = ApplySinRamp(waveform, ramp_ms, samplingRate)
         
         % Apply off-ramp to tail
         waveform(tail, i) = Env2' .* waveform(tail, i);
+    end
+    
+    % Transpose back to original format if needed (for GenStimWave compatibility)
+    if needsTransposeBack
+        waveform = waveform';
     end
 end
