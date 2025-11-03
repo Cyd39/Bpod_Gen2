@@ -14,6 +14,7 @@ function SwitchWhenNCorrect()
 
     % Get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
+    Ramp = StimParams.Ramp;
     
     % Set up HiFi envelope for both sound and vibration ramping
     % This envelope applies to both channels of the stereo output
@@ -118,7 +119,7 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
     %% Prepare and start first trial
-    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout);
+    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
     trialManager.startTrial(sma);
     
     %% Main loop, runs once per trial
@@ -136,7 +137,7 @@ function SwitchWhenNCorrect()
         
         % Prepare next trial's state machine if not the last trial
         if currentTrial < NumTrials
-            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout);
+            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
         
@@ -267,7 +268,7 @@ function SwitchWhenNCorrect()
     clear trialManager;
 end
 
-function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout)
+function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp)
     % Prepare state machine for the current trial
     
     % Sync parameters with GUI
@@ -286,6 +287,7 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     
     % Generate sound&vibration waveform
     soundWave = GenStimWave(currentStimRow, CalTable);
+    soundWave = ApplySinRamp(soundWave, Ramp, H.SamplingRate);
     
     % Display trial info with configuration
     spoutNames = {'left', 'right'};
