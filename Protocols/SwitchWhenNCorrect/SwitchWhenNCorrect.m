@@ -192,7 +192,13 @@ function SwitchWhenNCorrect()
             % Check if response was correct (only for non-catch trials)
             if ~isCatchTrial
                 % Check if animal licked correct side and got reward
-                if isfield(RawEvents.States, 'LeftReward') || isfield(RawEvents.States, 'RightReward')
+                % Need to check if state was actually visited (not just exists as NaN)
+                leftRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{currentTrial}.States, 'LeftReward') && ...
+                    ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.LeftReward(1));
+                rightRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{currentTrial}.States, 'RightReward') && ...
+                    ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RightReward(1));
+                
+                if leftRewardVisited || rightRewardVisited
                     % Animal licked correct side and got reward - correct response
                     isCorrect = true;
                     correctCount = correctCount + 1;
