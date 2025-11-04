@@ -223,6 +223,15 @@ function SwitchWhenNCorrect()
             % Update trial type for outcome plot based on correct side
             trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout
             
+            % Extend trialTypes array to prevent index out of bounds in LiveOutcomePlot
+            % The plot window may extend beyond NumTrials, so we need extra elements
+            % Calculate maximum possible index: currentTrial + nTrialsToShow - 1
+            maxPossibleIndex = currentTrial + outcomePlot.nTrialsToShow - 1;
+            if length(trialTypes) < maxPossibleIndex
+                % Extend array with default value (1 = left spout) for future trials
+                trialTypes(end+1:maxPossibleIndex) = 1;
+            end
+            
             % Add current trial's stimRow to StimTable
             currentStimRow = BpodSystem.Data.CurrentStimRow{currentTrial};
             if ~isempty(currentStimRow)

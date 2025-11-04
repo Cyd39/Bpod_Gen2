@@ -196,7 +196,7 @@ nCols = ceil(nUStim / nRows);
 
 for ii = 1:nUStim
     ax1 = subplot(nRows,nCols,ii);
-    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   ',num2str(UStim.VibAmp(ii),'%.3f V  ')])
+    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   ',num2str(UStim.VibAmp(ii),'%.3f')])
     xlabel(ax1,'Time (s)')
 
     yyaxis(ax1,'left')
