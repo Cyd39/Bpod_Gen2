@@ -1,6 +1,44 @@
 %% 1. load behavioural stimuli
-%clearvars
+clearvars
+% Select file and get absolute path
+[filename, filepath] = uigetfile('*.*', 'Select a file to load');
 
+if isequal(filename, 0)
+    disp('User canceled file selection');
+else
+    % Get absolute path
+    absolute_path = fullfile(filepath, filename);
+
+    % Get filename without extension
+    [~, name_only, ~] = fileparts(filename);
+    
+    % Display absolute path
+    disp(['File absolute path: ' absolute_path]);
+    
+    % Load file based on file type
+    [~, ~, extension] = fileparts(filename);
+    
+    switch lower(extension)
+        case {'.mat'}
+            % Load MAT file
+            load(absolute_path);
+            disp('MAT file loaded successfully');
+        otherwise
+            % For other file types
+            disp(['Unsupported file type: ' extension]);
+            data = absolute_path;
+    end
+    
+    % Display file information
+    file_info = dir(absolute_path);
+    disp('=== File Information ===');
+    disp(['File name: ' filename]);
+    disp(['File size: ' num2str(file_info.bytes) ' bytes']);
+    disp(['Last modified: ' file_info.date]);
+    disp(['File extension: ' extension]);
+end
+
+%% Analysis
 StmTemp = T; % stimuli_parameters.Stm; %trials x 1
 %Aud = sound_parameters.Aud;
 %Fs = sound_parameters.Fs;% mic sampling rate
@@ -59,211 +97,222 @@ for ii = 1:nUStim
 end
 
 % save
-filename = 'I_TightMax_20251104_112806';
-savename = [filename '_Spectogramdata'];
-OutPath = '\\store\department\neuw\shared\Aaron Wong\Data\OperantConditioning\Yudi\PiezoSoundTesting\';
+savename = [name_only '_Spectogramdata'];
+OutPath = filepath;
 save(fullfile(OutPath, savename), "t", "f", "nT", "ps_mean", "ps_all", "UStim", '-v7.3','-nocompression')
 
 
 
 disp("spectogram analysis done")
 
-%% 5. plotting
+%% 5. plotting and saving figure
 
 % % load data
-% clearvars
-%
-% BehaviorPath = 'D:\DATA\Behavioral Stimuli\M31\'; % stimuli parameters
-% SoundPath = [BehaviorPath 'Sound recording\'];
-% OutPath = 'D:\DATA\Processed\M31\Spectograms';
+clearvars
+% spectogram_file = dir(fullfile(OutPath, sessionFile));
+%spectogramdata = load([spectogram_file.folder '\' spectogram_file.name], 'f', 't', 'ps_mean', 'ps_all', 'UStim');
+% Select file and get absolute path
+[filename, filepath] = uigetfile('*.*', 'Select a file to load');
 
-% make array with all relevant session numbers
-sound_file_list = dir(fullfile(SoundPath, '*_Sound.mat'));
+if isequal(filename, 0)
+    disp('User canceled file selection');
+else
+    % Get absolute path
+    absolute_path = fullfile(filepath, filename);
 
-% analyze sound spectogram for each session
-for session_file = 1:size(sound_file_list,1)
-
-    session = str2double(sound_file_list(session_file).name(6:7)); %6:7
-    disp(['Analyzing session: ' sound_file_list(session_file).name])
-
-    % load behaviour file
-    sessionFile = ['\*_S' num2str(session, '%.2d') '_*.mat'];
-    stim_file = dir(fullfile(BehaviorPath, sessionFile));
-    % stimuli_parameters = load([stim_file.folder '\' stim_file.name], 'Stm', 'Par');
-    load([stim_file.folder '\' stim_file.name], 'Stm', 'Par');
-
-
-    % load spectogram data
-    spectogram_file = dir(fullfile(OutPath, sessionFile));
-    if isempty(spectogram_file)
-        warning('no data from session %i found', session)
-        continue
+    % Get filename without extension
+    [~, name_only, ~] = fileparts(filename);
+    
+    % Display absolute path
+    disp(['File absolute path: ' absolute_path]);
+    
+    % Load file based on file type
+    [~, ~, extension] = fileparts(filename);
+    
+    switch lower(extension)
+        case {'.mat'}
+            % Load MAT file
+            load(absolute_path);
+            disp('MAT file loaded successfully');
+            
+        otherwise
+            % For other file types
+            disp('Supported file type: .mat ');
+            data = absolute_path;
     end
-
-    spectogramdata = load([spectogram_file.folder '\' spectogram_file.name], 'f', 't', 'ps_mean', 'ps_all', 'UStim');
-
-    f = spectogramdata.f;
-    t = spectogramdata.t;
-    nT = length(t);
-    ps_mean = spectogramdata.ps_mean;
-    ps_all = spectogramdata.ps_all;
-    UStim = spectogramdata.UStim;
-    nUStim = size(UStim,1);
-
-    filename = erase(stim_file.name,'.mat');
-
-    % 5. Calculate instantaneous power
-    fIdx = f > 10;
-    fLow = f > 500 & f <= 2000;
-    fMid = f > 2000 & f <= 10000;
-    fHigh = f > 10000;
-
-    instPower_raw = reshape(sum(ps_mean(fIdx,:,:)),[nT,nUStim]);
-    instPower_raw_dB = 10*log10(instPower_raw);
-    instPower_raw_dBSPL = dbv2spl(instPower_raw_dB);
-
-    instPower_low = reshape(sum(ps_mean(fLow,:,:)),[nT,nUStim]);
-    instPower_low_dB = 10*log10(instPower_low);
-    instPower_low_dBSPL = dbv2spl(instPower_low_dB);
-
-    instPower_mid = reshape(sum(ps_mean(fMid,:,:)),[nT,nUStim]);
-    instPower_mid_dB = 10*log10(instPower_mid);
-    instPower_mid_dBSPL = dbv2spl(instPower_mid_dB);
-
-    instPower_high = reshape(sum(ps_mean(fHigh,:,:)),[nT,nUStim]);
-    instPower_high_dB = 10*log10(instPower_high);
-    instPower_high_dBSPL = dbv2spl(instPower_high_dB);
-
-    % 6. plot average
-    figure('Position',[10,10,1300,1000]);
-    clim = [-110,-60];
-    freqRange = [0,10];%kHz
-    dBRange_pow = [-Inf,Inf];
-    dBRange_pow = [-2,60];
-    tRange = [0,0.6];
-
-    nRows = floor(sqrt(nUStim));
-    nCols = ceil(nUStim / nRows);
-
-    for ii = 1:nUStim
-        ax1 = subplot(nRows,nCols,ii);
-        title([num2str(UStim.SomFreq(ii),'%d Hz'),'   ',num2str(UStim.Amplitude(ii),'%.3f V  ')])
-        xlabel(ax1,'Time (s)')
-
-        yyaxis(ax1,'left')
-        imagesc(t,f./1000,squeeze(10*log10(ps_mean(:,:,ii))),clim)
-        ax1.YDir = 'normal';
-        ylim(freqRange);
-        if mod(ii, nCols) == 1
-            ylabel(ax1,'Frequency (kHz)')
-        end
-
-        yyaxis(ax1,'right')
-        plot(ax1,t,instPower_raw_dBSPL(:,ii),'w-'); hold(ax1,'on');
-        plot(ax1,t,instPower_low_dBSPL(:,ii),'-','Color',[1,.5,.5])
-        plot(ax1,t,instPower_mid_dBSPL(:,ii),'-','Color',[1,0.1,0.1])
-        plot(ax1,t,instPower_high_dBSPL(:,ii),'-','Color',[.5,0,0]); hold(ax1,'off');
-        % legend(ax1,{'all (>10Hz)','low (500-2000Hz)','mid (2-10kHz)','high (>10kHz)'},'Location','best');
-        if mod(ii, nCols) == 0
-            ylabel(ax1,'Instantaneous power (dB SPL)')
-        end
-
-        ylim(dBRange_pow)
-    end
-
-    % make space for legend in subplot
-    if nCols * nRows == ii
-        legend(ax1,{'all (>10Hz)','low (500-2000Hz)','mid (2-10kHz)','high (>10kHz)'})
-    else
-        ax = subplot(nRows,nCols,ii+1,'Visible','off');
-        axPos = ax.Position;
-        hL = legend(ax1,{'all (>10Hz)','low (500-2000Hz)','mid (2-10kHz)','high (>10kHz)'});
-        hL.Position(1:2) = axPos(1:2); % move legend to position of extra axes
-    end
-
-    if strcmp(Par.SomatosensoryWaveform, 'UniSine') % && strcmp(Par.Rec, 'SxA')
-        figtitle = append('Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
-        %sgtitle(['Actuator: ' StmTemp.Actuator(1,:) ', Waveform: ' StmTemp.Waveform(1,:)])
-    elseif strcmp(Par.SomatosensoryWaveform, 'Square') && strcmp(Par.Rec, 'SxA')
-        figtitle = append('Ramp: ', num2str(Stm.SomRamp(1)), ', ms, Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
-    elseif strcmp(Par.SomatosensoryWaveform, 'Square') && strcmp(Par.Rec, 'SOM')
-        figtitle = append('Ramp: ', num2str(Stm.Ramp(1)), ', ms, Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
-    elseif strcmp(Par.SomatosensoryWaveform, 'BiSine')
-        figtitle = append('Ramp: ', num2str(Stm.Ramp(1)), ', ms, Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
-    end
-
-    sgtitle(figtitle)
-
-    % save and close average spectogram figure
-    saveas(gcf,fullfile(OutPath, [filename,'_spectogram']), 'png')
-    close(gcf)
-
-    % % plot individual subset
-    % figure('Position',[10,10,1400,900]);
-    % stimToPlot = [1,4:4:size(Stm,1)];
-    % nToPlot = length(stimToPlot)+1;
-    % clim = [-110,-60]; % color limit
-    % freqRange = [0,10];%kHz
-    % dBRange_pow = [-Inf,Inf];
-    % tRange = [0,0.6];
-    %
-    % nRows = floor(sqrt(nToPlot));
-    % nCols = ceil(nToPlot / nRows);
-    %
-    % for ii = 1:nToPlot
-    %     ax1 = subplot(nRows,nCols,ii);
-    %     yyaxis(ax1,'left')
-    %     if ii < nToPlot
-    %         idx = stimToPlot(ii);
-    %         imagesc(t,f./1000,squeeze(10*log10(ps_all(:,:,idx))),clim)
-    %         title([num2str(Stm.Rep(idx),'Rep: %d ')])
-    %     else
-    %         imagesc(t,f./1000,squeeze(10*log10(ps_mean(:,:,1))),clim)
-    %         title(['mean'])
-    %     end
-    %     ax1.YDir = 'normal';
-    %     ylim(freqRange);
-    %     ylabel(ax1,'Frequency (kHz)')
-    %     xlabel(ax1,'Time (s)')
-    % end
-    %
-    % sgtitle(figtitle)
-    %
-    % saveas(gcf,fullfile(OutPath, [filename,'_spectogram_trials']), 'png')
-    % %saveas(gcf,[filename,'_spectogram_trials.png'])
-
-    close all
-
-
-    % %% plot all individual
-    % stimToPlot = 1:numTrials;
-    % nToPlot = length(stimToPlot);
-    % nRep = max(StmTemp.Rep);
-    % clim = [-110,-60];
-    % freqRange = [0,10];%kHz
-    % dBRange_pow = [-Inf,Inf];
-    % tRange = [0,0.6];
-    %
-    % nRows = 5;
-    % nCols = 4;
-    %
-    % for stimSet = 1:size(UStim, 1)
-    %     idx = stimToPlot(StmTemp.SomFreq == UStim.SomFreq(stimSet) & StmTemp.Amplitude == UStim.Amplitude(stimSet));  %select all trials of 1 stim condition
-    %     figure('Position',[10,10,1400,900]);
-    %     for rep = 1:length(idx)
-    %         ax1 = subplot(nRows,nCols,rep);
-    %         yyaxis(ax1,'left')
-    %         imagesc(t,f./1000,squeeze(10*log10(ps_all(:,:,idx(rep)))),clim)
-    %         title(['Rep: ' num2str(rep)])
-    %         ax1.YDir = 'normal';
-    %         ylim(freqRange);
-    %         ylabel(ax1,'Frequency (kHz)')
-    %         xlabel(ax1,'Time (s)')
-    %     end
-    %
-    %     sgtitle(['freq: ' num2str(UStim.SomFreq(stimSet)) ', amp: ' num2str(UStim.Amplitude(stimSet))])
-    % end
+    
+    % Display file information
+    file_info = dir(absolute_path);
+    disp('=== File Information ===');
+    disp(['File name: ' filename]);
+    disp(['File size: ' num2str(file_info.bytes) ' bytes']);
+    disp(['Last modified: ' file_info.date]);
+    disp(['File extension: ' extension]);
 end
+
+savename = erase(filename,".mat");
+
+% f = spectogramdata.f;
+% t = spectogramdata.t;
+% nT = length(t);
+% ps_mean = spectogramdata.ps_mean;
+% ps_all = spectogramdata.ps_all;
+%UStim = spectogramdata.UStim;
+nUStim = size(UStim,1);
+
+
+% 5. Calculate instantaneous power
+fIdx = f > 10;
+fLow = f > 500 & f <= 2000;
+fMid = f > 2000 & f <= 10000;
+fHigh = f > 10000;
+
+instPower_raw = reshape(sum(ps_mean(fIdx,:,:)),[nT,nUStim]);
+instPower_raw_dB = 10*log10(instPower_raw);
+instPower_raw_dBSPL = dbv2spl(instPower_raw_dB);
+
+instPower_low = reshape(sum(ps_mean(fLow,:,:)),[nT,nUStim]);
+instPower_low_dB = 10*log10(instPower_low);
+instPower_low_dBSPL = dbv2spl(instPower_low_dB);
+
+instPower_mid = reshape(sum(ps_mean(fMid,:,:)),[nT,nUStim]);
+instPower_mid_dB = 10*log10(instPower_mid);
+instPower_mid_dBSPL = dbv2spl(instPower_mid_dB);
+
+instPower_high = reshape(sum(ps_mean(fHigh,:,:)),[nT,nUStim]);
+instPower_high_dB = 10*log10(instPower_high);
+instPower_high_dBSPL = dbv2spl(instPower_high_dB);
+
+% 6. plot average
+figure('Position',[10,10,1300,1000]);
+clim = [-110,-60];
+freqRange = [0,10];%kHz
+dBRange_pow = [-Inf,Inf];
+dBRange_pow = [-2,60];
+tRange = [0,0.6];
+
+nRows = floor(sqrt(nUStim));
+nCols = ceil(nUStim / nRows);
+
+for ii = 1:nUStim
+    ax1 = subplot(nRows,nCols,ii);
+    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   ',num2str(UStim.VibAmp(ii),'%.3f V  ')])
+    xlabel(ax1,'Time (s)')
+
+    yyaxis(ax1,'left')
+    imagesc(t,f./1000,squeeze(10*log10(ps_mean(:,:,ii))),clim)
+    ax1.YDir = 'normal';
+    ylim(freqRange);
+    if mod(ii, nCols) == 1
+        ylabel(ax1,'Frequency (kHz)')
+    end
+
+    yyaxis(ax1,'right')
+    plot(ax1,t,instPower_raw_dBSPL(:,ii),'w-'); hold(ax1,'on');
+    plot(ax1,t,instPower_low_dBSPL(:,ii),'-','Color',[1,.5,.5])
+    plot(ax1,t,instPower_mid_dBSPL(:,ii),'-','Color',[1,0.1,0.1])
+    plot(ax1,t,instPower_high_dBSPL(:,ii),'-','Color',[.5,0,0]); hold(ax1,'off');
+    % legend(ax1,{'all (>10Hz)','low (500-2000Hz)','mid (2-10kHz)','high (>10kHz)'},'Location','best');
+    if mod(ii, nCols) == 0
+        ylabel(ax1,'Instantaneous power (dB SPL)')
+    end
+
+    ylim(dBRange_pow)
+end
+
+% make space for legend in subplot
+if nCols * nRows == ii
+    legend(ax1,{'all (>10Hz)','low (500-2000Hz)','mid (2-10kHz)','high (>10kHz)'})
+else
+    ax = subplot(nRows,nCols,ii+1,'Visible','off');
+    axPos = ax.Position;
+    hL = legend(ax1,{'all (>10Hz)','low (500-2000Hz)','mid (2-10kHz)','high (>10kHz)'});
+    hL.Position(1:2) = axPos(1:2); % move legend to position of extra axes
+end
+
+% if strcmp(Par.SomatosensoryWaveform, 'UniSine') % && strcmp(Par.Rec, 'SxA')
+%     figtitle = append('Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
+%     %sgtitle(['Actuator: ' StmTemp.Actuator(1,:) ', Waveform: ' StmTemp.Waveform(1,:)])
+% elseif strcmp(Par.SomatosensoryWaveform, 'Square') && strcmp(Par.Rec, 'SxA')
+%     figtitle = append('Ramp: ', num2str(Stm.SomRamp(1)), ', ms, Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
+% elseif strcmp(Par.SomatosensoryWaveform, 'Square') && strcmp(Par.Rec, 'SOM')
+%     figtitle = append('Ramp: ', num2str(Stm.Ramp(1)), ', ms, Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
+% elseif strcmp(Par.SomatosensoryWaveform, 'BiSine')
+%     figtitle = append('Ramp: ', num2str(Stm.Ramp(1)), ', ms, Actuator: ', Stm.Actuator(1,:), ', Waveform: ', Stm.Waveform(1,:));
+% end
+
+%sgtitle(figtitle)
+
+% save and close average spectogram figure
+saveas(gcf,fullfile(filepath, [name_only,'_spectogram']), 'png')
+close(gcf)
+
+% % plot individual subset
+% figure('Position',[10,10,1400,900]);
+% stimToPlot = [1,4:4:size(Stm,1)];
+% nToPlot = length(stimToPlot)+1;
+% clim = [-110,-60]; % color limit
+% freqRange = [0,10];%kHz
+% dBRange_pow = [-Inf,Inf];
+% tRange = [0,0.6];
+%
+% nRows = floor(sqrt(nToPlot));
+% nCols = ceil(nToPlot / nRows);
+%
+% for ii = 1:nToPlot
+%     ax1 = subplot(nRows,nCols,ii);
+%     yyaxis(ax1,'left')
+%     if ii < nToPlot
+%         idx = stimToPlot(ii);
+%         imagesc(t,f./1000,squeeze(10*log10(ps_all(:,:,idx))),clim)
+%         title([num2str(Stm.Rep(idx),'Rep: %d ')])
+%     else
+%         imagesc(t,f./1000,squeeze(10*log10(ps_mean(:,:,1))),clim)
+%         title(['mean'])
+%     end
+%     ax1.YDir = 'normal';
+%     ylim(freqRange);
+%     ylabel(ax1,'Frequency (kHz)')
+%     xlabel(ax1,'Time (s)')
+% end
+%
+% sgtitle(figtitle)
+%
+% saveas(gcf,fullfile(OutPath, [savename,'_spectogram_trials']), 'png')
+% %saveas(gcf,[filename,'_spectogram_trials.png'])
+
+close all
+
+
+% %% plot all individual
+% stimToPlot = 1:numTrials;
+% nToPlot = length(stimToPlot);
+% nRep = max(StmTemp.Rep);
+% clim = [-110,-60];
+% freqRange = [0,10];%kHz
+% dBRange_pow = [-Inf,Inf];
+% tRange = [0,0.6];
+%
+% nRows = 5;
+% nCols = 4;
+%
+% for stimSet = 1:size(UStim, 1)
+%     idx = stimToPlot(StmTemp.SomFreq == UStim.SomFreq(stimSet) & StmTemp.Amplitude == UStim.Amplitude(stimSet));  %select all trials of 1 stim condition
+%     figure('Position',[10,10,1400,900]);
+%     for rep = 1:length(idx)
+%         ax1 = subplot(nRows,nCols,rep);
+%         yyaxis(ax1,'left')
+%         imagesc(t,f./1000,squeeze(10*log10(ps_all(:,:,idx(rep)))),clim)
+%         title(['Rep: ' num2str(rep)])
+%         ax1.YDir = 'normal';
+%         ylim(freqRange);
+%         ylabel(ax1,'Frequency (kHz)')
+%         xlabel(ax1,'Time (s)')
+%     end
+%
+%     sgtitle(['freq: ' num2str(UStim.SomFreq(stimSet)) ', amp: ' num2str(UStim.Amplitude(stimSet))])
+% end
+
 
 disp('Spectogram figures done')
 
