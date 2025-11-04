@@ -9,8 +9,8 @@ Session_state_tbl = struct2table(Session_states);
 
 
 %%
-events_to_store = {'BNC1High','BNC1Low'};
-event_labels = {'LickOn','LickOff'};
+events_to_store = {'BNC1High','BNC1Low','BNC2High','BNC2Low'};
+event_labels = {'LeftLickOn','LeftLickOff','RightLickOn','RightLickOff'};
 % events_to_store: cell array of field names to extract
 
 num_C = numel(Session_struct);

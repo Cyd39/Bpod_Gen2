@@ -4,16 +4,19 @@
 % ExtractTimeStamps
 Session_tbl = ExtractTimeStamps(SessionData);
 
+%%
+plotraster_behavior(Session_tbl)
+
 %% pre-process data
 % align timing to stimulus onset
 n_stim = height(Session_tbl);
 %LickOn = cell(n_stim,1);
-LickOff = cell(n_stim,1);
+% LickOff = cell(n_stim,1);
 
 % align timing to stimulus onset
 for ii = 1:height(Session_tbl)
-    Session_tbl.LickOnAfterStim{ii} = Session_tbl.LickOn{ii} - Session_tbl.Stimulus(ii,1);
-    Session_tbl.LickOffAfterStim{ii} = Session_tbl.LickOff{ii} - Session_tbl.Stimulus(ii,1);
+    Session_tbl.LickOnAfterStim{ii} = Session_tbl.LickOn{ii} - Session_tbl.Stimulus{ii}(1);
+    Session_tbl.LickOffAfterStim{ii} = Session_tbl.LickOff{ii} - Session_tbl.Stimulus{ii}(1);
 end
 
 % calculate first lick after stimulus onset
