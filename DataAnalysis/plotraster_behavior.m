@@ -39,15 +39,20 @@ function plotraster_behavior(Session_tbl)
             plot(ax, tempRightLicks,pos.*ones(size(tempRightLicks)),'.','Color',[1 0.2 0.2]);    
     
             plot(ax, tempLeftReward,pos,'s','MarkerFaceColor',[0.2 0.2 1],'Color',[0.2 0.2 1]);    
-            plot(ax, tempRightReward,pos,'s','MarkerFaceColor',[1 0.2 0.2],'Color',[1 0.2 0.2]);    
+            plot(ax, tempRightReward,pos,'s','MarkerFaceColor',[1 0.2 0.2],'Color',[1 0.2 0.2]); 
+
     
         end
-    
+
+        ylabel('Trial number')
+        xlabel('Time re stim. onset (s)')
+        ylim([0.2,n_trial+0.8]);
+
         switch i_ax
             case 1
                 xlim(ax, [t_min-0.1, t_max]);
             case 2
-                xlim(ax, [-.5,1])
+                xlim(ax, [-.55,1])
         end
     end
 end
