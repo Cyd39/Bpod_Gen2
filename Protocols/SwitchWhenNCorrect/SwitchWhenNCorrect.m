@@ -92,7 +92,7 @@ function SwitchWhenNCorrect()
     outcomePlot.CorrectStateNames = {'LeftReward', 'RightReward'}; % States where correct response was made 
     
     % Initialize trial tracking variables
-    currentSide = 1; % 1 = low frequency (left), 2 = high frequency (right)
+    currentSide = 1; % 1 = low frequency side, 2 = high frequency side (left/right mapping determined by highFreqSpout/lowFreqSpout configuration)
     correctCount = 0; % Counter for correct trials on current side
     highFreqIndex = 1; % Index for high frequency table (continuous)
     lowFreqIndex = 1; % Index for low frequency table (continuous)
@@ -108,6 +108,19 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.IsCatchTrial = [];
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
+    %% Initialize custom figure for lick interval histogram
+    lickIntervalFig = figure('Name', 'Lick Intervals', 'Position', [100 100 1000 600]);
+    lickIntervalAx = axes('Position', [0.1 0.15 0.85 0.75]);
+    title(lickIntervalAx, 'Lick Intervals Distribution');
+    xlabel(lickIntervalAx, 'Lick Interval (seconds)');
+    ylabel(lickIntervalAx, 'Count');
+    grid(lickIntervalAx, 'on');
+    hold(lickIntervalAx, 'on');
+    % Register figure with BpodSystem so it closes when protocol ends
+    BpodSystem.ProtocolFigures.LickIntervalFig = lickIntervalFig;
+    
+    
+
     %% Prepare and start first trial
     [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
     trialManager.startTrial(sma);
@@ -258,6 +271,14 @@ function SwitchWhenNCorrect()
             
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
+            
+            % Update lick interval histogram
+            try
+                OnlineLickItnterval(lickIntervalAx, RawEvents);
+            catch ME
+                % Silent error handling - don't let plot errors interrupt the protocol
+                disp(['Plot update error: ' ME.message]);
+            end
             
             SaveBpodSessionData;
         end
