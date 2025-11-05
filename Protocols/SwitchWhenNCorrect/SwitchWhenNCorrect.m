@@ -16,16 +16,6 @@ function SwitchWhenNCorrect()
     StimParams = BpodSystem.ProtocolSettings.StimParams;
     Ramp = StimParams.Ramp;
     
-    % Set up HiFi envelope for both sound and vibration ramping
-    % This envelope applies to both channels of the stereo output
-    if isfield(StimParams, 'Ramp') && StimParams.Ramp > 0
-        hifiEnvelope = GenHiFiEnvelope(StimParams.Ramp, H.SamplingRate);
-        H.AMenvelope = hifiEnvelope;
-        disp(['HiFi envelope set: ' num2str(StimParams.Ramp) 'ms ramps for both sound and vibration']);
-    else
-        H.AMenvelope = []; % No envelope
-        disp('No HiFi envelope - no ramping applied');
-    end
     NumTrials = StimParams.Behave.NumTrials; 
     StimDur = StimParams.Duration/1000;
     

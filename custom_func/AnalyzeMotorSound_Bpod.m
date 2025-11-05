@@ -13,7 +13,7 @@ else
     [~, name_only, ~] = fileparts(filename);
     
     % Display absolute path
-    disp(['File absolute path: ' absolute_path]);
+    disp(['File path: ' absolute_path]);
     
     % Load file based on file type
     [~, ~, extension] = fileparts(filename);
@@ -34,9 +34,9 @@ else
     disp('=== File Information ===');
     disp(['File name: ' filename]);
     disp(['File size: ' num2str(file_info.bytes) ' bytes']);
-    disp(['Last modified: ' file_info.date]);
-    disp(['File extension: ' extension]);
 end
+
+disp('Record File loaded');
 
 %% Analysis
 StmTemp = T; % stimuli_parameters.Stm; %trials x 1
@@ -86,7 +86,7 @@ toc;
 [nF,nT,~] = size(ps_all);
 
 % adapt to select no sound only trials (for SxA sessions)
-UStim = unique(StmTemp(:, {'VibAmp', 'VibFreq'}), 'rows');
+UStim = unique(StmTemp(:, {'VibFreq','VibAmp'}), 'rows');
 %UStim = unique(StmTemp(:,{'SomFreq','Amplitude'}),'rows');
 nUStim = size(UStim,1);
 
@@ -100,8 +100,6 @@ end
 savename = [name_only '_Spectogramdata'];
 OutPath = filepath;
 save(fullfile(OutPath, savename), "t", "f", "nT", "ps_mean", "ps_all", "UStim", '-v7.3','-nocompression')
-
-
 
 disp("spectogram analysis done")
 
@@ -124,7 +122,7 @@ else
     [~, name_only, ~] = fileparts(filename);
     
     % Display absolute path
-    disp(['File absolute path: ' absolute_path]);
+    disp(['File path: ' absolute_path]);
     
     % Load file based on file type
     [~, ~, extension] = fileparts(filename);
@@ -146,11 +144,9 @@ else
     disp('=== File Information ===');
     disp(['File name: ' filename]);
     disp(['File size: ' num2str(file_info.bytes) ' bytes']);
-    disp(['Last modified: ' file_info.date]);
-    disp(['File extension: ' extension]);
 end
 
-savename = erase(filename,".mat");
+%savename = erase(filename,".mat");
 
 % f = spectogramdata.f;
 % t = spectogramdata.t;
@@ -187,7 +183,7 @@ instPower_high_dBSPL = dbv2spl(instPower_high_dB);
 figure('Position',[10,10,1300,1000]);
 clim = [-110,-60];
 freqRange = [0,10];%kHz
-dBRange_pow = [-Inf,Inf];
+%dBRange_pow = [-Inf,Inf];
 dBRange_pow = [-2,60];
 tRange = [0,0.6];
 
@@ -196,7 +192,7 @@ nCols = ceil(nUStim / nRows);
 
 for ii = 1:nUStim
     ax1 = subplot(nRows,nCols,ii);
-    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   ',num2str(UStim.VibAmp(ii),'%.2f')])
+    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   Amp:',num2str(UStim.VibAmp(ii),'%.2f')])
     xlabel(ax1,'Time (s)')
 
     yyaxis(ax1,'left')
