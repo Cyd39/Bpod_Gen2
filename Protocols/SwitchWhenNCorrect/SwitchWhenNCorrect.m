@@ -263,8 +263,54 @@ function SwitchWhenNCorrect()
         end
     end
     
-    % Clean up trial manager
-    clear trialManager;
+    % Session completed successfully
+    disp(' ');
+    disp('========================================');
+    disp(['Session completed: ' num2str(NumTrials) ' trials finished']);
+    disp('========================================');
+    
+    % Calculate session statistics
+    nRewards = 0;
+    nHits = 0;
+    nCatchTrials = 0;
+    for i = 1:NumTrials
+        if isfield(BpodSystem.Data.RawEvents.Trial{i}, 'States')
+            % Check if animal received reward (either left or right)
+            leftRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{i}.States, 'LeftReward') && ...
+                ~isnan(BpodSystem.Data.RawEvents.Trial{i}.States.LeftReward(1));
+            rightRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{i}.States, 'RightReward') && ...
+                ~isnan(BpodSystem.Data.RawEvents.Trial{i}.States.RightReward(1));
+            if leftRewardVisited || rightRewardVisited
+                nRewards = nRewards + 1;
+            end
+            % Count hits (correct responses, excluding catch trials)
+            if BpodSystem.Data.IsCatchTrial(i)
+                nCatchTrials = nCatchTrials + 1;
+            elseif leftRewardVisited || rightRewardVisited
+                nHits = nHits + 1;
+            end
+        end
+    end
+    
+    % Display session statistics
+    disp(' ');
+    disp('--- Session Statistics ---');
+    disp(['Total trials: ' num2str(NumTrials)]);
+    disp(['Catch trials: ' num2str(nCatchTrials)]);
+    nRegularTrials = NumTrials - nCatchTrials;
+    if nRegularTrials > 0
+        disp(['Regular trials: ' num2str(nRegularTrials)]);
+        disp(['Correct trials (hits): ' num2str(nHits)]);
+        disp(['Total rewards: ' num2str(nRewards)]);
+        disp(['Hit rate: ' sprintf('%.1f', nHits/nRegularTrials*100) '%']);
+    else
+        disp(['Total rewards: ' num2str(nRewards)]);
+    end
+    disp('==========================');
+    disp(' ');
+    
+    % Final save to ensure all data is persisted
+    SaveBpodSessionData;
 end
 
 function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp)
