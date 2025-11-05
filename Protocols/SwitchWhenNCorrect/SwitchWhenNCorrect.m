@@ -301,10 +301,10 @@ function SwitchWhenNCorrect()
     if nRegularTrials > 0
         disp(['Regular trials: ' num2str(nRegularTrials)]);
         disp(['Correct trials (hits): ' num2str(nHits)]);
-        disp(['Total rewards: ' num2str(nRewards)]);
+        disp(['Rewarded in ' num2str(nRewards) ' trials']);
         disp(['Hit rate: ' sprintf('%.1f', nHits/nRegularTrials*100) '%']);
     else
-        disp(['Total rewards: ' num2str(nRewards)]);
+        disp(['Rewarded in ' num2str(nRewards) ' trials']);
     end
     disp('==========================');
     disp(' ');
