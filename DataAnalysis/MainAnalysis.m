@@ -1,7 +1,7 @@
 %% load data
 [SessionData, ~, ~] = LoadData();
 
-% ExtractTimeStamps
+%% ExtractTimeStamps
 Session_tbl = ExtractTimeStamps(SessionData);
 
 %%

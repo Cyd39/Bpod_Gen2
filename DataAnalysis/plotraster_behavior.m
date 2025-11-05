@@ -20,10 +20,10 @@ function plotraster_behavior(Session_tbl)
             tempRightReward = Session_tbl.RightReward(idx,1);
     
             trial_start = 0;
-            trial_end = Session_tbl.Checking(idx,2);
+            trial_end = Session_tbl.WaitToFinish(idx,2);
             
             % align to stimulus onset
-            StimOnset = Session_tbl.Stimulus{idx}(1);
+            StimOnset = Session_tbl.Stimulus(idx,1);
             tempLeftLicks = tempLeftLicks - StimOnset;
             tempRightLicks = tempRightLicks - StimOnset;
             tempLeftReward = tempLeftReward - StimOnset;
