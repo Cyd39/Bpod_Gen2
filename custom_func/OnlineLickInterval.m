@@ -1,113 +1,104 @@
-function OnlineLickInterval(lickIntervalFig, lickIntervalAx, ~)
-    % Update histogram with lick intervals from all completed trials
-    % This function extracts lick events from BpodSystem.Data (all completed trials)
-    % and plots the interval distribution, similar to PlotLickIntervalsFromSessionData
+function OnlineLickInterval(lickIntervalFig, lickIntervalAx, SessionData)
+    % OnlineLickInterval - Plot lick interval histogram from SessionData
+    % This function extracts lick events from SessionData (all completed trials)
+    % and plots the interval distribution, using the same logic as PlotLickIntervalsFromSessionData
     % Inputs:
     %   lickIntervalFig - figure handle for the histogram plot
     %   lickIntervalAx - axes handle for the histogram plot
-    %   ~ - raw trial events structure from Bpod (not used, kept for compatibility with calling code)
+    %   SessionData - session data structure (e.g., BpodSystem.Data)
     
-    global BpodSystem
+    % Activate figure
+    figure(lickIntervalFig);
     
-    % Extract all lick times from all completed trials in BpodSystem.Data
+    % Check if data exists
+    if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
+        warning('SessionData.RawEvents.Trial not found');
+        cla(lickIntervalAx);
+        text(lickIntervalAx, 0.5, 0.5, 'No data available', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14);
+        drawnow;
+        return;
+    end
+    
+    % Get number of trials
+    nTrials = SessionData.nTrials;
+    
+    % Extract all lick times from all trials
     allLickTimesGlobal = [];
     
-    % Check if BpodSystem.Data exists and has trial data
-    if ~isfield(BpodSystem, 'Data') || ~isfield(BpodSystem.Data, 'RawEvents') || ...
-       ~isfield(BpodSystem.Data.RawEvents, 'Trial')
-        % No data available yet
-        allLickIntervals = [];
-        nTrials = 0;
-    else
-        % Get number of completed trials
-        nTrials = length(BpodSystem.Data.RawEvents.Trial);
+    % Loop through each trial
+    for trialNum = 1:nTrials
+        if trialNum > length(SessionData.RawEvents.Trial)
+            continue;
+        end
         
-        % Loop through each completed trial
-        for trialNum = 1:nTrials
-            % Get trial events structure
-            trialData = BpodSystem.Data.RawEvents.Trial{trialNum};
-            
-            % Get trial start time
-            if isfield(BpodSystem.Data, 'TrialStartTimestamp') && ...
-               trialNum <= length(BpodSystem.Data.TrialStartTimestamp)
-                trialStartTime = BpodSystem.Data.TrialStartTimestamp(trialNum);
-            else
-                % Skip this trial if no timestamp available
-                continue;
+        % Get trial events structure
+        trialData = SessionData.RawEvents.Trial{trialNum};
+        
+        % Get trial start time
+        if trialNum > length(SessionData.TrialStartTimestamp)
+            warning(['TrialStartTimestamp not found for trial ' num2str(trialNum)]);
+            continue;
+        end
+        trialStartTime = SessionData.TrialStartTimestamp(trialNum);
+        
+        % Extract lick events from this trial
+        trialLickTimes = [];
+        if isfield(trialData, 'Events')
+            % Extract BNC1High (left lick)
+            if isfield(trialData.Events, 'BNC1High')
+                trialLickTimes = [trialLickTimes, trialData.Events.BNC1High];
             end
-            
-            % Extract lick events from this trial
-            trialLickTimes = [];
-            if isfield(trialData, 'Events')
-                % Extract BNC1High (left lick)
-                if isfield(trialData.Events, 'BNC1High')
-                    trialLickTimes = [trialLickTimes, trialData.Events.BNC1High];
-                end
-                % Extract BNC2High (right lick)
-                if isfield(trialData.Events, 'BNC2High')
-                    trialLickTimes = [trialLickTimes, trialData.Events.BNC2High];
-                end
-            end
-            
-            % Convert to absolute time and add to global array
-            if ~isempty(trialLickTimes)
-                % Convert relative time (from trial start) to absolute time (from session start)
-                absoluteLickTimes = trialStartTime + trialLickTimes;
-                allLickTimesGlobal = [allLickTimesGlobal, absoluteLickTimes];
+            % Extract BNC2High (right lick)
+            if isfield(trialData.Events, 'BNC2High')
+                trialLickTimes = [trialLickTimes, trialData.Events.BNC2High];
             end
         end
         
-        % Calculate intervals from all lick times
-        if length(allLickTimesGlobal) > 1
-            % Sort all lick times chronologically
-            allLickTimesGlobal = sort(allLickTimesGlobal);
-            % Calculate intervals between consecutive licks (automatically includes cross-trial intervals)
-            allLickIntervals = diff(allLickTimesGlobal);
-        elseif length(allLickTimesGlobal) == 1
-            % Only one lick so far, no intervals to calculate
-            allLickIntervals = [];
-        else
-            % No licks yet
-            allLickIntervals = [];
+        % Convert to absolute time and add to global array
+        if ~isempty(trialLickTimes)
+            % Convert relative time (from trial start) to absolute time (from session start)
+            absoluteLickTimes = trialStartTime + trialLickTimes;
+            allLickTimesGlobal = [allLickTimesGlobal, absoluteLickTimes];
         end
     end
     
-    % Always update the figure, even if we don't have intervals yet
-    % Activate figure to ensure it's visible and updated
-    figure(lickIntervalFig);
-    
-    % Clear axes
-    cla(lickIntervalAx);
-    
-    % Update histogram if we have intervals
-    if ~isempty(allLickIntervals)
+    % Calculate intervals and plot
+    if length(allLickTimesGlobal) > 1
+        % Sort all lick times chronologically
+        allLickTimesGlobal = sort(allLickTimesGlobal);
+        
+        % Calculate intervals between consecutive licks (automatically includes cross-trial intervals)
+        allLickIntervals = diff(allLickTimesGlobal);
+        
+        % Plot histogram
+        cla(lickIntervalAx);
         histogram(lickIntervalAx, allLickIntervals, 'BinWidth', 0.1, 'FaceColor', [0.2 0.6 0.8], 'EdgeColor', 'black');
         set(lickIntervalAx, 'YScale', 'log');  % Set y-axis to log scale
         
         % Set x-axis range and ticks
-        xlim(lickIntervalAx, [0, 2]);
-        xticks(lickIntervalAx, 0:0.2:2);
+        xlim(lickIntervalAx, [0, 2]);  
+        xticks(lickIntervalAx, 0:0.2:2);  
+
+        % Set x-axis label and y-axis label
+        xlabel(lickIntervalAx, 'Lick Interval (seconds)');
+        ylabel(lickIntervalAx, 'Count');
+        title(lickIntervalAx, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals)']);
+        grid(lickIntervalAx, 'on');
         
-        xlabel(lickIntervalAx, 'Lick Interval (seconds)');
-        ylabel(lickIntervalAx, 'Count');
-        title(lickIntervalAx, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals, ' num2str(nTrials) ' trials)']);
-        grid(lickIntervalAx, 'on');
+        % Display summary statistics
+        disp('=== Lick Interval Statistics ===');
+        disp(['Total intervals: ' num2str(length(allLickIntervals))]);
+        disp(['Mean interval: ' sprintf('%.3f', mean(allLickIntervals)) ' seconds']);
+        disp(['Median interval: ' sprintf('%.3f', median(allLickIntervals)) ' seconds']);
+        disp(['Min interval: ' sprintf('%.3f', min(allLickIntervals)) ' seconds']);
+        disp(['Max interval: ' sprintf('%.3f', max(allLickIntervals)) ' seconds']);
+        disp('================================');
     else
-        % No intervals yet - show empty plot with message
-        xlim(lickIntervalAx, [0, 2]);
-        xticks(lickIntervalAx, 0:0.2:2);
-        ylim(lickIntervalAx, [0.1, 10]);
-        set(lickIntervalAx, 'YScale', 'log');
-        xlabel(lickIntervalAx, 'Lick Interval (seconds)');
-        ylabel(lickIntervalAx, 'Count');
-        if length(allLickTimesGlobal) == 1
-            title(lickIntervalAx, ['Lick Intervals Distribution (waiting for more licks... ' num2str(nTrials) ' trials)']);
-        elseif nTrials > 0
-            title(lickIntervalAx, ['Lick Intervals Distribution (no licks yet, ' num2str(nTrials) ' trials)']);
-        else
-            title(lickIntervalAx, 'Lick Intervals Distribution (no data yet)');
-        end
-        grid(lickIntervalAx, 'on');
+        warning('Not enough lick events to calculate intervals. Need at least 2 licks.');
+        cla(lickIntervalAx);
+        text(lickIntervalAx, 0.5, 0.5, 'Not enough lick events to calculate intervals', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14);
     end
     
     % Force update of the figure
