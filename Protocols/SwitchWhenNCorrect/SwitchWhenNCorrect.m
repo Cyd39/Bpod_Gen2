@@ -274,7 +274,7 @@ function SwitchWhenNCorrect()
             
             % Update lick interval histogram
             try
-                OnlineLickItnterval(lickIntervalAx, RawEvents);
+                OnlineLickInterval(lickIntervalFig, lickIntervalAx, RawEvents);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
                 disp(['Plot update error: ' ME.message]);

@@ -1,7 +1,8 @@
-function OnlineLickItnterval(lickIntervalAx, RawEvents)
+function OnlineLickInterval(lickIntervalFig, lickIntervalAx, RawEvents)
     % Update histogram with lick intervals
     % This function handles all data extraction, processing, and plotting
     % Inputs:
+    %   lickIntervalFig - figure handle for the histogram plot
     %   lickIntervalAx - axes handle for the histogram plot
     %   RawEvents - raw trial events structure from Bpod
     
@@ -53,9 +54,17 @@ function OnlineLickItnterval(lickIntervalAx, RawEvents)
     
     % Update histogram if we have intervals
     if ~isempty(allLickIntervals)
+        % Activate figure to ensure it's visible and updated
+        figure(lickIntervalFig);
+        
         cla(lickIntervalAx);
-        histogram(lickIntervalAx, allLickIntervals, 30, 'FaceColor', [0.2 0.6 0.8], 'EdgeColor', 'black');
+        histogram(lickIntervalAx, allLickIntervals, 'BinWidth', 0.1, 'FaceColor', [0.2 0.6 0.8], 'EdgeColor', 'black');
         set(lickIntervalAx, 'YScale', 'log');  % Set y-axis to log scale
+        
+        % Set x-axis range and ticks
+        xlim(lickIntervalAx, [0, 2]);
+        xticks(lickIntervalAx, 0:0.2:2);
+        
         xlabel(lickIntervalAx, 'Lick Interval (seconds)');
         ylabel(lickIntervalAx, 'Count');
         title(lickIntervalAx, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals)']);
