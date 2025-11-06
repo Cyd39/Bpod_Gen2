@@ -87,8 +87,8 @@ function PlotLickIntervalsFromSessionData(SessionData)
         set(ax, 'YScale', 'log');  % Set y-axis to log scale
         
         % Set x-axis range and ticks
-        xlim(ax, [0, 2]);  
-        xticks(ax, 0:0.2:2);  
+        xlim(ax, [0, 5]);  
+        xticks(ax, 0:0.5:5);  
 
         % Set x-axis label and y-axis label
         xlabel(ax, 'Lick Interval (seconds)');

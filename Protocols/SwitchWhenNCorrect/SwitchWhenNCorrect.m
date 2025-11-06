@@ -109,7 +109,7 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
     %% Initialize custom figure for lick interval histogram
-    lickIntervalFig = figure('Name', 'Lick Intervals', 'Position', [100 100 1000 600]);
+    lickIntervalFig = figure('Name', 'Lick Intervals', 'Position', [100 100 600 400]);
     lickIntervalAx = axes('Position', [0.1 0.15 0.85 0.75]);
     title(lickIntervalAx, 'Lick Intervals Distribution');
     xlabel(lickIntervalAx, 'Lick Interval (seconds)');
