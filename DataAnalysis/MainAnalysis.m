@@ -4,7 +4,7 @@
 %% ExtractTimeStamps
 Session_tbl = ExtractTimeStamps(SessionData);
 
-%%
+%% plot raster plot
 plotraster_behavior(Session_tbl)
 
 %% pre-process data

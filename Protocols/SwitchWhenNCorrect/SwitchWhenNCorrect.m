@@ -109,7 +109,7 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
     %% Initialize custom figure for lick interval and response latency histograms
-    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 800 700]);
+    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 500 420]);
     % Upper subplot for lick intervals
     lickIntervalAx = subplot(2, 1, 1);
     title(lickIntervalAx, 'Lick Intervals Distribution');
