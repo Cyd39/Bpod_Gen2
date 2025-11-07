@@ -1,14 +1,16 @@
-function OnlineLickInterval(lickIntervalFig, lickIntervalAx, SessionData)
+function OnlineLickInterval(customPlotFig, lickIntervalAx, SessionData)
     % OnlineLickInterval - Plot lick interval histogram from SessionData
     % This function extracts lick events from SessionData (all completed trials)
     % and plots the interval distribution, using the same logic as PlotLickIntervalsFromSessionData
     % Inputs:
-    %   lickIntervalFig - figure handle for the histogram plot
+    %   customPlotFig - figure handle for the combined plot (optional, for activation)
     %   lickIntervalAx - axes handle for the histogram plot
     %   SessionData - session data structure (e.g., BpodSystem.Data)
     
-    % Activate figure
-    figure(lickIntervalFig);
+    % Activate figure if provided
+    if nargin >= 1 && ~isempty(customPlotFig) && isvalid(customPlotFig)
+        figure(customPlotFig);
+    end
     
     % Check if data exists
     if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
@@ -72,6 +74,7 @@ function OnlineLickInterval(lickIntervalFig, lickIntervalAx, SessionData)
         allLickIntervals = diff(allLickTimesGlobal);
         
         % Plot histogram
+        axes(lickIntervalAx);  % Activate the correct subplot
         cla(lickIntervalAx);
         histogram(lickIntervalAx, allLickIntervals, 'BinWidth', 0.1, 'FaceColor', [0.2 0.6 0.8], 'EdgeColor', 'black');
         set(lickIntervalAx, 'YScale', 'log');  % Set y-axis to log scale

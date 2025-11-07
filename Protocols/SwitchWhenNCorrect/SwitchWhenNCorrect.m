@@ -108,16 +108,24 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.IsCatchTrial = [];
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
-    %% Initialize custom figure for lick interval histogram
-    lickIntervalFig = figure('Name', 'Lick Intervals', 'Position', [100 100 600 400]);
-    lickIntervalAx = axes('Position', [0.1 0.15 0.85 0.75]);
+    %% Initialize custom figure for lick interval and response latency histograms
+    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 800 700]);
+    % Upper subplot for lick intervals
+    lickIntervalAx = subplot(2, 1, 1);
     title(lickIntervalAx, 'Lick Intervals Distribution');
     xlabel(lickIntervalAx, 'Lick Interval (seconds)');
     ylabel(lickIntervalAx, 'Count');
     grid(lickIntervalAx, 'on');
     hold(lickIntervalAx, 'on');
+    % Lower subplot for response latency
+    resLatencyAx = subplot(2, 1, 2);
+    title(ResLatencyAx, 'Response Latency Distribution');
+    xlabel(ResLatencyAx, 'Response Latency (seconds)');
+    ylabel(ResLatencyAx, 'Count');
+    grid(ResLatencyAx, 'on');
+    hold(ResLatencyAx, 'on');
     % Register figure with BpodSystem so it closes when protocol ends
-    BpodSystem.ProtocolFigures.LickIntervalFig = lickIntervalFig;
+    BpodSystem.ProtocolFigures.CustomPlotFig = customPlotFig;
     
     
 
@@ -272,9 +280,10 @@ function SwitchWhenNCorrect()
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
             
-            % Update lick interval histogram
+            % Update lick interval and response latency histograms
             try
-                OnlineLickInterval(lickIntervalFig, lickIntervalAx, BpodSystem.Data);
+                OnlineLickInterval(customPlotFig, lickIntervalAx, BpodSystem.Data);
+                OnlineResLatency(customPlotFig, resLatencyAx, BpodSystem.Data);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
                 disp(['Plot update error: ' ME.message]);
