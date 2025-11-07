@@ -119,11 +119,11 @@ function SwitchWhenNCorrect()
     hold(lickIntervalAx, 'on');
     % Lower subplot for response latency
     resLatencyAx = subplot(2, 1, 2);
-    title(ResLatencyAx, 'Response Latency Distribution');
-    xlabel(ResLatencyAx, 'Response Latency (seconds)');
-    ylabel(ResLatencyAx, 'Count');
-    grid(ResLatencyAx, 'on');
-    hold(ResLatencyAx, 'on');
+    title(resLatencyAx, 'Response Latency Distribution');
+    xlabel(resLatencyAx, 'Response Latency (seconds)');
+    ylabel(resLatencyAx, 'Count');
+    grid(resLatencyAx, 'on');
+    hold(resLatencyAx, 'on');
     % Register figure with BpodSystem so it closes when protocol ends
     BpodSystem.ProtocolFigures.CustomPlotFig = customPlotFig;
     
