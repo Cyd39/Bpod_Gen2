@@ -99,8 +99,25 @@ function plotraster_behavior_v2(SessionData)
         for idx = 1:n_trial
             pos = idx;
     
-            tempLeftLicks = Session_tbl.LeftLickOn{idx};
-            tempRightLicks = Session_tbl.RightLickOn{idx};
+            % Handle both cell array and numeric array cases
+            if iscell(Session_tbl.LeftLickOn)
+                tempLeftLicks = Session_tbl.LeftLickOn{idx};
+            else
+                tempLeftLicks = Session_tbl.LeftLickOn(idx);
+            end
+            if iscell(Session_tbl.RightLickOn)
+                tempRightLicks = Session_tbl.RightLickOn{idx};
+            else
+                tempRightLicks = Session_tbl.RightLickOn(idx);
+            end
+            
+            % Convert scalar NaN to empty array for consistency
+            if isscalar(tempLeftLicks) && isnan(tempLeftLicks)
+                tempLeftLicks = [];
+            end
+            if isscalar(tempRightLicks) && isnan(tempRightLicks)
+                tempRightLicks = [];
+            end
     
             tempLeftReward = Session_tbl.LeftReward(idx,1);
             tempRightReward = Session_tbl.RightReward(idx,1);
@@ -173,8 +190,8 @@ function plotraster_behavior_v2(SessionData)
         % Plot ResWin lines only in the right subplot (zoomed view)
         if i_ax == 2 && ~isnan(ResWin)
             % Draw two green dashed lines: one at x=0 (window start) and one at x=ResWin (window end)
-            xline(ax, 0, 'g--', 'LineWidth', 1.5);
-            hResWin = xline(ax, ResWin, 'g--', 'LineWidth', 1.5, 'DisplayName', ['ResWindow = ' sprintf('%.2f', ResWin) ' s']);
+            xline(ax, 0, '--', 'Color', [0 0.5 0], 'LineWidth', 1.5);
+            hResWin = xline(ax, ResWin, '--', 'Color', [0 0.5 0], 'LineWidth', 1.5, 'DisplayName', ['ResWindow = ' sprintf('%.2f', ResWin) ' s']);
         end
 
         switch i_ax
