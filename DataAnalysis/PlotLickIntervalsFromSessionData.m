@@ -73,6 +73,26 @@ function PlotLickIntervalsFromSessionData(SessionData)
         end
     end
     
+    % Get QuietTime range for No-Lick display
+    minQuietTime = NaN;
+    maxQuietTime = NaN;
+    if isfield(SessionData, 'QuietTime')
+        quietTimeValues = SessionData.QuietTime(~isnan(SessionData.QuietTime));
+        if ~isempty(quietTimeValues)
+            minQuietTime = min(quietTimeValues);
+            maxQuietTime = max(quietTimeValues);
+        end
+    elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+        % Try to get from TrialSettings if available
+        if isfield(SessionData.TrialSettings(1), 'GUI')
+            if isfield(SessionData.TrialSettings(1).GUI, 'MinQuietTime') && ...
+               isfield(SessionData.TrialSettings(1).GUI, 'MaxQuietTime')
+                minQuietTime = SessionData.TrialSettings(1).GUI.MinQuietTime;
+                maxQuietTime = SessionData.TrialSettings(1).GUI.MaxQuietTime;
+            end
+        end
+    end
+    
     % Calculate intervals and plot
     if length(allLickTimesGlobal) > 1
         % Sort all lick times chronologically
@@ -93,7 +113,18 @@ function PlotLickIntervalsFromSessionData(SessionData)
         % Set x-axis label and y-axis label
         xlabel(ax, 'Lick Interval (seconds)');
         ylabel(ax, 'Count');
-        title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals)']);
+        
+        % Create title with No-Lick range if available
+        if ~isnan(minQuietTime) && ~isnan(maxQuietTime)
+            if abs(minQuietTime - maxQuietTime) < 0.001
+                % If min and max are the same, show single value
+                title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals, No-Lick: ' sprintf('%.1f', minQuietTime) ' s)']);
+            else
+                title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals, No-Lick: ' sprintf('%.1f-%.1f', minQuietTime, maxQuietTime) ' s)']);
+            end
+        else
+            title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals)']);
+        end
         grid(ax, 'on');
         
         % Display summary statistics
