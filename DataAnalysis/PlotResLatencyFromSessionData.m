@@ -4,8 +4,9 @@ function PlotResLatencyFromSessionData(SessionData)
     % Input:
     %   SessionData - Session data structure loaded from saved .mat file
     %
-    % This function extracts response latency (time from stimulus start to reward state)
-    % from all trials and displays a histogram.
+    % This function extracts response latency (time from stimulus start to first lick)
+    % from all trials and displays a histogram. First lick is defined as the earlier
+    % of BNC1High (left) or BNC2High (right), regardless of correctness.
     %
     % Usage:
     %   load('SessionData.mat', 'SessionData');
@@ -57,30 +58,26 @@ function PlotResLatencyFromSessionData(SessionData)
             continue;
         end
         
-        % Find reward state start time (correct response time)
-        % Use LeftReward or RightReward state start time, whichever comes first
-        rewardStateTime = NaN;
-        if isfield(trialData, 'States')
-            % Check LeftReward state
-            if isfield(trialData.States, 'LeftReward') && ~isempty(trialData.States.LeftReward)
-                if ~isnan(trialData.States.LeftReward(1))
-                    rewardStateTime = trialData.States.LeftReward(1, 1);
-                end
+        % Find first lick time (BNC1High or BNC2High, whichever comes first)
+        % This is the first lick regardless of correctness
+        firstLickTime = NaN;
+        if isfield(trialData, 'Events')
+            % Check BNC1High (left lick)
+            if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
+                firstLickTime = trialData.Events.BNC1High(1);
             end
-            % Check RightReward state - use the earlier one if both exist
-            if isfield(trialData.States, 'RightReward') && ~isempty(trialData.States.RightReward)
-                if ~isnan(trialData.States.RightReward(1))
-                    rightRewardTime = trialData.States.RightReward(1, 1);
-                    if isnan(rewardStateTime) || rightRewardTime < rewardStateTime
-                        rewardStateTime = rightRewardTime;
-                    end
+            % Check BNC2High (right lick) - use the earlier one if both exist
+            if isfield(trialData.Events, 'BNC2High') && ~isempty(trialData.Events.BNC2High)
+                bnc2Time = trialData.Events.BNC2High(1);
+                if isnan(firstLickTime) || bnc2Time < firstLickTime
+                    firstLickTime = bnc2Time;
                 end
             end
         end
         
-        % Calculate response latency (only if reward state occurred after stimulus start)
-        if ~isnan(rewardStateTime) && rewardStateTime >= stimulusStartTime
-            responseLatency = rewardStateTime - stimulusStartTime;
+        % Calculate response latency (only if first lick occurred after stimulus start)
+        if ~isnan(firstLickTime) && firstLickTime >= stimulusStartTime
+            responseLatency = firstLickTime - stimulusStartTime;
             allResponseLatencies = [allResponseLatencies, responseLatency];
         end
     end
@@ -107,7 +104,7 @@ function PlotResLatencyFromSessionData(SessionData)
         hold(ax, 'on');
         
         % Plot histogram
-        histogram(ax, allResponseLatencies, 'BinWidth', 0.05, 'FaceColor', [0.8 0.4 0.2], 'EdgeColor', 'black', 'DisplayName', 'Response Latency');
+        histogram(ax, allResponseLatencies, 'BinWidth', 0.05, 'FaceColor', [0.8 0.4 0.2], 'EdgeColor', 'black', 'DisplayName', 'First Lick Latency');
         
         % Plot ResWin line if available
         if ~isnan(ResWin)
@@ -136,7 +133,12 @@ function PlotResLatencyFromSessionData(SessionData)
         xlabel(ax, 'Response Latency (seconds)');
         ylabel(ax, 'Count');
         
-        title(ax, ['Response Latency Distribution (n=' num2str(length(allResponseLatencies)) ' rewarded responses / ' num2str(nTrials) ' trials)']);
+        % Create title with ResWin info if available
+        if ~isnan(ResWin)
+            title(ax, ['Response Latency Distribution (n=' num2str(length(allResponseLatencies)) ' first licks / ' num2str(nTrials) ' trials, ResWin=' sprintf('%.2f', ResWin) ' s)']);
+        else
+            title(ax, ['Response Latency Distribution (n=' num2str(length(allResponseLatencies)) ' first licks / ' num2str(nTrials) ' trials)']);
+        end
         grid(ax, 'on');
         
         % Add legend if ResWin is available
@@ -146,14 +148,14 @@ function PlotResLatencyFromSessionData(SessionData)
         
         % Display summary statistics
         disp('=== Response Latency Statistics ===');
-        disp(['Total rewarded responses: ' num2str(length(allResponseLatencies)) ' in ' num2str(nTrials) ' trials']);
+        disp(['Total first licks: ' num2str(length(allResponseLatencies)) ' in ' num2str(nTrials) ' trials']);
         disp(['Mean latency: ' sprintf('%.3f', mean(allResponseLatencies)) ' seconds']);
         disp(['Median latency: ' sprintf('%.3f', median(allResponseLatencies)) ' seconds']);
         disp(['Min latency: ' sprintf('%.3f', min(allResponseLatencies)) ' seconds']);
         disp(['Max latency: ' sprintf('%.3f', max(allResponseLatencies)) ' seconds']);
         disp('===================================');
     else
-        warning('No response latencies found. Need at least one response after stimulus start.');
+        warning('No response latencies found. Need at least one lick after stimulus start.');
         cla(ax);
         text(ax, 0.5, 0.5, 'No response latencies available', ...
             'HorizontalAlignment', 'center', 'FontSize', 14);
