@@ -4,7 +4,7 @@ clearvars
 % use current directory
 defaultDataPath = pwd;
 % Alternative: Set default path for file selection dialog
-% defaultDataPath = '';  % Change this to default path
+%defaultDataPath = '';  % Change this to default path
 
 % Check if default path exists, if not use current directory
 if ~exist(defaultDataPath, 'dir')
@@ -65,9 +65,6 @@ figRaster = gcf;  % Get the current figure handle after plotting
 savePath = filepath;  % Use the directory where the data file was loaded from
 
 % Save figures with proper settings to prevent position shifts
-% Method 1: Try exportgraphics (MATLAB R2020a+), which preserves layout better
-% Method 2: Fall back to getframe + imwrite if exportgraphics is not available
-
 try
     % Use exportgraphics if available (better layout preservation)
     exportgraphics(figLickIntervals, fullfile(savePath, ['LickIntervals_', name_only, '.png']), ...
@@ -77,7 +74,6 @@ try
     exportgraphics(figRaster, fullfile(savePath, ['Raster_', name_only, '.png']), ...
         'Resolution', 300, 'ContentType', 'image');
 catch
-    % Fallback: Use getframe + imwrite (preserves exact screen appearance)
     % Force figure to render before capturing
     drawnow;
     

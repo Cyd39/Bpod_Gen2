@@ -52,25 +52,33 @@ function OnlineResLatency(customPlotFig, ResLatencyAx, SessionData)
             continue;
         end
         
-        % Find first lick time (BNC1High or BNC2High, whichever comes first)
-        % This is the first lick regardless of correctness
+        % Find first lick time AFTER stimulus start (BNC1High or BNC2High, whichever comes first)
+        % This is the first lick after stimulus onset, regardless of correctness
+        % IMPORTANT: Only consider licks that occur after stimulus start to avoid excluding trials
+        % with pre-stimulus licks
         firstLickTime = NaN;
         if isfield(trialData, 'Events')
-            % Check BNC1High (left lick)
+            % Check BNC1High (left lick) - only consider licks after stimulus start
             if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
-                firstLickTime = trialData.Events.BNC1High(1);
+                bnc1TimesAfterStim = trialData.Events.BNC1High(trialData.Events.BNC1High >= stimulusStartTime);
+                if ~isempty(bnc1TimesAfterStim)
+                    firstLickTime = bnc1TimesAfterStim(1);
+                end
             end
-            % Check BNC2High (right lick) - use the earlier one if both exist
+            % Check BNC2High (right lick) - only consider licks after stimulus start
             if isfield(trialData.Events, 'BNC2High') && ~isempty(trialData.Events.BNC2High)
-                bnc2Time = trialData.Events.BNC2High(1);
-                if isnan(firstLickTime) || bnc2Time < firstLickTime
-                    firstLickTime = bnc2Time;
+                bnc2TimesAfterStim = trialData.Events.BNC2High(trialData.Events.BNC2High >= stimulusStartTime);
+                if ~isempty(bnc2TimesAfterStim)
+                    bnc2Time = bnc2TimesAfterStim(1);
+                    if isnan(firstLickTime) || bnc2Time < firstLickTime
+                        firstLickTime = bnc2Time;
+                    end
                 end
             end
         end
         
-        % Calculate response latency (only if first lick occurred after stimulus start)
-        if ~isnan(firstLickTime) && firstLickTime >= stimulusStartTime
+        % Calculate response latency (firstLickTime is guaranteed to be >= stimulusStartTime)
+        if ~isnan(firstLickTime)
             responseLatency = firstLickTime - stimulusStartTime;
             allResponseLatencies = [allResponseLatencies, responseLatency];
         end
