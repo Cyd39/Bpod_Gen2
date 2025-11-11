@@ -14,7 +14,7 @@ function plotraster_behavior_v2(SessionData)
     % Check if Session_tbl is empty or invalid
     if isempty(Session_tbl) || height(Session_tbl) == 0
         warning('Session_tbl is empty or has no trials. Cannot create raster plot.');
-        fig = figure('Position', [500, 300, 1000, 700]);
+        figure('Position', [500, 300, 1000, 700]);
         ax1 = subplot(1,2,1);
         text(ax1, 0.5, 0.5, 'No data available', 'HorizontalAlignment', 'center', ...
             'FontSize', 14, 'Units', 'normalized');
@@ -24,7 +24,7 @@ function plotraster_behavior_v2(SessionData)
         return;
     end
     
-    fig = figure('Position', [500, 300, 800, 700]); clf(fig);
+    fig = figure('Position', [500, 300, 1200, 700]); clf(fig);
     
     % Add figure title
     sgtitle(fig, 'Licks aligned to stimulus onset', 'FontSize', 12, 'FontWeight', 'bold');
@@ -134,40 +134,40 @@ function plotraster_behavior_v2(SessionData)
     rightLickLegendCreated = false;
     rewardedLickLegendCreated = false;
     
-    % Create 3 subplots: 2 for data, 1 for legend
-    % First create all 3 subplots, then adjust their positions
+    % ========================================================================
+    % SUBPLOT POSITION CONFIGURATION
+    % ========================================================================
+    % All subplot positions are defined here in one place for easy modification
+    % Position format: [left, bottom, width, height] in normalized units (0-1)
+    % To adjust subplot layout, modify the values below:
+    
+    % Subplot 1 (left data plot) position
+    SUBPLOT1_POS = [0.05, 0.11, 0.38, 0.815];  % [left, bottom, width, height]
+    
+    % Subplot 2 (right data plot) position
+    SUBPLOT2_POS = [0.5, 0.11, 0.35, 0.815];  % [left, bottom, width, height]
+    
+    % Subplot 3 (legend) position
+    SUBPLOT3_POS = [0.95, 0.11, 0.05, 0.815];  % [left, bottom, width, height]
+    
+    % Helper function to apply subplot positions
+    function applySubplotPositions(ax1, ax2, ax3)
+        set(ax1, 'Position', SUBPLOT1_POS);
+        set(ax2, 'Position', SUBPLOT2_POS);
+        set(ax3, 'Position', SUBPLOT3_POS);
+    end
+    
+    % ========================================================================
+    % CREATE SUBPLOTS
+    % ========================================================================
     ax1 = subplot(1,3,1);
     ax2 = subplot(1,3,2);
     ax3 = subplot(1,3,3);
     
-    % Adjust positions: data subplots take ~42% each, legend takes ~8%
-    % IMPORTANT: Modify the values below to adjust subplot widths and spacing
-    % Position format: [left, bottom, width, height] in normalized units (0-1)
-    
-    % First subplot - adjust these values:
-    pos1 = get(ax1, 'Position');
-    pos1(3) = 0.3;  % Width: 42% (change this to adjust first subplot width)
-    pos1(1) = 0.08;  % Left position: 8% (change this to adjust left margin)
-    set(ax1, 'Position', pos1);
+    % Apply initial positions
+    applySubplotPositions(ax1, ax2, ax3);
     hold(ax1, 'on');
-    
-    % Second subplot - adjust these values:
-    pos2 = get(ax2, 'Position');
-    pos2(3) = 0.50;  % Width: 50% (change this to adjust second subplot width, increased from 42%)
-    pos2(1) = 0.42;  % Left position: 42% (change this to adjust spacing between subplots, right-shifted)
-    % Note: spacing = pos2(1) - (pos1(1) + pos1(3))
-    % Current spacing: 0.42 - (0.08 + 0.3) = 0.04 (4% gap)
-    set(ax2, 'Position', pos2);
     hold(ax2, 'on');
-    
-    % Third subplot (for legend) - adjust these values:
-    pos3 = get(ax3, 'Position');
-    pos3(3) = 0.05;
-    % Width: 5% (change this to adjust legend subplot width, smaller = narrower)
-    pos3(1) = 0.95;  % Left position
-    % Note: spacing = pos3(1) - (pos2(1) + pos2(3))
-    % Current spacing: 0.95 - (0.42 + 0.50) = 0.03 (3% gap)
-    set(ax3, 'Position', pos3);
     
     % Force update to ensure positions are applied
     drawnow;
@@ -310,14 +310,16 @@ function plotraster_behavior_v2(SessionData)
         xlabel(ax, 'Time re stim. onset (s)')
         ylim(ax, [0.2,n_trial+0.8]);
         
-        % Plot ResWin lines only in the right subplot (zoomed view)
-        if i_ax == 2 && ~isnan(ResWin)
+        % Plot ResWin lines in both subplots
+        if ~isnan(ResWin)
             % Draw two green dashed lines: one at x=0 (window start) and one at x=ResWin (window end)
             xline(ax, 0, '--', 'Color', [0 0.5 0], 'LineWidth', 1.5);
             xline(ax, ResWin, '--', 'Color', [0 0.5 0], 'LineWidth', 1.5);
-            % Create a dummy line object for legend (xline objects can't be used directly in legend)
-            hResWin = plot(ax, [NaN NaN], [NaN NaN], '--', 'Color', [0 0.5 0], 'LineWidth', 1.5, ...
-                'DisplayName', ['ResWindow = ' sprintf('%.2f', ResWin) ' s']);
+            % Create a dummy line object for legend (only once, in first subplot)
+            if i_ax == 1
+                hResWin = plot(ax, [NaN NaN], [NaN NaN], '--', 'Color', [0 0.5 0], 'LineWidth', 1.5, ...
+                    'DisplayName', ['ResWindow = ' sprintf('%.2f', ResWin) ' s']);
+            end
         end
 
         switch i_ax
@@ -344,30 +346,15 @@ function plotraster_behavior_v2(SessionData)
     end
     
     % Re-apply positions after data plotting (in case plotting changed them)
-    % Re-apply second subplot position
-    pos2_after_plot = get(ax2, 'Position');
-    pos2_after_plot(1) = 0.46;  % Left position: 45%
-    pos2_after_plot(3) = 0.32;  % Width: 32%
-    set(ax2, 'Position', pos2_after_plot);
-    % Re-apply labels after position change
-    ylabel(ax2, 'Trial number')
-    xlabel(ax2, 'Time re stim. onset (s)')
+    applySubplotPositions(ax1, ax2, ax3);
     
-    % Re-apply first subplot position (for consistency)
-    pos1_after_plot = get(ax1, 'Position');
-    pos1_after_plot(1) = 0.08;  % Left position: 8%
-    pos1_after_plot(3) = 0.32;  % Width: 32%
-    set(ax1, 'Position', pos1_after_plot);
     % Re-apply labels after position change
     ylabel(ax1, 'Trial number')
     xlabel(ax1, 'Time re stim. onset (s)')
+    ylabel(ax2, 'Trial number')
+    xlabel(ax2, 'Time re stim. onset (s)')
     
     % Use the third subplot (already created) for legend display
-    % Re-apply position before creating legend (in case data plotting changed it)
-    pos3_before_legend = get(ax3, 'Position');
-    pos3_before_legend(1) = 0.93;  % Left position: 95%
-    pos3_before_legend(3) = 0.05;  % Width: 5%
-    set(ax3, 'Position', pos3_before_legend);
     axis(ax3, 'off');  % Turn off axes for legend-only subplot
     
     % Create dummy objects in ax3 for legend (all handles must be from the same axes)
@@ -397,30 +384,11 @@ function plotraster_behavior_v2(SessionData)
     % Create legend in the third subplot, centered
     if ~isempty(legendHandles)
         legend(ax3, legendHandles, legendLabels, 'Location', 'north', 'Box', 'off');
-        % Ensure the subplot position is maintained after legend creation
-        % Re-apply position in case legend creation changed it
-        pos3_final = get(ax3, 'Position');
-        pos3_final(1) = 0.95;  % Left position: 95% (ensure it's at the right)
-        pos3_final(3) = 0.05;  % Width: 5% (ensure width is correct)
-        set(ax3, 'Position', pos3_final);
     end
     
     % Final position check and fix before returning (critical for saving)
     % Re-apply all positions one final time to ensure they're correct
-    pos1_final = get(ax1, 'Position');
-    pos1_final(1) = 0.08;
-    pos1_final(3) = 0.32;
-    set(ax1, 'Position', pos1_final);
-    
-    pos2_final = get(ax2, 'Position');
-    pos2_final(1) = 0.46;
-    pos2_final(3) = 0.32;
-    set(ax2, 'Position', pos2_final);
-    
-    pos3_final = get(ax3, 'Position');
-    pos3_final(1) = 0.95;
-    pos3_final(3) = 0.05;
-    set(ax3, 'Position', pos3_final);
+    applySubplotPositions(ax1, ax2, ax3);
     
     % Re-apply labels after final position fix
     ylabel(ax1, 'Trial number')
