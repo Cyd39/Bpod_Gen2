@@ -336,6 +336,8 @@ function PlotSessionSummary(SessionData)
     rightHits = 0;
     leftNonCatchTrials = 0;  % Count non-catch trials for hit rate calculation
     rightNonCatchTrials = 0;  % Count non-catch trials for hit rate calculation
+    leftManualRewards = 0;  % Port1-triggered rewards for left side
+    rightManualRewards = 0;  % Port1-triggered rewards for right side
     totalWaterVolume = 0;
     
     % Loop through all trials
@@ -371,6 +373,82 @@ function PlotSessionSummary(SessionData)
             end
         end
         
+        % Check if reward was triggered by Port1 click (Condition6)
+        isLeftRewardFromPort1 = false;
+        isRightRewardFromPort1 = false;
+        
+        if leftRewardVisited || rightRewardVisited
+            try
+                if isfield(trialData, 'Events')
+                    % Get Port1In events
+                    if isfield(trialData.Events, 'Port1In')
+                        port1InTimes = trialData.Events.Port1In;
+                        if ~isempty(port1InTimes)
+                            % Get trial start time to ensure Port1In is within this trial
+                            trialStartTime = 0; % Trial start is at time 0
+                            
+                            % Get Stimulus state timing to check if Port1In is before or during Stimulus
+                            stimulusStart = NaN;
+                            if isfield(trialData, 'States') && isfield(trialData.States, 'Stimulus')
+                                stimulusStart = trialData.States.Stimulus(1);
+                            end
+                            
+                            % Check if Port1In occurred in this trial (before or during Stimulus state)
+                            if ~isnan(stimulusStart)
+                                % Port1In should be before or at the start of Stimulus state
+                                port1InBeforeOrDuringStimulus = port1InTimes <= stimulusStart;
+                            else
+                                % If Stimulus state doesn't exist, check if Port1In is within reasonable time window
+                                port1InBeforeOrDuringStimulus = port1InTimes >= trialStartTime & port1InTimes <= 10;
+                            end
+                            
+                            if any(port1InBeforeOrDuringStimulus)
+                                % Check if left reward was triggered by Port1
+                                if leftRewardVisited
+                                    try
+                                        leftRewardTime = trialData.States.LeftReward(1);
+                                        if ~isnan(stimulusStart)
+                                            timeFromPort1ToReward = leftRewardTime - port1InTimes;
+                                            if any(timeFromPort1ToReward > 0 & timeFromPort1ToReward < 2 & port1InBeforeOrDuringStimulus)
+                                                isLeftRewardFromPort1 = true;
+                                            end
+                                        else
+                                            timeDiff = abs(port1InTimes - leftRewardTime);
+                                            if any(timeDiff < 2 & port1InBeforeOrDuringStimulus)
+                                                isLeftRewardFromPort1 = true;
+                                            end
+                                        end
+                                    catch
+                                    end
+                                end
+                                
+                                % Check if right reward was triggered by Port1
+                                if rightRewardVisited
+                                    try
+                                        rightRewardTime = trialData.States.RightReward(1);
+                                        if ~isnan(stimulusStart)
+                                            timeFromPort1ToReward = rightRewardTime - port1InTimes;
+                                            if any(timeFromPort1ToReward > 0 & timeFromPort1ToReward < 2 & port1InBeforeOrDuringStimulus)
+                                                isRightRewardFromPort1 = true;
+                                            end
+                                        else
+                                            timeDiff = abs(port1InTimes - rightRewardTime);
+                                            if any(timeDiff < 2 & port1InBeforeOrDuringStimulus)
+                                                isRightRewardFromPort1 = true;
+                                            end
+                                        end
+                                    catch
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            catch
+                % If extraction fails, assume reward is from animal lick
+            end
+        end
+        
         % Count trials by correct side (for trial count)
         if ~isnan(correctSide)
             if correctSide == 1  % Left side
@@ -390,6 +468,9 @@ function PlotSessionSummary(SessionData)
         % This ensures consistency with total water volume calculation
         if leftRewardVisited
             leftRewards = leftRewards + 1;
+            if isLeftRewardFromPort1
+                leftManualRewards = leftManualRewards + 1;
+            end
             % Only count as hit if it's a non-catch trial and correctSide is left
             if ~isCatchTrial && ~isnan(correctSide) && correctSide == 1
                 leftHits = leftHits + 1;
@@ -397,6 +478,9 @@ function PlotSessionSummary(SessionData)
         end
         if rightRewardVisited
             rightRewards = rightRewards + 1;
+            if isRightRewardFromPort1
+                rightManualRewards = rightManualRewards + 1;
+            end
             % Only count as hit if it's a non-catch trial and correctSide is right
             if ~isCatchTrial && ~isnan(correctSide) && correctSide == 2
                 rightHits = rightHits + 1;
@@ -437,6 +521,10 @@ function PlotSessionSummary(SessionData)
     if leftTrials > 0
         textLines{lineNum} = ['  Rewards: ' num2str(leftRewards) ' / ' num2str(leftTrials) ' trials'];
         lineNum = lineNum + 1;
+        if leftManualRewards > 0
+            textLines{lineNum} = ['  Manual rewards: ' num2str(leftManualRewards)];
+            lineNum = lineNum + 1;
+        end
         if leftNonCatchTrials > 0
             leftHitRate = (leftHits / leftNonCatchTrials) * 100;
             textLines{lineNum} = ['  Hit Rate: ' sprintf('%.1f%%', leftHitRate) ' (' num2str(leftHits) '/' num2str(leftNonCatchTrials) ')'];
@@ -456,6 +544,10 @@ function PlotSessionSummary(SessionData)
     if rightTrials > 0
         textLines{lineNum} = ['  Rewards: ' num2str(rightRewards) ' / ' num2str(rightTrials) ' trials'];
         lineNum = lineNum + 1;
+        if rightManualRewards > 0
+            textLines{lineNum} = ['  Manual rewards: ' num2str(rightManualRewards)];
+            lineNum = lineNum + 1;
+        end
         if rightNonCatchTrials > 0
             rightHitRate = (rightHits / rightNonCatchTrials) * 100;
             textLines{lineNum} = ['  Hit Rate: ' sprintf('%.1f%%', rightHitRate) ' (' num2str(rightHits) '/' num2str(rightNonCatchTrials) ')'];
