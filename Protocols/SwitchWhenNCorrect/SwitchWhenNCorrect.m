@@ -53,6 +53,7 @@ function SwitchWhenNCorrect()
     S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
     S.GUI.NCorrectToSwitch = NumTrials; % Number of correct trials needed to switch sides；by default, it is the total number of trials
+    S.GUI.CutOffPeriod = 60; % seconds
     
     % Initialize parameter GUI
     BpodParameterGUI('init', S);
@@ -96,9 +97,6 @@ function SwitchWhenNCorrect()
     correctCount = 0; % Counter for correct trials on current side
     highFreqIndex = 1; % Index for high frequency table (continuous)
     lowFreqIndex = 1; % Index for low frequency table (continuous)
-    
-    % Cut-off period for NoLick state
-    CutOffPeriod = 60; % seconds
     
     % Initialize data arrays
     BpodSystem.Data.CurrentSide = [];
@@ -194,7 +192,7 @@ function SwitchWhenNCorrect()
             TimerDuration = S.TimerDuration;
             RewardAmount = S.RewardAmount;
             ResWin = S.ResWin;
-            CutOff = S.CutOff;
+            CutOff = S.GUI.CutOffPeriod;
             
             % Save timing of the trial
             BpodSystem.Data.ITIBefore(currentTrial) = ITIBefore;
@@ -461,6 +459,9 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     % Set timer and condition for the cut-off period
     sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', CutOff);
     sma = SetCondition(sma, 5, 'GlobalTimer1', 0); % Condition 3: GlobalTimer1 has ended
+
+    % Set Condition for Port1In as manual Switch for reward given together with stimulus
+    sma = SetCondition(sma, 6, 'Port1In', 0);
     
     % Add states
     % Ready state under different conditions
@@ -508,13 +509,13 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
             % Left is correct - only respond to left lick (BNC1High)
             sma = AddState(sma, 'Name', 'Stimulus', ...
                 'Timer', ResWin, ... % Response window
-                'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'WaitToFinish', 'Tup', 'WaitToFinish'}, ...
+                'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'WaitToFinish', 'Tup', 'WaitToFinish','Condition6', 'LeftReward'}, ...
                 'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
         elseif strcmp(correctResponse, 'right')
             % Right is correct - only respond to right lick (BNC2High)
             sma = AddState(sma, 'Name', 'Stimulus', ...
                 'Timer', ResWin, ... 
-                'StateChangeConditions', {'BNC1High', 'WaitToFinish', 'BNC2High', 'RightReward', 'Tup', 'WaitToFinish'}, ...
+                'StateChangeConditions', {'BNC1High', 'WaitToFinish', 'BNC2High', 'RightReward', 'Tup', 'WaitToFinish','Condition6', 'RightReward'}, ...
                 'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
         elseif strcmp(correctResponse, 'boundary')
             % Boundary frequency - both sides are correct
@@ -538,12 +539,12 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     end
 
     % Set condition to check if GlobalTimer2 has ended
-    sma = SetCondition(sma, 6, 'GlobalTimer2', 0); % Condition 4: GlobalTimer2 has ended
+    sma = SetCondition(sma, 7, 'GlobalTimer2', 0); % Condition 7: GlobalTimer2 has ended
     
     % Checking state
     sma = AddState(sma, 'Name', 'WaitToFinish', ...
         'Timer', 0, ...  
-        'StateChangeConditions', {'Condition6', 'exit'}, ...
+        'StateChangeConditions', {'Condition7', 'exit'}, ...
         'OutputActions', {});
     
 end
