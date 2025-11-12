@@ -1,0 +1,359 @@
+function OnlineSessionSummary(customPlotFig, summaryAx, SessionData)
+    % OnlineSessionSummary - Display session summary text in real-time
+    % This function extracts session information from SessionData (all completed trials)
+    % and displays it as text, similar to PlotSessionSummary but for online use
+    % Inputs:
+    %   customPlotFig - figure handle for the combined plot (optional, for activation)
+    %   summaryAx - axes handle for the text display
+    %   SessionData - session data structure (e.g., BpodSystem.Data)
+    
+    % Activate figure if provided
+    if nargin >= 1 && ~isempty(customPlotFig) && isvalid(customPlotFig)
+        figure(customPlotFig);
+    end
+    
+    % Clear axes
+    cla(summaryAx);
+    axis(summaryAx, 'off');
+    hold(summaryAx, 'on');
+    
+    % Check if data exists
+    if ~isfield(SessionData, 'nTrials')
+        text(summaryAx, 0.5, 0.5, 'No data available', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+        drawnow;
+        return;
+    end
+    
+    nTrials = SessionData.nTrials;
+    
+    % Initialize text lines array
+    textLines = {};
+    lineNum = 1;
+    
+    % ========================================================================
+    % 1. SESSION CATEGORY/TYPE
+    % ========================================================================
+    sessionType = 'Unknown';
+    if isfield(SessionData, 'StimParams') && isfield(SessionData.StimParams, 'Session') && ...
+       isfield(SessionData.StimParams.Session, 'TypeName')
+        sessionType = SessionData.StimParams.Session.TypeName;
+    end
+    textLines{lineNum} = ['Session Type: ' sessionType];
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % ========================================================================
+    % 2. DURATION
+    % ========================================================================
+    duration = NaN;
+    if isfield(SessionData, 'TrialStartTimestamp') && ~isempty(SessionData.TrialStartTimestamp)
+        if nTrials > 0 && length(SessionData.TrialStartTimestamp) >= nTrials
+            startTime = SessionData.TrialStartTimestamp(1);
+            % Get end time from last trial's WaitToFinish state
+            if isfield(SessionData, 'RawEvents') && isfield(SessionData.RawEvents, 'Trial')
+                if nTrials <= length(SessionData.RawEvents.Trial)
+                    lastTrial = SessionData.RawEvents.Trial{nTrials};
+                    if isfield(lastTrial, 'States') && isfield(lastTrial.States, 'WaitToFinish')
+                        if ~isempty(lastTrial.States.WaitToFinish) && ~isnan(lastTrial.States.WaitToFinish(1, 2))
+                            endTime = SessionData.TrialStartTimestamp(nTrials) + lastTrial.States.WaitToFinish(1, 2);
+                            duration = endTime - startTime;
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    if ~isnan(duration)
+        hours = floor(duration / 3600);
+        minutes = floor((duration - hours * 3600) / 60);
+        seconds = duration - hours * 3600 - minutes * 60;
+        if hours > 0
+            textLines{lineNum} = ['Session Duration: ' sprintf('%.0f h %.0f m %.1f s', hours, minutes, seconds)];
+        else
+            textLines{lineNum} = ['Session Duration: ' sprintf('%.0f m %.1f s', minutes, seconds)];
+        end
+    else
+        textLines{lineNum} = 'Session Duration: N/A';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % ========================================================================
+    % 2.5. STIMULUS DURATION
+    % ========================================================================
+    stimulusDuration = NaN;
+    if isfield(SessionData, 'StimParams') && isfield(SessionData.StimParams, 'Duration')
+        stimulusDuration = SessionData.StimParams.Duration;
+    end
+    
+    if ~isnan(stimulusDuration)
+        textLines{lineNum} = ['Stimulus Duration: ' sprintf('%.0f ms', stimulusDuration)];
+    else
+        textLines{lineNum} = 'Stimulus Duration: N/A';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % ========================================================================
+    % 3. ITI RANGE (simplified for online display)
+    % ========================================================================
+    minITI = NaN;
+    maxITI = NaN;
+    if isfield(SessionData, 'ThisITI')
+        itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
+        if ~isempty(itiValues)
+            minITI = min(itiValues);
+            maxITI = max(itiValues);
+        end
+    elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+        if isfield(SessionData.TrialSettings(1), 'GUI')
+            if isfield(SessionData.TrialSettings(1).GUI, 'MinITI') && ...
+               isfield(SessionData.TrialSettings(1).GUI, 'MaxITI')
+                minITI = SessionData.TrialSettings(1).GUI.MinITI;
+                maxITI = SessionData.TrialSettings(1).GUI.MaxITI;
+            end
+        end
+    end
+    
+    if ~isnan(minITI) && ~isnan(maxITI)
+        if abs(minITI - maxITI) < 0.001
+            textLines{lineNum} = ['ITI Range: ' sprintf('%.1f s', minITI)];
+        else
+            textLines{lineNum} = ['ITI Range: ' sprintf('%.1f-%.1f s', minITI, maxITI)];
+        end
+    else
+        textLines{lineNum} = 'ITI Range: N/A';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % ========================================================================
+    % 4. NO-LICK RANGE (simplified for online display)
+    % ========================================================================
+    minQuietTime = NaN;
+    maxQuietTime = NaN;
+    if isfield(SessionData, 'QuietTime')
+        quietTimeValues = SessionData.QuietTime(~isnan(SessionData.QuietTime));
+        if ~isempty(quietTimeValues)
+            minQuietTime = min(quietTimeValues);
+            maxQuietTime = max(quietTimeValues);
+        end
+    elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+        if isfield(SessionData.TrialSettings(1), 'GUI')
+            if isfield(SessionData.TrialSettings(1).GUI, 'MinQuietTime') && ...
+               isfield(SessionData.TrialSettings(1).GUI, 'MaxQuietTime')
+                minQuietTime = SessionData.TrialSettings(1).GUI.MinQuietTime;
+                maxQuietTime = SessionData.TrialSettings(1).GUI.MaxQuietTime;
+            end
+        end
+    end
+    
+    if ~isnan(minQuietTime) && ~isnan(maxQuietTime)
+        if abs(minQuietTime - maxQuietTime) < 0.001
+            textLines{lineNum} = ['No-Lick Range: ' sprintf('%.1f s', minQuietTime)];
+        else
+            textLines{lineNum} = ['No-Lick Range: ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
+        end
+    else
+        textLines{lineNum} = 'No-Lick Range: N/A';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % ========================================================================
+    % 5. REWARD AMOUNT
+    % ========================================================================
+    rewardAmount = NaN;
+    if isfield(SessionData, 'RewardAmount')
+        rewardValues = SessionData.RewardAmount(~isnan(SessionData.RewardAmount));
+        if ~isempty(rewardValues)
+            rewardAmount = mean(rewardValues);
+        end
+    elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+        if isfield(SessionData.TrialSettings(1), 'GUI')
+            if isfield(SessionData.TrialSettings(1).GUI, 'RewardAmount')
+                rewardAmount = SessionData.TrialSettings(1).GUI.RewardAmount;
+            end
+        end
+    end
+    
+    if ~isnan(rewardAmount)
+        textLines{lineNum} = ['Water rewarded per trial: ' sprintf('%.0f μL', rewardAmount)];
+    else
+        textLines{lineNum} = 'Water rewarded per trial: N/A';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % ========================================================================
+    % 6-9. LEFT/RIGHT REWARD STATISTICS AND HIT RATES
+    % ========================================================================
+    % Initialize counters
+    leftTrials = 0;
+    rightTrials = 0;
+    leftRewards = 0;
+    rightRewards = 0;
+    leftHits = 0;
+    rightHits = 0;
+    leftNonCatchTrials = 0;
+    rightNonCatchTrials = 0;
+    totalWaterVolume = 0;
+    
+    % Loop through all completed trials
+    for trialNum = 1:nTrials
+        if trialNum > length(SessionData.RawEvents.Trial)
+            continue;
+        end
+        
+        % Get trial data
+        trialData = SessionData.RawEvents.Trial{trialNum};
+        
+        % Check if this is a catch trial
+        isCatchTrial = false;
+        if isfield(SessionData, 'IsCatchTrial') && trialNum <= length(SessionData.IsCatchTrial)
+            isCatchTrial = SessionData.IsCatchTrial(trialNum);
+        end
+        
+        % Determine correct side for this trial
+        correctSide = NaN;
+        if isfield(SessionData, 'CorrectSide') && trialNum <= length(SessionData.CorrectSide)
+            correctSide = SessionData.CorrectSide(trialNum);
+        end
+        
+        % Check if reward was received
+        leftRewardVisited = false;
+        rightRewardVisited = false;
+        if isfield(trialData, 'States')
+            if isfield(trialData.States, 'LeftReward')
+                leftRewardVisited = ~isnan(trialData.States.LeftReward(1));
+            end
+            if isfield(trialData.States, 'RightReward')
+                rightRewardVisited = ~isnan(trialData.States.RightReward(1));
+            end
+        end
+        
+        % Count trials by correct side (for trial count)
+        if ~isnan(correctSide)
+            if correctSide == 1  % Left side
+                leftTrials = leftTrials + 1;
+                if ~isCatchTrial
+                    leftNonCatchTrials = leftNonCatchTrials + 1;
+                end
+            elseif correctSide == 2  % Right side
+                rightTrials = rightTrials + 1;
+                if ~isCatchTrial
+                    rightNonCatchTrials = rightNonCatchTrials + 1;
+                end
+            end
+        end
+        
+        % Count rewards by actual reward received
+        if leftRewardVisited
+            leftRewards = leftRewards + 1;
+            if ~isCatchTrial && ~isnan(correctSide) && correctSide == 1
+                leftHits = leftHits + 1;
+            end
+        end
+        if rightRewardVisited
+            rightRewards = rightRewards + 1;
+            if ~isCatchTrial && ~isnan(correctSide) && correctSide == 2
+                rightHits = rightHits + 1;
+            end
+        end
+        
+        % Calculate total water volume
+        if leftRewardVisited
+            trialRewardAmount = rewardAmount;
+            if isfield(SessionData, 'RewardAmount') && trialNum <= length(SessionData.RewardAmount)
+                if ~isnan(SessionData.RewardAmount(trialNum))
+                    trialRewardAmount = SessionData.RewardAmount(trialNum);
+                end
+            end
+            if ~isnan(trialRewardAmount)
+                totalWaterVolume = totalWaterVolume + trialRewardAmount;
+            end
+        end
+        if rightRewardVisited
+            trialRewardAmount = rewardAmount;
+            if isfield(SessionData, 'RewardAmount') && trialNum <= length(SessionData.RewardAmount)
+                if ~isnan(SessionData.RewardAmount(trialNum))
+                    trialRewardAmount = SessionData.RewardAmount(trialNum);
+                end
+            end
+            if ~isnan(trialRewardAmount)
+                totalWaterVolume = totalWaterVolume + trialRewardAmount;
+            end
+        end
+    end
+    
+    % Display left side statistics
+    textLines{lineNum} = 'Left Side:';
+    lineNum = lineNum + 1;
+    if leftTrials > 0
+        textLines{lineNum} = ['  Rewards: ' num2str(leftRewards) ' / ' num2str(leftTrials) ' trials'];
+        lineNum = lineNum + 1;
+        if leftNonCatchTrials > 0
+            leftHitRate = (leftHits / leftNonCatchTrials) * 100;
+            textLines{lineNum} = ['  Hit Rate: ' sprintf('%.1f%%', leftHitRate) ' (' num2str(leftHits) '/' num2str(leftNonCatchTrials) ')'];
+        else
+            textLines{lineNum} = '  Hit Rate: N/A (no non-catch trials)';
+        end
+    else
+        textLines{lineNum} = '  No left trials';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % Display right side statistics
+    textLines{lineNum} = 'Right Side:';
+    lineNum = lineNum + 1;
+    if rightTrials > 0
+        textLines{lineNum} = ['  Rewards: ' num2str(rightRewards) ' / ' num2str(rightTrials) ' trials'];
+        lineNum = lineNum + 1;
+        if rightNonCatchTrials > 0
+            rightHitRate = (rightHits / rightNonCatchTrials) * 100;
+            textLines{lineNum} = ['  Hit Rate: ' sprintf('%.1f%%', rightHitRate) ' (' num2str(rightHits) '/' num2str(rightNonCatchTrials) ')'];
+        else
+            textLines{lineNum} = '  Hit Rate: N/A (no non-catch trials)';
+        end
+    else
+        textLines{lineNum} = '  No right trials';
+    end
+    lineNum = lineNum + 1;
+    textLines{lineNum} = '';  % Empty line
+    lineNum = lineNum + 1;
+    
+    % Display total water volume
+    if ~isnan(totalWaterVolume)
+        textLines{lineNum} = ['Total Water Rewarded: ' sprintf('%.0f μL', totalWaterVolume)];
+    else
+        textLines{lineNum} = 'Total Water Rewarded: N/A';
+    end
+    
+    % ========================================================================
+    % DISPLAY TEXT IN FIGURE
+    % ========================================================================
+    % Combine all text lines
+    fullText = strjoin(textLines, '\n');
+    
+    % Display text
+    text(summaryAx, 0.05, 0.95, fullText, 'FontSize', 10, 'FontName', 'Courier', ...
+        'VerticalAlignment', 'top', 'HorizontalAlignment', 'left', ...
+        'Interpreter', 'none', 'Units', 'normalized');
+    
+    % Set title
+    title(summaryAx, 'Session Summary', 'FontSize', 12, 'FontWeight', 'bold');
+    
+    % Force update
+    drawnow;
+end
+

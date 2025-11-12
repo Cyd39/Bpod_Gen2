@@ -108,29 +108,33 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.IsCatchTrial = [];
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
-    %% Initialize custom figure for lick interval, response latency histograms, and raster plot
+    %% Initialize custom figure for lick interval, response latency histograms, raster plot, and session summary
     customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 1000 420]);
     % Upper left subplot for lick intervals
-    lickIntervalAx = subplot(2, 2, 1);
+    lickIntervalAx = subplot(2, 3, 1);
     title(lickIntervalAx, 'Lick Intervals Distribution');
     xlabel(lickIntervalAx, 'Lick Interval (seconds)');
     ylabel(lickIntervalAx, 'Count');
     grid(lickIntervalAx, 'on');
     hold(lickIntervalAx, 'on');
     % Lower left subplot for response latency
-    resLatencyAx = subplot(2, 2, 3);
+    resLatencyAx = subplot(2, 3, 4);
     title(resLatencyAx, 'Response Latency Distribution');
     xlabel(resLatencyAx, 'Response Latency (seconds)');
     ylabel(resLatencyAx, 'Count');
     grid(resLatencyAx, 'on');
     hold(resLatencyAx, 'on');
-    % Right panel (spans both rows) for raster plot
-    rasterAx = subplot(2, 2, [2, 4]);
+    % Middle panel (spans both rows) for raster plot
+    rasterAx = subplot(2, 3, [2, 5]);
     title(rasterAx, 'Licks aligned to stimulus onset');
     xlabel(rasterAx, 'Time re stim. onset (s)');
     ylabel(rasterAx, 'Trial number');
     grid(rasterAx, 'on');
     hold(rasterAx, 'on');
+    % Right panel (spans both rows) for session summary
+    summaryAx = subplot(2, 3, [3, 6]);
+    axis(summaryAx, 'off');
+    title(summaryAx, 'Session Summary', 'FontSize', 12, 'FontWeight', 'bold');
     % Register figure with BpodSystem so it closes when protocol ends
     BpodSystem.ProtocolFigures.CustomPlotFig = customPlotFig;
     
@@ -287,11 +291,12 @@ function SwitchWhenNCorrect()
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
             
-            % Update lick interval, response latency histograms, and raster plot
+            % Update lick interval, response latency histograms, raster plot, and session summary
             try
                 OnlineLickInterval(customPlotFig, lickIntervalAx, BpodSystem.Data);
                 OnlineResLatency(customPlotFig, resLatencyAx, BpodSystem.Data);
                 OnlineRasterPlot(customPlotFig, rasterAx, BpodSystem.Data);
+                OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
                 disp(['Plot update error: ' ME.message]);
