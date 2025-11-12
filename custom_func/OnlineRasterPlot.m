@@ -119,25 +119,160 @@ function OnlineRasterPlot(customPlotFig, rasterAx, SessionData)
             tempRightLicks = [];
         end
         
-        tempLeftReward = Session_tbl.LeftReward(idx,1);
-        tempRightReward = Session_tbl.RightReward(idx,1);
+        try
+            tempLeftReward = Session_tbl.LeftReward(idx,1);
+        catch
+            tempLeftReward = NaN;
+        end
+        
+        try
+            tempRightReward = Session_tbl.RightReward(idx,1);
+        catch
+            tempRightReward = NaN;
+        end
+        
+        % Check if reward was triggered by Port1 click (Condition6)
+        % Extract Port1In events from RawEvents
+        % Note: Port1 can be clicked before Stimulus state, Condition6 will be checked in Stimulus state
+        isLeftRewardFromPort1 = false;
+        isRightRewardFromPort1 = false;
+        
+        try
+            if isfield(SessionData, 'RawEvents') && isfield(SessionData.RawEvents, 'Trial') && ...
+               idx <= length(SessionData.RawEvents.Trial) && ...
+               isfield(SessionData.RawEvents.Trial{idx}, 'Events')
+                
+                % Get Port1In events
+                if isfield(SessionData.RawEvents.Trial{idx}.Events, 'Port1In')
+                    port1InTimes = SessionData.RawEvents.Trial{idx}.Events.Port1In;
+                    if ~isempty(port1InTimes)
+                        % Get trial start time to ensure Port1In is within this trial
+                        trialStartTime = 0; % Trial start is at time 0
+                        
+                        % Get Stimulus state timing to check if Port1In is before or during Stimulus
+                        stimulusStart = NaN;
+                        if isfield(SessionData.RawEvents.Trial{idx}, 'States') && ...
+                           isfield(SessionData.RawEvents.Trial{idx}.States, 'Stimulus')
+                            stimulusStart = SessionData.RawEvents.Trial{idx}.States.Stimulus(1);
+                        end
+                        
+                        % Check if Port1In occurred in this trial (before or during Stimulus state)
+                        % Port1 can be clicked before Stimulus, and Condition6 will trigger reward when Stimulus state is entered
+                        if ~isnan(stimulusStart)
+                            % Port1In should be before or at the start of Stimulus state
+                            port1InBeforeOrDuringStimulus = port1InTimes <= stimulusStart;
+                        else
+                            % If Stimulus state doesn't exist, check if Port1In is within reasonable time window
+                            % Use a larger window (e.g., 10 seconds) to catch Port1 clicks before stimulus
+                            port1InBeforeOrDuringStimulus = port1InTimes >= trialStartTime & port1InTimes <= 10;
+                        end
+                        
+                        if any(port1InBeforeOrDuringStimulus)
+                            % Port1 was clicked before or at the start of Stimulus state
+                            % Check if reward occurred, and if Port1In timing is consistent with Condition6 trigger
+                            % Condition6 triggers reward when Stimulus state is entered, so reward should occur shortly after Stimulus starts
+                            
+                            if ~isnan(tempLeftReward)
+                                % Get absolute reward time (before alignment)
+                                try
+                                    leftRewardAbsTime = Session_tbl.LeftReward(idx,1);
+                                    % Find Port1In that could have triggered the reward
+                                    % Port1In should be before Stimulus start, and reward should occur after Stimulus start
+                                    % Check if there's a Port1In before Stimulus start, and reward occurs within reasonable time
+                                    if ~isnan(stimulusStart)
+                                        % Port1In before Stimulus, and reward after Stimulus start
+                                        timeFromPort1ToReward = leftRewardAbsTime - port1InTimes;
+                                        % Reward should occur after Stimulus starts, so timeFromPort1ToReward should be positive
+                                        % and within a reasonable window (e.g., 0 to 2 seconds)
+                                        if any(timeFromPort1ToReward > 0 & timeFromPort1ToReward < 2 & port1InBeforeOrDuringStimulus)
+                                            isLeftRewardFromPort1 = true;
+                                        end
+                                    else
+                                        % Fallback: if Stimulus timing is not available, check if Port1In is close to reward
+                                        timeDiff = abs(port1InTimes - leftRewardAbsTime);
+                                        if any(timeDiff < 2 & port1InBeforeOrDuringStimulus)
+                                            isLeftRewardFromPort1 = true;
+                                        end
+                                    end
+                                catch
+                                end
+                            end
+                            
+                            if ~isnan(tempRightReward)
+                                % Get absolute reward time (before alignment)
+                                try
+                                    rightRewardAbsTime = Session_tbl.RightReward(idx,1);
+                                    % Find Port1In that could have triggered the reward
+                                    if ~isnan(stimulusStart)
+                                        % Port1In before Stimulus, and reward after Stimulus start
+                                        timeFromPort1ToReward = rightRewardAbsTime - port1InTimes;
+                                        % Reward should occur after Stimulus starts, so timeFromPort1ToReward should be positive
+                                        % and within a reasonable window (e.g., 0 to 2 seconds)
+                                        if any(timeFromPort1ToReward > 0 & timeFromPort1ToReward < 2 & port1InBeforeOrDuringStimulus)
+                                            isRightRewardFromPort1 = true;
+                                        end
+                                    else
+                                        % Fallback: if Stimulus timing is not available, check if Port1In is close to reward
+                                        timeDiff = abs(port1InTimes - rightRewardAbsTime);
+                                        if any(timeDiff < 2 & port1InBeforeOrDuringStimulus)
+                                            isRightRewardFromPort1 = true;
+                                        end
+                                    end
+                                catch
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        catch
+            % If extraction fails, assume reward is from animal lick
+        end
         
         trial_start = 0;
-        trial_end = Session_tbl.WaitToFinish(idx,2);
+        try
+            trial_end = Session_tbl.WaitToFinish(idx,2);
+        catch
+            trial_end = NaN;
+        end
         
         % Align to stimulus onset
-        StimOnset = Session_tbl.Stimulus(idx,1);
+        try
+            if iscell(Session_tbl.Stimulus)
+                StimOnset = Session_tbl.Stimulus{idx}(1);
+            else
+                StimOnset = Session_tbl.Stimulus(idx,1);
+            end
+        catch
+            StimOnset = NaN;
+        end
+        
+        % Skip this trial if StimOnset is invalid
+        if isnan(StimOnset)
+            continue;
+        end
         tempLeftLicks = tempLeftLicks - StimOnset;
         tempRightLicks = tempRightLicks - StimOnset;
-        tempLeftReward = tempLeftReward - StimOnset;
-        tempRightReward = tempRightReward - StimOnset;
+        if ~isnan(tempLeftReward)
+            tempLeftReward = tempLeftReward - StimOnset;
+        end
+        if ~isnan(tempRightReward)
+            tempRightReward = tempRightReward - StimOnset;
+        end
         trial_start = trial_start - StimOnset;
         t_min = min(t_min, trial_start);
-        trial_end = trial_end - StimOnset;
-        t_max = max(t_max, trial_end);
-        
-        % Plot trial duration line
-        plot(rasterAx, [trial_start, trial_end], [pos, pos], '-', 'Color', [.7, .7, .7]);
+        if ~isnan(trial_end)
+            trial_end = trial_end - StimOnset;
+            t_max = max(t_max, trial_end);
+            % Plot trial duration line only if trial_end is valid
+            plot(rasterAx, [trial_start, trial_end], [pos, pos], '-', 'Color', [.7, .7, .7]);
+        else
+            % If trial_end is invalid, use a default duration or skip
+            % Use a default duration of 5 seconds if trial_end is NaN
+            default_trial_end = trial_start + 5;
+            t_max = max(t_max, default_trial_end);
+            plot(rasterAx, [trial_start, default_trial_end], [pos, pos], '-', 'Color', [.7, .7, .7]);
+        end
         
         % Plot left licks
         if ~isempty(tempLeftLicks)
@@ -149,12 +284,27 @@ function OnlineRasterPlot(customPlotFig, rasterAx, SessionData)
             plot(rasterAx, tempRightLicks, pos.*ones(size(tempRightLicks)), '.', 'Color', [1 0.2 0.2]);
         end
         
-        % Plot reward markers
+        % Plot reward markers - distinguish between Port1-triggered (triangle) and animal lick-triggered (square)
+        % Left reward
         if ~isnan(tempLeftReward)
-            plot(rasterAx, tempLeftReward, pos, 's', 'MarkerFaceColor', [0.2 0.2 1], 'Color', [0.2 0.2 1]);
+            if isLeftRewardFromPort1
+                % Port1-triggered reward - use triangle marker
+                plot(rasterAx, tempLeftReward, pos, '^', 'MarkerFaceColor', [0.2 0.2 1], 'Color', [0.2 0.2 1], 'MarkerSize', 8);
+            else
+                % Animal lick-triggered reward - use square marker
+                plot(rasterAx, tempLeftReward, pos, 's', 'MarkerFaceColor', [0.2 0.2 1], 'Color', [0.2 0.2 1]);
+            end
         end
+        
+        % Right reward
         if ~isnan(tempRightReward)
-            plot(rasterAx, tempRightReward, pos, 's', 'MarkerFaceColor', [1 0.2 0.2], 'Color', [1 0.2 0.2]);
+            if isRightRewardFromPort1
+                % Port1-triggered reward - use triangle marker
+                plot(rasterAx, tempRightReward, pos, '^', 'MarkerFaceColor', [1 0.2 0.2], 'Color', [1 0.2 0.2], 'MarkerSize', 8);
+            else
+                % Animal lick-triggered reward - use square marker
+                plot(rasterAx, tempRightReward, pos, 's', 'MarkerFaceColor', [1 0.2 0.2], 'Color', [1 0.2 0.2]);
+            end
         end
     end
     
