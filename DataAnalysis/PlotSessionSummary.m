@@ -303,6 +303,28 @@ function PlotSessionSummary(SessionData)
     lineNum = lineNum + 1;
     
     % ========================================================================
+    % 5.5. N TO SWITCH (NCorrectToSwitch)
+    % ========================================================================
+    nToSwitch = NaN;
+    if isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+        % Get from last trial's TrialSettings
+        lastTrialIdx = min(nTrials, length(SessionData.TrialSettings));
+        if isfield(SessionData.TrialSettings(lastTrialIdx), 'GUI')
+            if isfield(SessionData.TrialSettings(lastTrialIdx).GUI, 'NCorrectToSwitch')
+                nToSwitch = SessionData.TrialSettings(lastTrialIdx).GUI.NCorrectToSwitch;
+            end
+        end
+    end
+    
+    % Only display if the field exists (for compatibility with other protocols)
+    if ~isnan(nToSwitch)
+        textLines{lineNum} = ['N correct to switch: ' num2str(nToSwitch)];
+        lineNum = lineNum + 1;
+        textLines{lineNum} = '';  % Empty line
+        lineNum = lineNum + 1;
+    end
+    
+    % ========================================================================
     % 6-9. LEFT/RIGHT REWARD STATISTICS AND HIT RATES
     % ========================================================================
     % Initialize counters
