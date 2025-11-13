@@ -465,7 +465,11 @@ function OnlineSessionSummary(customPlotFig, summaryAx, SessionData)
         'Interpreter', 'none', 'Units', 'normalized');
     
     % Set title
-    title(summaryAx, 'Session Summary', 'FontSize', 12, 'FontWeight', 'bold');
+    if isfield(SessionData, 'Info') && isfield(SessionData.Info, 'SubjectName')
+        title(summaryAx, ['Session Summary - ' SessionData.Info.SubjectName ' ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+    else
+        title(summaryAx, ['Session Summary - ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+    end
     
     % Force update
     drawnow;

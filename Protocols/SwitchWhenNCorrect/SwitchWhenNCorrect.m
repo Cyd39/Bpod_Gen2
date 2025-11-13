@@ -18,7 +18,9 @@ function SwitchWhenNCorrect()
     
     NumTrials = StimParams.Behave.NumTrials; 
     StimDur = StimParams.Duration/1000;
-    % Save subject name to Data.Info.SubjectName
+ 
+    % Save Protocol name and Subject name to Data.Info
+    BpodSystem.Data.Info.ProtocolName = BpodSystem.GUIData.ProtocolName;
     BpodSystem.Data.Info.SubjectName = BpodSystem.GUIData.SubjectName;
     
     % Generate LeftRight stimulus sequence tables

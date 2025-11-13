@@ -590,7 +590,11 @@ function PlotSessionSummary(SessionData)
         'Interpreter', 'none');
     
     % Set title
-    title(ax, 'Session Summary', 'FontSize', 14, 'FontWeight', 'bold');
+    if isfield(SessionData, 'Info') && isfield(SessionData.Info, 'SubjectName')
+        title(ax, ['Session Summary - ' SessionData.Info.SubjectName ' ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+    else
+        title(ax, ['Session Summary - ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+    end
     
     % Force update
     drawnow;
