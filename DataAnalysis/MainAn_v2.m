@@ -61,17 +61,22 @@ figResLatency = gcf;  % Get the current figure handle after plotting
 plotraster_behavior_v2(SessionData);
 figRaster = gcf;  % Get the current figure handle after plotting
 
+PlotSessionSummary(SessionData);
+figSessionSummary = gcf;  % Get the current figure handle after plotting
+
 % Save figures to the same directory as the loaded file
 savePath = filepath;  % Use the directory where the data file was loaded from
 
 % Save figures with proper settings to prevent position shifts
 try
     % Use exportgraphics if available (better layout preservation)
-    exportgraphics(figLickIntervals, fullfile(savePath, ['LickIntervals_', name_only, '.png']), ...
+    exportgraphics(figLickIntervals, fullfile(savePath, [name_only,'_LickIntervals', '.png']), ...
         'Resolution', 300, 'ContentType', 'image');
-    exportgraphics(figResLatency, fullfile(savePath, ['ResLatency_', name_only, '.png']), ...
+    exportgraphics(figResLatency, fullfile(savePath, [name_only,'_ResLatency', '.png']), ...
         'Resolution', 300, 'ContentType', 'image');
-    exportgraphics(figRaster, fullfile(savePath, ['Raster_', name_only, '.png']), ...
+    exportgraphics(figRaster, fullfile(savePath, [name_only,'_Raster', '.png']), ...
+        'Resolution', 300, 'ContentType', 'image');
+    exportgraphics(figSessionSummary, fullfile(savePath, [name_only,'_SessionSummary', '.png']), ...
         'Resolution', 300, 'ContentType', 'image');
 catch
     % Force figure to render before capturing
@@ -79,15 +84,19 @@ catch
     
     % Save Lick Intervals figure
     frame = getframe(figLickIntervals);
-    imwrite(frame.cdata, fullfile(savePath, ['LickIntervals_', name_only, '.png']), 'PNG');
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_LickIntervals',  '.png']), 'PNG');
     
     % Save Response Latency figure
     frame = getframe(figResLatency);
-    imwrite(frame.cdata, fullfile(savePath, ['ResLatency_', name_only, '.png']), 'PNG');
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_ResLatency',  '.png']), 'PNG');
     
     % Save Raster plot figure
     frame = getframe(figRaster);
-    imwrite(frame.cdata, fullfile(savePath, ['Raster_', name_only, '.png']), 'PNG');
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_Raster',  '.png']), 'PNG');
+    
+    % Save Session Summary figure
+    frame = getframe(figSessionSummary);
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_SessionSummary',  '.png']), 'PNG');
 end
 
 disp(['Figures saved to: ' savePath]);
