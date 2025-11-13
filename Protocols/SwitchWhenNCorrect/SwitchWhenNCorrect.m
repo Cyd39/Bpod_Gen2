@@ -18,6 +18,8 @@ function SwitchWhenNCorrect()
     
     NumTrials = StimParams.Behave.NumTrials; 
     StimDur = StimParams.Duration/1000;
+    % Save subject name to Data.Info.SubjectName
+    BpodSystem.Data.Info.SubjectName = BpodSystem.GUIData.SubjectName;
     
     % Generate LeftRight stimulus sequence tables
     LeftRightSeq = GenLeftRightSeq(StimParams);
@@ -54,14 +56,15 @@ function SwitchWhenNCorrect()
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
     S.GUI.NCorrectToSwitch = NumTrials; % Number of correct trials needed to switch sides；by default, it is the total number of trials
     S.GUI.CutOffPeriod = 60; % seconds
-    
+    CutOffPeriod = S.GUI.CutOffPeriod;
+
     % Initialize parameter GUI
     BpodParameterGUI('init', S);
     
     % Create update button
     uicontrol('Style', 'pushbutton', ...
         'String', 'Update Parameters', ...
-        'Position', [160 240 150 30], ...
+        'Position', [250 310 150 30], ...
         'FontSize', 12, ...
         'Callback', @updateParams);
     
@@ -461,7 +464,7 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     sma = SetCondition(sma, 5, 'GlobalTimer1', 0); % Condition 3: GlobalTimer1 has ended
 
     % Set Condition for Port1In as manual Switch for reward given together with stimulus
-    sma = SetCondition(sma, 6, 'Port1In', 0);
+    sma = SetCondition(sma, 6, 'Port1', 0);
     
     % Add states
     % Ready state under different conditions
