@@ -211,18 +211,10 @@ function SwitchWhenNCorrect()
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
             
-            % Get current trial parameters from saved data (all were saved earlier to avoid shift)
-            currentStimRow = BpodSystem.Data.CurrentStimRow{currentTrial};
+            % Get current trial parameters from saved data (all were saved earlier to avoid shift)         
             correctSide = BpodSystem.Data.CorrectSide(currentTrial);
             isCatchTrial = BpodSystem.Data.IsCatchTrial(currentTrial);
-            ITIBefore = BpodSystem.Data.ITIBefore(currentTrial);
-            ITIAfter = BpodSystem.Data.ITIAfter(currentTrial);
-            ThisITI = BpodSystem.Data.ThisITI(currentTrial);
-            QuietTime = BpodSystem.Data.QuietTime(currentTrial);
-            TimerDuration = BpodSystem.Data.TimerDuration(currentTrial);
-            RewardAmount = BpodSystem.Data.RewardAmount(currentTrial);
-            ResWin = BpodSystem.Data.ResWin(currentTrial);
-            CutOff = BpodSystem.Data.CutOff(currentTrial);
+            
             % Note: All trial parameters were already saved earlier (before preparing next trial) to avoid shift
             
             % Check if response was correct (only for non-catch trials)
