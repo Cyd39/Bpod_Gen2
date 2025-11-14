@@ -160,15 +160,40 @@ function SwitchWhenNCorrect()
         trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'WaitToFinish'});
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
+        % Get trial data
+        RawEvents = trialManager.getTrialData;
+        if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
+        
+        % Save all trial parameters from S BEFORE preparing next trial (to avoid shift)
+        % This ensures we save the values that were used for this trial
+        % For first trial, S was set at line 147. For subsequent trials, S was set in previous iteration.
+        if ~isempty(fieldnames(RawEvents))
+            BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
+            % Derive correctSide from currentSide using configuration
+            if currentSide == 1  % Low frequency side
+                correctSideForThisTrial = lowFreqSpout;
+            else % High frequency side
+                correctSideForThisTrial = highFreqSpout;
+            end
+            BpodSystem.Data.CorrectSide(currentTrial) = correctSideForThisTrial;
+            % Save all other parameters from S (before S gets updated for next trial)
+            BpodSystem.Data.IsCatchTrial(currentTrial) = S.IsCatchTrial;
+            BpodSystem.Data.CurrentStimRow{currentTrial} = S.CurrentStimRow;
+            BpodSystem.Data.ITIBefore(currentTrial) = S.ITIBefore;
+            BpodSystem.Data.ITIAfter(currentTrial) = S.ITIAfter;
+            BpodSystem.Data.ThisITI(currentTrial) = S.ThisITI;
+            BpodSystem.Data.QuietTime(currentTrial) = S.QuietTime;
+            BpodSystem.Data.TimerDuration(currentTrial) = S.TimerDuration;
+            BpodSystem.Data.RewardAmount(currentTrial) = S.RewardAmount;
+            BpodSystem.Data.ResWin(currentTrial) = S.ResWin;
+            BpodSystem.Data.CutOff(currentTrial) = S.GUI.CutOffPeriod;
+        end
+        
         % Prepare next trial's state machine if not the last trial
         if currentTrial < NumTrials
             [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
-        
-        % Get trial data
-        RawEvents = trialManager.getTrialData;
-        if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
         % Handle pause condition
         HandlePauseCondition;
@@ -186,34 +211,19 @@ function SwitchWhenNCorrect()
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
             
-            % Get current trial parameters from S
-            currentStimRow = S.CurrentStimRow;
-            correctSide = S.CorrectSide;
-            isCatchTrial = S.IsCatchTrial;
-            ITIBefore = S.ITIBefore;
-            ITIAfter = S.ITIAfter;
-            ThisITI = S.ThisITI;
-            QuietTime = S.QuietTime;
-            TimerDuration = S.TimerDuration;
-            RewardAmount = S.RewardAmount;
-            ResWin = S.ResWin;
-            CutOff = S.GUI.CutOffPeriod;
-            
-            % Save timing of the trial
-            BpodSystem.Data.ITIBefore(currentTrial) = ITIBefore;
-            BpodSystem.Data.ITIAfter(currentTrial) = ITIAfter;
-            BpodSystem.Data.ThisITI(currentTrial) = ThisITI;
-            BpodSystem.Data.QuietTime(currentTrial) = QuietTime;
-            BpodSystem.Data.TimerDuration(currentTrial) = TimerDuration;
-            BpodSystem.Data.RewardAmount(currentTrial) = RewardAmount;
-            BpodSystem.Data.ResWin(currentTrial) = ResWin;
-            BpodSystem.Data.CutOff(currentTrial) = CutOff;
-            
-            % Save stimulus information
-            BpodSystem.Data.CurrentStimRow{currentTrial} = currentStimRow;
-            BpodSystem.Data.CorrectSide(currentTrial) = correctSide;
-            BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
-            BpodSystem.Data.IsCatchTrial(currentTrial) = isCatchTrial;
+            % Get current trial parameters from saved data (all were saved earlier to avoid shift)
+            currentStimRow = BpodSystem.Data.CurrentStimRow{currentTrial};
+            correctSide = BpodSystem.Data.CorrectSide(currentTrial);
+            isCatchTrial = BpodSystem.Data.IsCatchTrial(currentTrial);
+            ITIBefore = BpodSystem.Data.ITIBefore(currentTrial);
+            ITIAfter = BpodSystem.Data.ITIAfter(currentTrial);
+            ThisITI = BpodSystem.Data.ThisITI(currentTrial);
+            QuietTime = BpodSystem.Data.QuietTime(currentTrial);
+            TimerDuration = BpodSystem.Data.TimerDuration(currentTrial);
+            RewardAmount = BpodSystem.Data.RewardAmount(currentTrial);
+            ResWin = BpodSystem.Data.ResWin(currentTrial);
+            CutOff = BpodSystem.Data.CutOff(currentTrial);
+            % Note: All trial parameters were already saved earlier (before preparing next trial) to avoid shift
             
             % Check if response was correct (only for non-catch trials)
             if ~isCatchTrial

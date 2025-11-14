@@ -327,6 +327,21 @@ function PlotSessionSummary(SessionData)
     % ========================================================================
     % 6-9. LEFT/RIGHT REWARD STATISTICS AND HIT RATES
     % ========================================================================
+    % Get side configuration from StimParams (for trial count, not for hit calculation)
+    highFreqSpout = NaN;
+    lowFreqSpout = NaN;
+    if isfield(SessionData, 'StimParams') && isfield(SessionData.StimParams, 'Behave')
+        if isfield(SessionData.StimParams.Behave, 'CorrectSpout')
+            highFreqSpout = SessionData.StimParams.Behave.CorrectSpout; % 1 = left, 2 = right
+            lowFreqSpout = 3 - highFreqSpout; % Opposite of high frequency spout
+        end
+    end
+    % Use default configuration if not found
+    if isnan(highFreqSpout)
+        highFreqSpout = 2; % Default: high frequency -> right
+        lowFreqSpout = 1;  % Default: low frequency -> left
+    end
+    
     % Initialize counters
     leftTrials = 0;
     rightTrials = 0;
@@ -355,9 +370,22 @@ function PlotSessionSummary(SessionData)
             isCatchTrial = SessionData.IsCatchTrial(trialNum);
         end
         
-        % Determine correct side for this trial
+        % Determine correct side for this trial (for trial count only, not for hit calculation)
+        % Priority 1: Use CurrentSide (most reliable, already fixed to avoid shift)
         correctSide = NaN;
-        if isfield(SessionData, 'CorrectSide') && trialNum <= length(SessionData.CorrectSide)
+        if isfield(SessionData, 'CurrentSide') && trialNum <= length(SessionData.CurrentSide)
+            currentSide = SessionData.CurrentSide(trialNum);
+            if ~isnan(currentSide)
+                % Derive correctSide from CurrentSide using configuration
+                if currentSide == 1  % Low frequency side
+                    correctSide = lowFreqSpout;
+                elseif currentSide == 2  % High frequency side
+                    correctSide = highFreqSpout;
+                end
+            end
+        end
+        % Priority 2: Fallback to CorrectSide if CurrentSide is not available (for compatibility)
+        if isnan(correctSide) && isfield(SessionData, 'CorrectSide') && trialNum <= length(SessionData.CorrectSide)
             correctSide = SessionData.CorrectSide(trialNum);
         end
         
@@ -464,15 +492,15 @@ function PlotSessionSummary(SessionData)
             end
         end
         
-        % Count rewards by actual reward received (not by correctSide)
-        % This ensures consistency with total water volume calculation
+        % Count rewards and hits
+        % Hit = reward received AND not from Port1 AND not catch trial
         if leftRewardVisited
             leftRewards = leftRewards + 1;
             if isLeftRewardFromPort1
                 leftManualRewards = leftManualRewards + 1;
             end
-            % Only count as hit if it's a non-catch trial and correctSide is left
-            if ~isCatchTrial && ~isnan(correctSide) && correctSide == 1
+            % Count as hit if: non-catch trial AND not manually triggered (Port1)
+            if ~isCatchTrial && ~isLeftRewardFromPort1
                 leftHits = leftHits + 1;
             end
         end
@@ -481,8 +509,8 @@ function PlotSessionSummary(SessionData)
             if isRightRewardFromPort1
                 rightManualRewards = rightManualRewards + 1;
             end
-            % Only count as hit if it's a non-catch trial and correctSide is right
-            if ~isCatchTrial && ~isnan(correctSide) && correctSide == 2
+            % Count as hit if: non-catch trial AND not manually triggered (Port1)
+            if ~isCatchTrial && ~isRightRewardFromPort1
                 rightHits = rightHits + 1;
             end
         end
