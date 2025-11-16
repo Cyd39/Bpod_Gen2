@@ -164,7 +164,7 @@ function SwitchWhenNCorrect()
         RawEvents = trialManager.getTrialData;
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
-        % Save all trial parameters from S BEFORE preparing next trial (to avoid shift)
+        % Save all trial parameters from S BEFORE processing trial data (to avoid shift)
         % This ensures we save the values that were used for this trial
         % For first trial, S was set at line 147. For subsequent trials, S was set in previous iteration.
         if ~isempty(fieldnames(RawEvents))
@@ -189,20 +189,6 @@ function SwitchWhenNCorrect()
             BpodSystem.Data.CutOff(currentTrial) = S.GUI.CutOffPeriod;
         end
         
-        % Prepare next trial's state machine if not the last trial
-        if currentTrial < NumTrials
-            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
-            SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
-        end
-        
-        % Handle pause condition
-        HandlePauseCondition;
-        
-        % Start next trial if not the last one
-        if currentTrial < NumTrials
-            trialManager.startTrial(); % Start processing the next trial's events
-        end
-        
         % Process trial data if available
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data = AddTrialEvents(BpodSystem.Data, RawEvents);
@@ -215,7 +201,7 @@ function SwitchWhenNCorrect()
             correctSide = BpodSystem.Data.CorrectSide(currentTrial);
             isCatchTrial = BpodSystem.Data.IsCatchTrial(currentTrial);
             
-            % Note: All trial parameters were already saved earlier (before preparing next trial) to avoid shift
+            % Note: All trial parameters were already saved earlier (before processing trial data) to avoid shift
             
             % Check if response was correct (only for non-catch trials)
             if ~isCatchTrial
@@ -292,7 +278,24 @@ function SwitchWhenNCorrect()
                 highFreqIndex = highFreqIndex + 1;
                 % Continue reading beyond table length if needed
             end
-            
+        end
+        
+        % Prepare next trial's state machine if not the last trial
+        if currentTrial < NumTrials
+            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+            SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
+        end
+        
+        % Handle pause condition
+        HandlePauseCondition;
+        
+        % Start next trial if not the last one
+        if currentTrial < NumTrials
+            trialManager.startTrial(); % Start processing the next trial's events
+        end
+        
+        % Update outcome plot and other visualizations
+        if ~isempty(fieldnames(RawEvents))
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
             
