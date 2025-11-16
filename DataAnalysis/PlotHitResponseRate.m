@@ -11,6 +11,9 @@ function PlotHitResponseRate(SessionData)
     % Input:
     %   SessionData - Bpod session data structure
     
+    % Window size for response rate calculation
+    windowSize = 15;
+
     % Get side configuration from StimParams
     highFreqSpout = NaN;
     lowFreqSpout = NaN;
@@ -45,12 +48,7 @@ function PlotHitResponseRate(SessionData)
     trialRightResponse = false(nTrials, 1); % Any lick in response window (right side trials)
     trialLeftHit = false(nTrials, 1);
     trialRightHit = false(nTrials, 1);
-    trialIsCatchTrial = false(nTrials, 1);
-    
-    % No cumulative counters needed - hit rate will use sliding window
-    
-    % Window size for response rate calculation
-    windowSize = 15;
+    trialIsCatchTrial = false(nTrials, 1);    
     
     % First pass: collect all trial data
     for trialNum = 1:nTrials
@@ -268,7 +266,7 @@ function PlotHitResponseRate(SessionData)
     % Formatting
     xlabel('Trial Number', 'FontSize', 12);
     ylabel('Rate', 'FontSize', 12);
-    title('Hit Rate and Response Rate Over Trials', 'FontSize', 14, 'FontWeight', 'bold');
+    title(['Hit Rate and Response Rate Over Trials (window size = ' num2str(windowSize) ' trials)'], 'FontSize', 14, 'FontWeight', 'bold');
     legend('Location', 'best', 'FontSize', 10);
     grid on;
     ylim([0 1]);
