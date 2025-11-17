@@ -1,6 +1,6 @@
-% SwitchWhenNCorrect protocol (TrialManager version)
-% This protocol is used to switch the correct side when the animal has corrected N times
-function SwitchWhenNCorrect()
+    % SwitchWhenNCorrect protocol (TrialManager version)
+    % This protocol is used to switch the correct side when the animal has corrected N times
+function AntiBias()
     global BpodSystem
 
     %% Session Setup
@@ -98,8 +98,15 @@ function SwitchWhenNCorrect()
     outcomePlot.CorrectStateNames = {'LeftReward', 'RightReward'}; % States where correct response was made 
     
     % Initialize trial tracking variables
-    currentSide = 1; % 1 = low frequency side, 2 = high frequency side (left/right mapping determined by highFreqSpout/lowFreqSpout configuration)
-    correctCount = 0; % Counter for correct trials on current side
+    % Hard-coded balanced sequence for first 14 trials
+    % 1 = low frequency side, 2 = high frequency side
+    % Constraint: 7 left, 7 right, no 3 consecutive same side
+    balancedSequence = [1, 2, 1, 2, 1, 1, 2, 2, 1, 2, 1, 2, 1, 2];
+    BpodSystem.Data.BalancedSequence = balancedSequence;
+    BpodSystem.Data.SequenceIndex = 2;  % Track position in sequence (start at 2 because trial 1 uses index 1)
+    
+    % Set initial side from balanced sequence (trial 1)
+    currentSide = balancedSequence(1); % 1 = low frequency side, 2 = high frequency side (left/right mapping determined by highFreqSpout/lowFreqSpout configuration)
     highFreqIndex = 1; % Index for high frequency table (continuous)
     lowFreqIndex = 1; % Index for low frequency table (continuous)
     
@@ -107,7 +114,6 @@ function SwitchWhenNCorrect()
     BpodSystem.Data.CurrentSide = [];
     BpodSystem.Data.CorrectSide = [];
     BpodSystem.Data.IsCorrect = [];
-    BpodSystem.Data.CorrectCount = [];
     BpodSystem.Data.IsCatchTrial = [];
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
@@ -144,7 +150,7 @@ function SwitchWhenNCorrect()
     
 
     %% Prepare and start first trial
-    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, 0, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
     trialManager.startTrial(sma);
     
     %% Main loop, runs once per trial
@@ -164,8 +170,7 @@ function SwitchWhenNCorrect()
         RawEvents = trialManager.getTrialData;
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
-        % Save all trial parameters from S BEFORE preparing next trial (to avoid shift)
-        % This ensures we save the values that were used for this trial
+        % Save all trial parameters from S BEFORE preparing next trial
         % For first trial, S was set at line 147. For subsequent trials, S was set in previous iteration.
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
@@ -189,21 +194,7 @@ function SwitchWhenNCorrect()
             BpodSystem.Data.CutOff(currentTrial) = S.GUI.CutOffPeriod;
         end
         
-        % Prepare next trial's state machine if not the last trial
-        if currentTrial < NumTrials
-            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
-            SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
-        end
-        
-        % Handle pause condition
-        HandlePauseCondition;
-        
-        % Start next trial if not the last one
-        if currentTrial < NumTrials
-            trialManager.startTrial(); % Start processing the next trial's events
-        end
-        
-        % Process trial data if available
+        % Process trial data if available (needed for PickSideAntiBias)
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data = AddTrialEvents(BpodSystem.Data, RawEvents);
             BpodSystem.Data.TrialSettings(currentTrial) = S;
@@ -229,13 +220,11 @@ function SwitchWhenNCorrect()
                 if leftRewardVisited || rightRewardVisited
                     % Animal licked correct side and got reward - correct response
                     isCorrect = true;
-                    correctCount = correctCount + 1;
-                    disp(['Trial ' num2str(currentTrial) ': Correct response! Count: ' num2str(correctCount)]);
+                    disp(['Trial ' num2str(currentTrial) ': Correct response!']);
                 else
                     % Animal did not lick correct side - incorrect response
                     isCorrect = false;
-                    % Do NOT reset counter - keep cumulative count
-                    disp(['Trial ' num2str(currentTrial) ': Incorrect response. Count remains: ' num2str(correctCount)]);
+                    disp(['Trial ' num2str(currentTrial) ': Incorrect response.']);
                 end
             else
                 % Catch trial - no response expected
@@ -245,7 +234,6 @@ function SwitchWhenNCorrect()
             
             % Save response information
             BpodSystem.Data.IsCorrect(currentTrial) = isCorrect;
-            BpodSystem.Data.CorrectCount(currentTrial) = correctCount;
             
             % Update trial type for outcome plot based on correct side
             trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout
@@ -270,18 +258,29 @@ function SwitchWhenNCorrect()
                     BpodSystem.Data.StimTable = [BpodSystem.Data.StimTable; currentStimRow];
                 end
             end
-            
-            % Check if we need to switch sides
-            if correctCount >= S.GUI.NCorrectToSwitch
-                % Switch to the other side
-                if currentSide == 1
-                    currentSide = 2; % Switch to high frequency
-                    disp(['Switching to high frequency side after ' num2str(correctCount) ' cumulative correct trials']);
-                else
-                    currentSide = 1; % Switch to low frequency
-                    disp(['Switching to low frequency side after ' num2str(correctCount) ' cumulative correct trials']);
+        end
+        
+        % Determine next side based on trial number (BEFORE preparing next trial's state machine)
+        if currentTrial < NumTrials
+            if currentTrial < 14
+                % Use hard-coded balanced sequence for trials 2-14
+                % (trial 1 was already set in initialization)
+                sequenceIndex = BpodSystem.Data.SequenceIndex;
+                nextSide = BpodSystem.Data.BalancedSequence(sequenceIndex);
+                BpodSystem.Data.SequenceIndex = sequenceIndex + 1;
+                
+                if nextSide ~= currentSide
+                    currentSide = nextSide;
+                    disp(['Trial ' num2str(currentTrial+1) ': Switching to side ' num2str(nextSide) ' (from balanced sequence)']);
                 end
-                correctCount = 0; % Reset counter for new side
+            else
+                % Trial 14+: Use PickSideAntiBias function
+                % (trial 14 ended, now deciding side for trial 15+)
+                nextSide = PickSideAntiBias(BpodSystem.Data);
+                if nextSide ~= currentSide
+                    currentSide = nextSide;
+                    disp(['Trial ' num2str(currentTrial+1) ': Switching to side ' num2str(nextSide) ' (from PickSideAntiBias)']);
+                end
             end
             
             % Update indices for next trial (independent continuous indexing, no cycling)
@@ -292,6 +291,22 @@ function SwitchWhenNCorrect()
                 highFreqIndex = highFreqIndex + 1;
                 % Continue reading beyond table length if needed
             end
+            
+            % Prepare next trial's state machine (using the updated currentSide)
+            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, 0, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+            SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
+        end
+        
+        % Handle pause condition
+        HandlePauseCondition;
+        
+        % Start next trial if not the last one
+        if currentTrial < NumTrials
+            trialManager.startTrial(); % Start processing the next trial's events
+        end
+        
+        % Update plots and save data
+        if ~isempty(fieldnames(RawEvents))
             
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
