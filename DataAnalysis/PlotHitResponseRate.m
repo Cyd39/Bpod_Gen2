@@ -1,5 +1,5 @@
-function PlotHitResponseRate(SessionData)
-    % PlotHitResponseRate - Plot hit rate and response rate from saved SessionData
+function PlotHitResponseRate(SessionData, varargin)
+    % PlotHitResponseRate - Plot hit rate and response rate from SessionData
     % sliding window: last 15 trials for each side.
     % This function plots 4 lines:
     % - Left Response Rate: left-side trials with any lick in response window / left trials (sliding window)
@@ -8,8 +8,39 @@ function PlotHitResponseRate(SessionData)
     % - Right Hit Rate: right hits / right non-catch trials (sliding window)
     % Response rate: Any lick (BNC1High or BNC2High) within response window (stimulus start to ResWin), regardless of correctness. 
     % Hit rate: Correct response (reward received, not from Port1, not catch trial).  
-    % Input:
+    % 
+    % Inputs:
     %   SessionData - Bpod session data structure
+    %   Optional name-value pairs:
+    %     'FigureHandle' - figure handle for the combined plot (optional, for activation in online mode)
+    %     'Axes' - axes handle for the plot (optional, if not provided, creates new figure)
+    %     'FigureName' - name for new figure if axes not provided (default: 'Hit Rate and Response Rate')
+    %
+    % Usage:
+    %   Online mode: PlotHitResponseRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', responseRateAx);
+    %   Offline mode: PlotHitResponseRate(SessionData);
+    
+    % Parse optional inputs
+    p = inputParser;
+    addParameter(p, 'FigureHandle', [], @(x) isempty(x) || isgraphics(x, 'figure'));
+    addParameter(p, 'Axes', [], @(x) isempty(x) || isgraphics(x, 'axes'));
+    addParameter(p, 'FigureName', 'Hit Rate and Response Rate', @ischar);
+    parse(p, varargin{:});
+    
+    customPlotFig = p.Results.FigureHandle;
+    ax = p.Results.Axes;
+    figureName = p.Results.FigureName;
+    
+    % Activate figure if provided (for online mode)
+    if ~isempty(customPlotFig) && isvalid(customPlotFig)
+        figure(customPlotFig);
+    end
+    
+    % Create axes if not provided (offline mode)
+    if isempty(ax)
+        figure('Name', figureName, 'Position', [100 100 1200 600]);
+        ax = axes('Position', [0.1 0.15 0.85 0.75]);
+    end
     
     % Window size for response rate calculation
     windowSize = 15;
@@ -29,11 +60,32 @@ function PlotHitResponseRate(SessionData)
         lowFreqSpout = 1;  % Default: low frequency -> left
     end
     
-    % Get number of trials
+    % Check if data exists
     if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
-        error('SessionData does not contain RawEvents.Trial');
+        warning('SessionData.RawEvents.Trial not found');
+        cla(ax);
+        text(ax, 0.5, 0.5, 'No data available', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14);
+        if ~isempty(customPlotFig)
+            drawnow;
+        end
+        return;
     end
+    
+    % Get number of trials
     nTrials = length(SessionData.RawEvents.Trial);
+    
+    % Check if there are any trials
+    if nTrials == 0
+        warning('No trials found in SessionData');
+        cla(ax);
+        text(ax, 0.5, 0.5, 'No trials available', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14);
+        if ~isempty(customPlotFig)
+            drawnow;
+        end
+        return;
+    end
     
     % Initialize arrays to store rates
     leftResponseRate = NaN(nTrials, 1);
@@ -244,35 +296,40 @@ function PlotHitResponseRate(SessionData)
         end
     end
     
-    % Create figure
-    figure('Name', 'Hit Rate and Response Rate', 'Position', [100 100 1200 600]);
-    
     % Plot all 4 lines
+    axes(ax);  % Activate the correct axes
+    cla(ax);   % Clear previous plot
+    hold(ax, 'on');
+    
     trialNumbers = 1:nTrials;
-    hold on;
     
     % Left Response Rate
-    plot(trialNumbers, leftResponseRate, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Left Response Rate');
+    plot(ax, trialNumbers, leftResponseRate, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Left Response Rate');
     
     % Left Hit Rate
-    plot(trialNumbers, leftHitRate, 'b--', 'LineWidth', 1.5, 'DisplayName', 'Left Hit Rate');
+    plot(ax, trialNumbers, leftHitRate, 'b--', 'LineWidth', 1.5, 'DisplayName', 'Left Hit Rate');
     
     % Right Response Rate
-    plot(trialNumbers, rightResponseRate, 'r-', 'LineWidth', 1.5, 'DisplayName', 'Right Response Rate');
+    plot(ax, trialNumbers, rightResponseRate, 'r-', 'LineWidth', 1.5, 'DisplayName', 'Right Response Rate');
     
     % Right Hit Rate
-    plot(trialNumbers, rightHitRate, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Right Hit Rate');
+    plot(ax, trialNumbers, rightHitRate, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Right Hit Rate');
     
     % Formatting
-    xlabel('Trial Number', 'FontSize', 12);
-    ylabel('Rate', 'FontSize', 12);
-    title(['Hit Rate and Response Rate Over Trials (window size = ' num2str(windowSize) ' trials)'], 'FontSize', 14, 'FontWeight', 'bold');
-    legend('Location', 'best', 'FontSize', 10);
-    grid on;
-    ylim([0 1]);
-    xlim([1 nTrials]);
+    xlabel(ax, 'Trial Number', 'FontSize', 12);
+    ylabel(ax, 'Rate', 'FontSize', 12);
+    title(ax, ['Hit Rate and Response Rate Over Trials (window size = ' num2str(windowSize) ' trials)'], 'FontSize', 12);
+    legend(ax, 'Location', 'best', 'FontSize', 10);
+    grid(ax, 'on');
+    ylim(ax, [0 1]);
+    xlim(ax, [1 nTrials]);
     
-    hold off;
+    hold(ax, 'off');
+    
+    % Force update of the figure (for online mode)
+    if ~isempty(customPlotFig)
+        drawnow;
+    end
 end
 
 % Helper function to check if a reward was triggered by Port1

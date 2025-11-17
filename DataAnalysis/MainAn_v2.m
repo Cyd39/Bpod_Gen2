@@ -52,13 +52,13 @@ disp('Behavior Data loaded');
 
 %% Plot and save figure
 % Plot functions create their own figures, so we get the figure handles after plotting
-PlotLickIntervalsFromSessionData(SessionData);
+PlotLickIntervals(SessionData);
 figLickIntervals = gcf;  % Get the current figure handle after plotting
 
 PlotResLatencyFromSessionData(SessionData);
 figResLatency = gcf;  % Get the current figure handle after plotting
 
-plotraster_behavior_v2(SessionData);
+PlotLickRaster(SessionData);
 figRaster = gcf;  % Get the current figure handle after plotting
 
 PlotSessionSummary(SessionData);
