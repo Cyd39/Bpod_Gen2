@@ -100,8 +100,8 @@ function AntiBias()
     % Initialize trial tracking variables
     % Hard-coded balanced sequence for first 14 trials
     % 1 = low frequency side, 2 = high frequency side
-    % Constraint: 7 left, 7 right, no 3 consecutive same side
-    balancedSequence = [1, 2, 1, 2, 1, 1, 2, 2, 1, 2, 1, 2, 1, 2];
+    % Constraint: 10 left, 10 right, no 4 consecutive same side % TO DO
+    balancedSequence = [1, 2, 1, 2, 1, 1, 2, 2, 1, 2, 1, 2, 1, 2, 2, 1, 1, 2, 2, 1];
     BpodSystem.Data.BalancedSequence = balancedSequence;
     BpodSystem.Data.SequenceIndex = 2;  % Track position in sequence (start at 2 because trial 1 uses index 1)
     
@@ -269,7 +269,7 @@ function AntiBias()
         
         % Determine next side based on trial number (BEFORE preparing next trial's state machine)
         if currentTrial < NumTrials
-            if currentTrial < 14
+            if currentTrial < 21
                 % Use hard-coded balanced sequence for trials 2-14
                 % (trial 1 was already set in initialization)
                 sequenceIndex = BpodSystem.Data.SequenceIndex;
