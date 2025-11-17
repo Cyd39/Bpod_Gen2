@@ -1,43 +1,85 @@
-function PlotLickIntervalsFromSessionData(SessionData)
-    % PlotLickIntervalsFromSessionData - Plot lick interval histogram from saved SessionData
+function PlotLickIntervals(SessionData, varargin)
+    % PlotLickIntervals - Plot lick interval histogram from SessionData
     % 
-    % Input:
-    %   SessionData - Session data structure loaded from saved .mat file
-    %
     % This function extracts all lick events (BNC1High and BNC2High) from all trials,
     % converts them to absolute time, calculates intervals between consecutive licks,
     % and displays a histogram with log-scale y-axis.
     %
+    % Inputs:
+    %   SessionData - Session data structure
+    %   Optional name-value pairs:
+    %     'FigureHandle' - figure handle for the combined plot (optional, for activation in online mode)
+    %     'Axes' - axes handle for the plot (optional, if not provided, creates new figure)
+    %     'FigureName' - name for new figure if axes not provided (default: 'Lick Intervals Distribution')
+    %
     % Usage:
-    %   load('SessionData.mat', 'SessionData');
-    %   PlotLickIntervalsFromSessionData(SessionData);
+    %   Online mode: PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
+    %   Offline mode: PlotLickIntervals(SessionData);
     
-    % Initialize figure
-    figure('Name', 'Lick Intervals Distribution', 'Position', [100 100 1000 600]);
-    ax = axes('Position', [0.1 0.15 0.85 0.75]);
-    title(ax, 'Lick Intervals Distribution');
-    xlabel(ax, 'Lick Interval (seconds)');
-    ylabel(ax, 'Count');
-    grid(ax, 'on');
-    hold(ax, 'on');
+    % Parse optional inputs
+    p = inputParser;
+    addParameter(p, 'FigureHandle', [], @(x) isempty(x) || isgraphics(x, 'figure'));
+    addParameter(p, 'Axes', [], @(x) isempty(x) || isgraphics(x, 'axes'));
+    addParameter(p, 'FigureName', 'Lick Intervals Distribution', @ischar);
+    parse(p, varargin{:});
+    
+    customPlotFig = p.Results.FigureHandle;
+    ax = p.Results.Axes;
+    figureName = p.Results.FigureName;
+    
+    % Activate figure if provided (for online mode)
+    if ~isempty(customPlotFig) && isvalid(customPlotFig)
+        figure(customPlotFig);
+    end
+    
+    % Create axes if not provided (offline mode)
+    if isempty(ax)
+        figure('Name', figureName, 'Position', [100 100 1000 600]);
+        ax = axes('Position', [0.1 0.15 0.85 0.75]);
+        title(ax, 'Lick Intervals Distribution');
+        xlabel(ax, 'Lick Interval (seconds)');
+        ylabel(ax, 'Count');
+        grid(ax, 'on');
+        hold(ax, 'on');
+    end
+    
+    % Check if data exists
+    if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
+        warning('SessionData.RawEvents.Trial not found');
+        cla(ax);
+        text(ax, 0.5, 0.5, 'No data available', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14);
+        if ~isempty(customPlotFig)
+            drawnow;
+        end
+        return;
+    end
     
     % Get number of trials
     if ~isfield(SessionData, 'nTrials')
-        error('SessionData does not contain nTrials field');
+        % Try to get from RawEvents if nTrials not available
+        nTrials = length(SessionData.RawEvents.Trial);
+    else
+        nTrials = SessionData.nTrials;
     end
-    nTrials = SessionData.nTrials;
+    
+    % Check if there are any trials
+    if nTrials == 0
+        warning('No trials found in SessionData');
+        cla(ax);
+        text(ax, 0.5, 0.5, 'No trials available', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14);
+        if ~isempty(customPlotFig)
+            drawnow;
+        end
+        return;
+    end
     
     % Extract all lick times from all trials
     allLickTimesGlobal = [];
     
     % Loop through each trial
     for trialNum = 1:nTrials
-        % Check if trial data exists
-        if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
-            warning('SessionData.RawEvents.Trial not found');
-            continue;
-        end
-        
         if trialNum > length(SessionData.RawEvents.Trial)
             continue;
         end
@@ -102,7 +144,8 @@ function PlotLickIntervalsFromSessionData(SessionData)
         allLickIntervals = diff(allLickTimesGlobal);
         
         % Plot histogram
-        cla(ax);
+        axes(ax);  % Activate the correct axes
+        cla(ax);   % Clear previous plot
         histogram(ax, allLickIntervals, 'BinWidth', 0.1, 'FaceColor', [0.2 0.6 0.8], 'EdgeColor', 'black');
         set(ax, 'YScale', 'log');  % Set y-axis to log scale
         
@@ -114,8 +157,10 @@ function PlotLickIntervalsFromSessionData(SessionData)
         xlabel(ax, 'Lick Interval (seconds)');
         ylabel(ax, 'Count');
         
-        % Create title with No-Lick range if available
-        if ~isnan(minQuietTime) && ~isnan(maxQuietTime)
+        % Create title with No-Lick range if available (offline mode feature)
+        % In online mode, use simpler title
+        if isempty(customPlotFig) && ~isnan(minQuietTime) && ~isnan(maxQuietTime)
+            % Offline mode: show QuietTime info
             if abs(minQuietTime - maxQuietTime) < 0.001
                 % If min and max are the same, show single value
                 title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals, No-Lick: ' sprintf('%.1f', minQuietTime) ' s)']);
@@ -123,6 +168,7 @@ function PlotLickIntervalsFromSessionData(SessionData)
                 title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals, No-Lick: ' sprintf('%.1f-%.1f', minQuietTime, maxQuietTime) ' s)']);
             end
         else
+            % Online mode or QuietTime not available: simple title
             title(ax, ['Lick Intervals Distribution (n=' num2str(length(allLickIntervals)) ' intervals)']);
         end
         grid(ax, 'on');
@@ -140,6 +186,11 @@ function PlotLickIntervalsFromSessionData(SessionData)
         cla(ax);
         text(ax, 0.5, 0.5, 'Not enough lick events to calculate intervals', ...
             'HorizontalAlignment', 'center', 'FontSize', 14);
+    end
+    
+    % Force update of the figure (for online mode)
+    if ~isempty(customPlotFig)
+        drawnow;
     end
 end
 

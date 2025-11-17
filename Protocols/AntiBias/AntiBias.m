@@ -118,32 +118,39 @@ function AntiBias()
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
     %% Initialize custom figure for lick interval, response latency histograms, raster plot, and session summary
-    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 1000 480]);
+    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 1000 720]);
     % Upper left subplot for lick intervals
-    lickIntervalAx = subplot(2, 3, 1);
+    lickIntervalAx = subplot(3, 3, 1);
     title(lickIntervalAx, 'Lick Intervals Distribution');
     xlabel(lickIntervalAx, 'Lick Interval (seconds)');
     ylabel(lickIntervalAx, 'Count');
     grid(lickIntervalAx, 'on');
     hold(lickIntervalAx, 'on');
     % Lower left subplot for response latency
-    resLatencyAx = subplot(2, 3, 4);
+    resLatencyAx = subplot(3, 3, 4);
     title(resLatencyAx, 'Response Latency Distribution');
     xlabel(resLatencyAx, 'Response Latency (seconds)');
     ylabel(resLatencyAx, 'Count');
     grid(resLatencyAx, 'on');
     hold(resLatencyAx, 'on');
     % Middle panel (spans both rows) for raster plot
-    rasterAx = subplot(2, 3, [2, 5]);
+    rasterAx = subplot(3, 3, [2, 5]);
     title(rasterAx, 'Licks aligned to stimulus onset');
     xlabel(rasterAx, 'Time re stim. onset (s)');
     ylabel(rasterAx, 'Trial number');
     grid(rasterAx, 'on');
     hold(rasterAx, 'on');
     % Right panel (spans both rows) for session summary
-    summaryAx = subplot(2, 3, [3, 6]);
+    summaryAx = subplot(3, 3, [3, 6]);
     axis(summaryAx, 'off');
     title(summaryAx, 'Session Summary', 'FontSize', 12, 'FontWeight', 'bold');
+    % Bottom panel for Hit Rate and Response Rate
+    responseRateAx = subplot(3, 3, [7, 8, 9]);
+    title(responseRateAx, 'Hit Rate and Response Rate');
+    xlabel(responseRateAx, 'Trial number');
+    ylabel(responseRateAx, 'Rate');
+    grid(responseRateAx, 'on');
+    hold(responseRateAx, 'on');
     % Register figure with BpodSystem so it closes when protocol ends
     BpodSystem.ProtocolFigures.CustomPlotFig = customPlotFig;
     
@@ -311,12 +318,13 @@ function AntiBias()
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
             
-            % Update lick interval, response latency histograms, raster plot, and session summary
+            % Update lick interval, response latency histograms, raster plot, session summary, and hit/response rate
             try
-                OnlineLickInterval(customPlotFig, lickIntervalAx, BpodSystem.Data);
+                PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
                 OnlineResLatency(customPlotFig, resLatencyAx, BpodSystem.Data);
-                OnlineRasterPlot(customPlotFig, rasterAx, BpodSystem.Data);
+                PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
                 OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
+                PlotHitResponseRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', responseRateAx);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
                 disp(['Plot update error: ' ME.message]);

@@ -301,9 +301,9 @@ function SwitchWhenNCorrect()
             
             % Update lick interval, response latency histograms, raster plot, and session summary
             try
-                OnlineLickInterval(customPlotFig, lickIntervalAx, BpodSystem.Data);
+                PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
                 OnlineResLatency(customPlotFig, resLatencyAx, BpodSystem.Data);
-                OnlineRasterPlot(customPlotFig, rasterAx, BpodSystem.Data);
+                PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
                 OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
