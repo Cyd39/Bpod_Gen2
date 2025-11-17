@@ -161,14 +161,14 @@ function nextTrialSide = PickSideAntiBias(SessionData)
     probL = (rightHitRate + (1 - leftHitRate)) / 2;
 
     % Generate next trial side
-    if rand() < probL
+    if rand() > probL
         nextTrialSide = 1;
     else
         nextTrialSide = 2;
     end
 end
 
-% Helper function to check if a reward was triggered by Port1
+% Function to check if a reward was triggered by Port1
 function isTriggered = checkPort1TriggeredReward(trialData, rewardStateName, port1InTimes, validPort1InMask, stimulusStart)
     % Check if reward state exists and get reward time
     if ~isfield(trialData, 'States') || ~isfield(trialData.States, rewardStateName)
