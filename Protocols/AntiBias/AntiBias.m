@@ -283,10 +283,25 @@ function AntiBias()
             else
                 % Trial 14+: Use PickSideAntiBias function
                 % (trial 14 ended, now deciding side for trial 15+)
-                nextSide = PickSideAntiBias(BpodSystem.Data);
+                % PickSideAntiBias returns left/right spout (1=left, 2=right)
+                nextSpout = PickSideAntiBias(BpodSystem.Data);
+                
+                % Convert spout selection to frequency side (1=low freq, 2=high freq)
+                if nextSpout == lowFreqSpout
+                    nextSide = 1; % Low frequency side
+                elseif nextSpout == highFreqSpout
+                    nextSide = 2; % High frequency side
+                else
+                    % Fallback: should not happen if configuration is correct
+                    warning('AntiBias: Selected spout does not match configuration. Using current side.');
+                    nextSide = currentSide;
+                end
+                
                 if nextSide ~= currentSide
                     currentSide = nextSide;
-                    disp(['Trial ' num2str(currentTrial+1) ': Switching to side ' num2str(nextSide) ' (from PickSideAntiBias)']);
+                    spoutNames = {'left', 'right'};
+                    sideNames = {'low freq', 'high freq'};
+                    disp(['Trial ' num2str(currentTrial+1) ': Switching to ' sideNames{currentSide} ' side (' spoutNames{nextSpout} ' spout) from PickSideAntiBias']);
                 end
             end
             
