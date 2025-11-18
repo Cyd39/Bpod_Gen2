@@ -1,7 +1,7 @@
 function LeftRightSeq = GenLeftRightSeq(StimParams)
 % GenLeftRightSeq - Generate high and low frequency stimulus sequence tables for each trial
 % Each frequency table uses independent indexing and does not include catch trials
-% Catch trials are handled at the trial level in the main protocol
+% Catch trials are provided as a separate single-row table for use in protocols
 % Input:
 %   Par - Structure containing parameters from StimParamGui
 % Output:
@@ -9,6 +9,7 @@ function LeftRightSeq = GenLeftRightSeq(StimParams)
 %     .HighFreqTable - Table containing high frequency stimulus parameters (independent indexing)
 %     .LowFreqTable - Table containing low frequency stimulus parameters (independent indexing)
 %     .BoundaryFreqTable - Table containing boundary frequency stimulus parameters (independent indexing)
+%     .CatchTrialTable - Single-row table containing catch trial parameters (MMType='OO')
 %     .FrequencyBoundary - Frequency boundary value
 %     .HighFreqSide - Side associated with high frequency ('Left' or 'Right')
 %     .LowFreqSide - Side associated with low frequency ('Left' or 'Right')    
@@ -106,11 +107,16 @@ if ~isempty(boundaryFreqTable)
     boundaryFreqTable.RampDur = repmat(StimParams.Ramp, height(boundaryFreqTable), 1);
 end
 
+% Generate catch trial table (single row)
+% Use highFreqTable as template
+catchTrialTable = generateCatchTrialTable(highFreqTable);
+
 % Create output structure
 LeftRightSeq = struct();
 LeftRightSeq.HighFreqTable = highFreqTable;
 LeftRightSeq.LowFreqTable = lowFreqTable;
 LeftRightSeq.BoundaryFreqTable = boundaryFreqTable;
+LeftRightSeq.CatchTrialTable = catchTrialTable;
 LeftRightSeq.FrequencyBoundary = frequencyBoundary;
 LeftRightSeq.HighFreqSide = highFreqSide;
 LeftRightSeq.LowFreqSide = lowFreqSide;
@@ -536,6 +542,36 @@ function boundaryFreqTable = makeBoundaryTable(StimParams, frequencyBoundary)
         otherwise
             boundaryFreqTable = table();
     end
+end
+
+% Helper function to generate catch trial table (single row)
+function catchTrialTable = generateCatchTrialTable(highFreqTable)
+    % Generate a single-row catch trial table based on template table structure
+    templateTable = highFreqTable(1, :);
+    
+    % Create catch trial table by copying template
+    catchTrialTable = templateTable;
+    
+    % Set catch trial parameters based on column existence
+    if ismember('AudIntensity', catchTrialTable.Properties.VariableNames)
+        catchTrialTable.AudIntensity = -inf; % No sound
+    end
+    if ismember('VibAmp', catchTrialTable.Properties.VariableNames)
+        catchTrialTable.VibAmp = 0; % No vibration amplitude
+    end
+    if ismember('VibFreq', catchTrialTable.Properties.VariableNames)
+        catchTrialTable.VibFreq = 0; % No vibration frequency
+    end
+    
+    % Set MMType to 'OO' (no sound, no vibration)
+    catchTrialTable.MMType = {'OO'};
+    
+    % Set Rewarded to 0 (catch trials are never rewarded)
+    catchTrialTable.Rewarded = 0;
+    
+    % Set Duration and RampDur
+    catchTrialTable.Duration = StimParams.Duration;
+    catchTrialTable.RampDur = StimParams.Ramp;
 end
 
 end
