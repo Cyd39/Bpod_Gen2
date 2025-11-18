@@ -55,7 +55,7 @@ disp('Behavior Data loaded');
 PlotLickIntervals(SessionData);
 figLickIntervals = gcf;  % Get the current figure handle after plotting
 
-PlotResLatencyFromSessionData(SessionData);
+PlotResLatency(SessionData);
 figResLatency = gcf;  % Get the current figure handle after plotting
 
 PlotLickRaster(SessionData);

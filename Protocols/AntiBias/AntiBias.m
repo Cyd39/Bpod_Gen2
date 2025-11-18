@@ -293,7 +293,7 @@ function AntiBias()
             % Update lick interval, response latency histograms, raster plot, session summary, and hit/response rate
             try
                 PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
-                OnlineResLatency(customPlotFig, resLatencyAx, BpodSystem.Data);
+                PlotResLatency(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', resLatencyAx);
                 PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
                 OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
                 PlotHitResponseRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', responseRateAx);

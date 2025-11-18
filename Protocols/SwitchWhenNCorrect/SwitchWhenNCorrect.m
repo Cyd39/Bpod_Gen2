@@ -302,7 +302,7 @@ function SwitchWhenNCorrect()
             % Update lick interval, response latency histograms, raster plot, and session summary
             try
                 PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
-                OnlineResLatency(customPlotFig, resLatencyAx, BpodSystem.Data);
+                PlotResLatency(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', resLatencyAx);
                 PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
                 OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
             catch ME
