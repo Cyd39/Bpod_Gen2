@@ -383,7 +383,6 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
     TimerDuration = ITIAfter+StimDur;
     RewardAmount = S.GUI.RewardAmount;
-    disp(['Liquid Volume = ' num2str(RewardAmount) ' µL']);
     % Get valve times for both left (valve 1) and right (valve 2) ports
     ValveTimes = BpodLiquidCalibration('GetValveTimes', RewardAmount, [1 2]);
     LeftValveTime = ValveTimes(1);
@@ -475,9 +474,9 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     if isCatchTrial
         % Catch trial - no response expected, just play stimulus for fixed duration
         sma = AddState(sma, 'Name', 'Stimulus', ...
-            'Timer', 0.2, ... % Fixed duration for catch trials
+            'Timer', ResWin, ... % "Response window"
             'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
-            'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
+            'OutputActions', {'GlobalTimerTrig', 2});
     else
         % Regular trial - stimulus plays until correct lick
         if strcmp(correctResponse, 'left')
@@ -499,19 +498,19 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
                 'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'RightReward', 'Tup', 'WaitToFinish'}, ...
                 'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
         end
-        
-        % Left reward state - always reward for correct left lick
-        sma = AddState(sma, 'Name', 'LeftReward', ...
-            'Timer', LeftValveTime, ...
-            'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
-            'OutputActions', {'ValveState', 1}); % Valve 1 for left port
-        
-        % Right reward state - always reward for correct right lick
-        sma = AddState(sma, 'Name', 'RightReward', ...
-            'Timer', RightValveTime, ...
-            'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
-            'OutputActions', {'ValveState', 2}); % Valve 2 for right port
     end
+    
+    % Left reward state - always reward for correct left lick
+    sma = AddState(sma, 'Name', 'LeftReward', ...
+        'Timer', LeftValveTime, ...
+        'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
+        'OutputActions', {'ValveState', 1}); % Valve 1 for left port
+    
+    % Right reward state - always reward for correct right lick
+    sma = AddState(sma, 'Name', 'RightReward', ...
+        'Timer', RightValveTime, ...
+        'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
+        'OutputActions', {'ValveState', 2}); % Valve 2 for right port
 
     % Set condition to check if GlobalTimer2 has ended
     sma = SetCondition(sma, 7, 'GlobalTimer2', 0); % Condition 7: GlobalTimer2 has ended
