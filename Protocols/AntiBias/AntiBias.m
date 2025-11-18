@@ -102,10 +102,28 @@ function AntiBias()
     highFreqIndex = 1; % Index for high frequency table (continuous)
     lowFreqIndex = 1; % Index for low frequency table (continuous)
     
+    % Generate catch trial sequence based on PropCatch
+    propCatch = StimParams.Behave.PropCatch;
+    catchTrialSequence = false(1, NumTrials);
+    if propCatch > 0
+        % calculate grouping parameters
+        trialsPerBlock = round(1 / propCatch); % trials per block
+        nBlocks = floor(NumTrials / trialsPerBlock); % total number of blocks
+        if nBlocks > 0
+            % generate random positions for each block (vectorized operation)
+            blockOffsets = (0:nBlocks-1)' * trialsPerBlock;
+            randomPositions = randi(trialsPerBlock, nBlocks, 1);
+            % calculate all catch trial positions
+            catchTrialIndices = blockOffsets + randomPositions;
+            % Ensure indices don't exceed NumTrials
+            catchTrialIndices = catchTrialIndices(catchTrialIndices <= NumTrials);
+            catchTrialSequence(catchTrialIndices) = true;
+        end
+    end
+    
     % Initialize data arrays
     BpodSystem.Data.CurrentSide = [];
     BpodSystem.Data.CorrectSide = [];
-    BpodSystem.Data.IsCorrect = [];
     BpodSystem.Data.IsCatchTrial = [];
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
@@ -149,7 +167,8 @@ function AntiBias()
     
 
     %% Prepare and start first trial
-    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, 0, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+    % Use catchTrialSequence(1) for the first trial
+    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, 0, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, catchTrialSequence(1));
     trialManager.startTrial(sma);
     
     %% Main loop, runs once per trial
@@ -203,36 +222,6 @@ function AntiBias()
             
             % Get current trial parameters from saved data (all were saved earlier to avoid shift)         
             correctSide = BpodSystem.Data.CorrectSide(currentTrial);
-            isCatchTrial = BpodSystem.Data.IsCatchTrial(currentTrial);
-            
-            % Note: All trial parameters were already saved earlier (before preparing next trial) to avoid shift
-            
-            % Check if response was correct (only for non-catch trials)
-            if ~isCatchTrial
-                % Check if animal licked correct side and got reward
-                % Need to check if state was actually visited (not just exists as NaN)
-                leftRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{currentTrial}.States, 'LeftReward') && ...
-                    ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.LeftReward(1));
-                rightRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{currentTrial}.States, 'RightReward') && ...
-                    ~isnan(BpodSystem.Data.RawEvents.Trial{currentTrial}.States.RightReward(1));
-                
-                if leftRewardVisited || rightRewardVisited
-                    % Animal licked correct side and got reward - correct response
-                    isCorrect = true;
-                    disp(['Trial ' num2str(currentTrial) ': Correct response!']);
-                else
-                    % Animal did not lick correct side - incorrect response
-                    isCorrect = false;
-                    disp(['Trial ' num2str(currentTrial) ': Incorrect response.']);
-                end
-            else
-                % Catch trial - no response expected
-                isCorrect = true; % Don't count catch trials
-                disp(['Trial ' num2str(currentTrial) ': Catch trial - no response expected.']);
-            end
-            
-            % Save response information
-            BpodSystem.Data.IsCorrect(currentTrial) = isCorrect;
             
             % Update trial type for outcome plot based on correct side
             trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout
@@ -283,7 +272,7 @@ function AntiBias()
             end
             
             % Prepare next trial's state machine (using the updated currentSide)
-            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, 0, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, 0, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, catchTrialSequence(currentTrial + 1));
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
         
@@ -323,65 +312,44 @@ function AntiBias()
     disp(['Session completed: ' num2str(NumTrials) ' trials finished']);
     disp('========================================');
     
-    % Calculate session statistics
-    nRewards = 0;
-    nHits = 0;
-    nCatchTrials = 0;
-    for i = 1:NumTrials
-        if isfield(BpodSystem.Data.RawEvents.Trial{i}, 'States')
-            % Check if animal received reward (either left or right)
-            leftRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{i}.States, 'LeftReward') && ...
-                ~isnan(BpodSystem.Data.RawEvents.Trial{i}.States.LeftReward(1));
-            rightRewardVisited = isfield(BpodSystem.Data.RawEvents.Trial{i}.States, 'RightReward') && ...
-                ~isnan(BpodSystem.Data.RawEvents.Trial{i}.States.RightReward(1));
-            if leftRewardVisited || rightRewardVisited
-                nRewards = nRewards + 1;
-            end
-            % Count hits (correct responses, excluding catch trials)
-            if BpodSystem.Data.IsCatchTrial(i)
-                nCatchTrials = nCatchTrials + 1;
-            elseif leftRewardVisited || rightRewardVisited
-                nHits = nHits + 1;
-            end
-        end
-    end
-    
-    % Display session statistics
-    disp(' ');
-    disp('--- Session Statistics ---');
-    disp(['Total trials: ' num2str(NumTrials)]);
-    disp(['Catch trials: ' num2str(nCatchTrials)]);
-    nRegularTrials = NumTrials - nCatchTrials;
-    if nRegularTrials > 0
-        disp(['Regular trials: ' num2str(nRegularTrials)]);
-        disp(['Correct trials (hits): ' num2str(nHits)]);
-        disp(['Rewarded in ' num2str(nRewards) ' trials']);
-        disp(['Hit rate: ' sprintf('%.1f', nHits/nRegularTrials*100) '%']);
-    else
-        disp(['Rewarded in ' num2str(nRewards) ' trials']);
-    end
-    disp('==========================');
-    disp(' ');
-    
     % Final save to ensure all data is persisted
     SaveBpodSessionData;
+
+    %Save Custom Plot Figure with subject name and date
+    sessionDate = datetime(BpodSystem.Data.Info.SessionStartTime_MATLAB, ...
+                      'ConvertFrom', 'datenum', ...
+                      'Format', 'yyyyMMdd_HHmmss');
+    savefig(customPlotFig, [BpodSystem.GUIData.SubjectName '_' char(sessionDate) '_CustomPlotFig.fig']);
 end
 
-function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp)
+function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, isCatchTrial)
     % Prepare state machine for the current trial
+    % Input:
+    %   isCatchTrial - boolean indicating if this is a catch trial
     
     % Sync parameters with GUI
     S = BpodParameterGUI('sync', S);
     
-    % Determine which stimulus table to use based on current side
-    if currentSide == 1 % Low frequency side
-        % Direct indexing (table length matches trial count)
-        currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
-        correctSide = lowFreqSpout; % Use configured low frequency spout
-    else % High frequency side
-        % Direct indexing (table length matches trial count)
-        currentStimRow = LeftRightSeq.HighFreqTable(highFreqIndex, :);
-        correctSide = highFreqSpout; % Use configured high frequency spout
+    % If catch trial, use CatchTrialTable
+    if isCatchTrial
+        currentStimRow = LeftRightSeq.CatchTrialTable(1, :);
+        % For catch trials, correctSide doesn't matter (no reward), but we'll use currentSide for consistency
+        if currentSide == 1
+            correctSide = lowFreqSpout;
+        else
+            correctSide = highFreqSpout;
+        end
+    else
+        % Determine which stimulus table to use based on current side
+        if currentSide == 1 % Low frequency side
+            % Direct indexing (table length matches trial count)
+            currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
+            correctSide = lowFreqSpout; % Use configured low frequency spout
+        else % High frequency side
+            % Direct indexing (table length matches trial count)
+            currentStimRow = LeftRightSeq.HighFreqTable(highFreqIndex, :);
+            correctSide = highFreqSpout; % Use configured high frequency spout
+        end
     end
     
     % Generate sound&vibration waveform
@@ -433,14 +401,8 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     else
         correctResponse = 'left'; % Default fallback
     end
-    
-    % Display the trial information
-    disp(['ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
 
-    % Check if it is a catch trial
-    isCatchTrial = false;
-    if strcmp(char(currentStimRow.MMType), 'OO')
-        isCatchTrial = true;
+    if isCatchTrial
         disp('Catch trial');
     end
     
