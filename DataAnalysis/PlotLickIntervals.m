@@ -173,14 +173,16 @@ function PlotLickIntervals(SessionData, varargin)
         end
         grid(ax, 'on');
         
-        % Display summary statistics
-        disp('=== Lick Interval Statistics ===');
-        disp(['Total intervals: ' num2str(length(allLickIntervals))]);
-        disp(['Mean interval: ' sprintf('%.3f', mean(allLickIntervals)) ' seconds']);
-        disp(['Median interval: ' sprintf('%.3f', median(allLickIntervals)) ' seconds']);
-        disp(['Min interval: ' sprintf('%.3f', min(allLickIntervals)) ' seconds']);
-        disp(['Max interval: ' sprintf('%.3f', max(allLickIntervals)) ' seconds']);
-        disp('================================');
+        % Display summary statistics (only in offline mode)
+        if isempty(customPlotFig)
+            disp('=== Lick Interval Statistics ===');
+            disp(['Total intervals: ' num2str(length(allLickIntervals))]);
+            disp(['Mean interval: ' sprintf('%.3f', mean(allLickIntervals)) ' seconds']);
+            disp(['Median interval: ' sprintf('%.3f', median(allLickIntervals)) ' seconds']);
+            disp(['Min interval: ' sprintf('%.3f', min(allLickIntervals)) ' seconds']);
+            disp(['Max interval: ' sprintf('%.3f', max(allLickIntervals)) ' seconds']);
+            disp('================================');
+        end
     else
         warning('Not enough lick events to calculate intervals. Need at least 2 licks.');
         cla(ax);
