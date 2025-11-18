@@ -8,7 +8,7 @@
 function nextTrialSide = PickSideAntiBias(SessionData)
     
     runningAvg = 10;
-    maxConsec = 3; % TO DO
+    maxConsec = 3; % Maximum number of consecutive same side trials
    
     % If there are less than 2 * runningAvg trials, set probability to 0.5
     % and choose randomly, but not more than maxConsec consecutive same side trials
