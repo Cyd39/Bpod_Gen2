@@ -295,7 +295,7 @@ function AntiBias()
                 PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
                 PlotResLatency(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', resLatencyAx);
                 PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
-                OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
+                PlotSessionSummary(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', summaryAx);
                 PlotHitResponseRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', responseRateAx);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol

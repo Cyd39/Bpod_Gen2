@@ -304,7 +304,7 @@ function SwitchWhenNCorrect()
                 PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
                 PlotResLatency(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', resLatencyAx);
                 PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
-                OnlineSessionSummary(customPlotFig, summaryAx, BpodSystem.Data);
+                PlotSessionSummary(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', summaryAx);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
                 disp(['Plot update error: ' ME.message]);

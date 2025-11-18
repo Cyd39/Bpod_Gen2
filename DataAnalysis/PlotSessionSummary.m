@@ -1,9 +1,6 @@
-function PlotSessionSummary(SessionData)
+function PlotSessionSummary(SessionData, varargin)
     % PlotSessionSummary - Generate descriptive text summary of session data
     % 
-    % Input:
-    %   SessionData - Session data structure loaded from saved .mat file
-    %
     % This function extracts session information and displays it as text
     % in a figure, including:
     %   - Session category/type
@@ -15,22 +12,58 @@ function PlotSessionSummary(SessionData)
     %   - Hit rates for left and right sides
     %   - Total water volume received
     %
+    % Inputs:
+    %   SessionData - Session data structure
+    %   Optional name-value pairs:
+    %     'FigureHandle' - figure handle for the combined plot (optional, for activation in online mode)
+    %     'Axes' - axes handle for the plot (optional, if not provided, creates new figure)
+    %     'FigureName' - name for new figure if axes not provided (default: 'Session Summary')
+    %
     % Usage:
-    %   load('SessionData.mat', 'SessionData');
-    %   PlotSessionSummary(SessionData);
+    %   Online mode: PlotSessionSummary(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', summaryAx);
+    %   Offline mode: PlotSessionSummary(SessionData);
+    
+    % Parse optional inputs
+    p = inputParser;
+    addParameter(p, 'FigureHandle', [], @(x) isempty(x) || isgraphics(x, 'figure'));
+    addParameter(p, 'Axes', [], @(x) isempty(x) || isgraphics(x, 'axes'));
+    addParameter(p, 'FigureName', 'Session Summary', @ischar);
+    parse(p, varargin{:});
+    
+    customPlotFig = p.Results.FigureHandle;
+    ax = p.Results.Axes;
+    figureName = p.Results.FigureName;
+    
+    % Activate figure if provided (for online mode)
+    if ~isempty(customPlotFig) && isvalid(customPlotFig)
+        figure(customPlotFig);
+    end
+    
+    % Create axes if not provided (offline mode)
+    if isempty(ax)
+        figure('Name', figureName, 'Position', [200 200 600 600]);
+        ax = axes('Position', [0.1 0.05 0.85 0.9]);
+    end
+    
+    % Clear axes and set properties
+    cla(ax);
+    axis(ax, 'off');
+    hold(ax, 'on');
     
     % Check if SessionData is valid
     if ~isfield(SessionData, 'nTrials')
-        error('SessionData does not contain nTrials field');
+        text(ax, 0.5, 0.5, 'SessionData does not contain nTrials field', ...
+            'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+        if ~isempty(customPlotFig)
+            drawnow;
+        end
+        return;
     end
     
     nTrials = SessionData.nTrials;
     
-    % Initialize figure
-    figure('Name', 'Session Summary', 'Position', [200 200 600 600]);
-    ax = axes('Position', [0.1 0.05 0.85 0.9]);
-    axis(ax, 'off');
-    hold(ax, 'on');
+    % Determine if online mode (simplified display) or offline mode (full display)
+    isOnlineMode = ~isempty(customPlotFig) && ~isempty(ax);
     
     % Initialize text lines array
     textLines = {};
@@ -40,11 +73,10 @@ function PlotSessionSummary(SessionData)
     % 1. SESSION CATEGORY/TYPE
     % ========================================================================
     sessionType = SessionData.StimParams.Session.TypeName;
-    textLines{lineNum} = ['Session Type: ' sessionType];
+    textLines{lineNum} = ['Session Type: ' sessionType '      Trials: ' num2str(nTrials)];
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
     lineNum = lineNum + 1;
-    
     % ========================================================================
     % 2. DURATION
     % ========================================================================
@@ -103,85 +135,117 @@ function PlotSessionSummary(SessionData)
     % ========================================================================
     % 3. ITI RANGE
     % ========================================================================
-    % Check for ITI range changes across trials
-    itiRanges = [];  % Store [trialNum, minITI, maxITI] for each unique range
-    if isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
-        % Check all trials for ITI settings
-        for trialIdx = 1:min(nTrials, length(SessionData.TrialSettings))
-            if isfield(SessionData.TrialSettings(trialIdx), 'GUI')
-                if isfield(SessionData.TrialSettings(trialIdx).GUI, 'MinITI') && ...
-                   isfield(SessionData.TrialSettings(trialIdx).GUI, 'MaxITI')
-                    minITI_val = SessionData.TrialSettings(trialIdx).GUI.MinITI;
-                    maxITI_val = SessionData.TrialSettings(trialIdx).GUI.MaxITI;
-                    % Check if this range is different from previous
-                    if isempty(itiRanges) || ...
-                       abs(itiRanges(end, 2) - minITI_val) > 0.001 || ...
-                       abs(itiRanges(end, 3) - maxITI_val) > 0.001
-                        % New range detected
-                        itiRanges = [itiRanges; trialIdx, minITI_val, maxITI_val];
-                    end
-                end
-            end
-        end
-    end
-    
-    % If no ranges found in TrialSettings, try ThisITI or first trial
-    if isempty(itiRanges)
+    if isOnlineMode
+        % Online mode: simplified display (only first range)
+        minITI = NaN;
+        maxITI = NaN;
         if isfield(SessionData, 'ThisITI')
             itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
             if ~isempty(itiValues)
                 minITI = min(itiValues);
                 maxITI = max(itiValues);
-                itiRanges = [1, minITI, maxITI];
+            end
+        elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+            if isfield(SessionData.TrialSettings(1), 'GUI')
+                if isfield(SessionData.TrialSettings(1).GUI, 'MinITI') && ...
+                   isfield(SessionData.TrialSettings(1).GUI, 'MaxITI')
+                    minITI = SessionData.TrialSettings(1).GUI.MinITI;
+                    maxITI = SessionData.TrialSettings(1).GUI.MaxITI;
+                end
             end
         end
-    end
-    
-    % Display ITI range(s)
-    if ~isempty(itiRanges)
-        if size(itiRanges, 1) == 1
-            % Single range
-            minITI = itiRanges(1, 2);
-            maxITI = itiRanges(1, 3);
+        
+        if ~isnan(minITI) && ~isnan(maxITI)
             if abs(minITI - maxITI) < 0.001
                 textLines{lineNum} = ['ITI Range: ' sprintf('%.1f s', minITI)];
             else
                 textLines{lineNum} = ['ITI Range: ' sprintf('%.1f-%.1f s', minITI, maxITI)];
             end
         else
-            % Multiple ranges detected - show all
-            textLines{lineNum} = 'ITI Range:';
-            lineNum = lineNum + 1;
-            for i = 1:size(itiRanges, 1)
-                trialStart = itiRanges(i, 1);
-                minITI = itiRanges(i, 2);
-                maxITI = itiRanges(i, 3);
-                % Determine end trial for this range
-                if i < size(itiRanges, 1)
-                    endTrial = itiRanges(i+1, 1) - 1;
-                else
-                    endTrial = nTrials;
-                end
-                % Display range
-                if abs(minITI - maxITI) < 0.001
-                    if trialStart == endTrial
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f s', minITI)];
-                    else
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f s', minITI)];
-                    end
-                else
-                    if trialStart == endTrial
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f-%.1f s', minITI, maxITI)];
-                    else
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f-%.1f s', minITI, maxITI)];
-                    end
-                end
-                lineNum = lineNum + 1;
-            end
-            lineNum = lineNum - 1;  % Adjust for the extra increment
+            textLines{lineNum} = 'ITI Range: N/A';
         end
     else
-        textLines{lineNum} = 'ITI Range: N/A';
+        % Offline mode: full display (all range changes)
+        % Check for ITI range changes across trials
+        itiRanges = [];  % Store [trialNum, minITI, maxITI] for each unique range
+        if isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+            % Check all trials for ITI settings
+            for trialIdx = 1:min(nTrials, length(SessionData.TrialSettings))
+                if isfield(SessionData.TrialSettings(trialIdx), 'GUI')
+                    if isfield(SessionData.TrialSettings(trialIdx).GUI, 'MinITI') && ...
+                       isfield(SessionData.TrialSettings(trialIdx).GUI, 'MaxITI')
+                        minITI_val = SessionData.TrialSettings(trialIdx).GUI.MinITI;
+                        maxITI_val = SessionData.TrialSettings(trialIdx).GUI.MaxITI;
+                        % Check if this range is different from previous
+                        if isempty(itiRanges) || ...
+                           abs(itiRanges(end, 2) - minITI_val) > 0.001 || ...
+                           abs(itiRanges(end, 3) - maxITI_val) > 0.001
+                            % New range detected
+                            itiRanges = [itiRanges; trialIdx, minITI_val, maxITI_val];
+                        end
+                    end
+                end
+            end
+        end
+        
+        % If no ranges found in TrialSettings, try ThisITI or first trial
+        if isempty(itiRanges)
+            if isfield(SessionData, 'ThisITI')
+                itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
+                if ~isempty(itiValues)
+                    minITI = min(itiValues);
+                    maxITI = max(itiValues);
+                    itiRanges = [1, minITI, maxITI];
+                end
+            end
+        end
+        
+        % Display ITI range(s)
+        if ~isempty(itiRanges)
+            if size(itiRanges, 1) == 1
+                % Single range
+                minITI = itiRanges(1, 2);
+                maxITI = itiRanges(1, 3);
+                if abs(minITI - maxITI) < 0.001
+                    textLines{lineNum} = ['ITI Range: ' sprintf('%.1f s', minITI)];
+                else
+                    textLines{lineNum} = ['ITI Range: ' sprintf('%.1f-%.1f s', minITI, maxITI)];
+                end
+            else
+                % Multiple ranges detected - show all
+                textLines{lineNum} = 'ITI Range:';
+                lineNum = lineNum + 1;
+                for i = 1:size(itiRanges, 1)
+                    trialStart = itiRanges(i, 1);
+                    minITI = itiRanges(i, 2);
+                    maxITI = itiRanges(i, 3);
+                    % Determine end trial for this range
+                    if i < size(itiRanges, 1)
+                        endTrial = itiRanges(i+1, 1) - 1;
+                    else
+                        endTrial = nTrials;
+                    end
+                    % Display range
+                    if abs(minITI - maxITI) < 0.001
+                        if trialStart == endTrial
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f s', minITI)];
+                        else
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f s', minITI)];
+                        end
+                    else
+                        if trialStart == endTrial
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f-%.1f s', minITI, maxITI)];
+                        else
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f-%.1f s', minITI, maxITI)];
+                        end
+                    end
+                    lineNum = lineNum + 1;
+                end
+                lineNum = lineNum - 1;  % Adjust for the extra increment
+            end
+        else
+            textLines{lineNum} = 'ITI Range: N/A';
+        end
     end
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
@@ -190,85 +254,117 @@ function PlotSessionSummary(SessionData)
     % ========================================================================
     % 4. NO-LICK RANGE (MinQuietTime - MaxQuietTime)
     % ========================================================================
-    % Check for No-Lick range changes across trials
-    quietTimeRanges = [];  % Store [trialNum, minQuietTime, maxQuietTime] for each unique range
-    if isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
-        % Check all trials for QuietTime settings
-        for trialIdx = 1:min(nTrials, length(SessionData.TrialSettings))
-            if isfield(SessionData.TrialSettings(trialIdx), 'GUI')
-                if isfield(SessionData.TrialSettings(trialIdx).GUI, 'MinQuietTime') && ...
-                   isfield(SessionData.TrialSettings(trialIdx).GUI, 'MaxQuietTime')
-                    minQuietTime_val = SessionData.TrialSettings(trialIdx).GUI.MinQuietTime;
-                    maxQuietTime_val = SessionData.TrialSettings(trialIdx).GUI.MaxQuietTime;
-                    % Check if this range is different from previous
-                    if isempty(quietTimeRanges) || ...
-                       abs(quietTimeRanges(end, 2) - minQuietTime_val) > 0.001 || ...
-                       abs(quietTimeRanges(end, 3) - maxQuietTime_val) > 0.001
-                        % New range detected
-                        quietTimeRanges = [quietTimeRanges; trialIdx, minQuietTime_val, maxQuietTime_val];
-                    end
-                end
-            end
-        end
-    end
-    
-    % If no ranges found in TrialSettings, try QuietTime or first trial
-    if isempty(quietTimeRanges)
+    if isOnlineMode
+        % Online mode: simplified display (only first range)
+        minQuietTime = NaN;
+        maxQuietTime = NaN;
         if isfield(SessionData, 'QuietTime')
             quietTimeValues = SessionData.QuietTime(~isnan(SessionData.QuietTime));
             if ~isempty(quietTimeValues)
                 minQuietTime = min(quietTimeValues);
                 maxQuietTime = max(quietTimeValues);
-                quietTimeRanges = [1, minQuietTime, maxQuietTime];
+            end
+        elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+            if isfield(SessionData.TrialSettings(1), 'GUI')
+                if isfield(SessionData.TrialSettings(1).GUI, 'MinQuietTime') && ...
+                   isfield(SessionData.TrialSettings(1).GUI, 'MaxQuietTime')
+                    minQuietTime = SessionData.TrialSettings(1).GUI.MinQuietTime;
+                    maxQuietTime = SessionData.TrialSettings(1).GUI.MaxQuietTime;
+                end
             end
         end
-    end
-    
-    % Display No-Lick range(s)
-    if ~isempty(quietTimeRanges)
-        if size(quietTimeRanges, 1) == 1
-            % Single range
-            minQuietTime = quietTimeRanges(1, 2);
-            maxQuietTime = quietTimeRanges(1, 3);
+        
+        if ~isnan(minQuietTime) && ~isnan(maxQuietTime)
             if abs(minQuietTime - maxQuietTime) < 0.001
                 textLines{lineNum} = ['No-Lick Range: ' sprintf('%.1f s', minQuietTime)];
             else
                 textLines{lineNum} = ['No-Lick Range: ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
             end
         else
-            % Multiple ranges detected - show all
-            textLines{lineNum} = 'No-Lick Range:';
-            lineNum = lineNum + 1;
-            for i = 1:size(quietTimeRanges, 1)
-                trialStart = quietTimeRanges(i, 1);
-                minQuietTime = quietTimeRanges(i, 2);
-                maxQuietTime = quietTimeRanges(i, 3);
-                % Determine end trial for this range
-                if i < size(quietTimeRanges, 1)
-                    endTrial = quietTimeRanges(i+1, 1) - 1;
-                else
-                    endTrial = nTrials;
-                end
-                % Display range
-                if abs(minQuietTime - maxQuietTime) < 0.001
-                    if trialStart == endTrial
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f s', minQuietTime)];
-                    else
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f s', minQuietTime)];
-                    end
-                else
-                    if trialStart == endTrial
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
-                    else
-                        textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
-                    end
-                end
-                lineNum = lineNum + 1;
-            end
-            lineNum = lineNum - 1;  % Adjust for the extra increment
+            textLines{lineNum} = 'No-Lick Range: N/A';
         end
     else
-        textLines{lineNum} = 'No-Lick Range: N/A';
+        % Offline mode: full display (all range changes)
+        % Check for No-Lick range changes across trials
+        quietTimeRanges = [];  % Store [trialNum, minQuietTime, maxQuietTime] for each unique range
+        if isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
+            % Check all trials for QuietTime settings
+            for trialIdx = 1:min(nTrials, length(SessionData.TrialSettings))
+                if isfield(SessionData.TrialSettings(trialIdx), 'GUI')
+                    if isfield(SessionData.TrialSettings(trialIdx).GUI, 'MinQuietTime') && ...
+                       isfield(SessionData.TrialSettings(trialIdx).GUI, 'MaxQuietTime')
+                        minQuietTime_val = SessionData.TrialSettings(trialIdx).GUI.MinQuietTime;
+                        maxQuietTime_val = SessionData.TrialSettings(trialIdx).GUI.MaxQuietTime;
+                        % Check if this range is different from previous
+                        if isempty(quietTimeRanges) || ...
+                           abs(quietTimeRanges(end, 2) - minQuietTime_val) > 0.001 || ...
+                           abs(quietTimeRanges(end, 3) - maxQuietTime_val) > 0.001
+                            % New range detected
+                            quietTimeRanges = [quietTimeRanges; trialIdx, minQuietTime_val, maxQuietTime_val];
+                        end
+                    end
+                end
+            end
+        end
+        
+        % If no ranges found in TrialSettings, try QuietTime or first trial
+        if isempty(quietTimeRanges)
+            if isfield(SessionData, 'QuietTime')
+                quietTimeValues = SessionData.QuietTime(~isnan(SessionData.QuietTime));
+                if ~isempty(quietTimeValues)
+                    minQuietTime = min(quietTimeValues);
+                    maxQuietTime = max(quietTimeValues);
+                    quietTimeRanges = [1, minQuietTime, maxQuietTime];
+                end
+            end
+        end
+        
+        % Display No-Lick range(s)
+        if ~isempty(quietTimeRanges)
+            if size(quietTimeRanges, 1) == 1
+                % Single range
+                minQuietTime = quietTimeRanges(1, 2);
+                maxQuietTime = quietTimeRanges(1, 3);
+                if abs(minQuietTime - maxQuietTime) < 0.001
+                    textLines{lineNum} = ['No-Lick Range: ' sprintf('%.1f s', minQuietTime)];
+                else
+                    textLines{lineNum} = ['No-Lick Range: ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
+                end
+            else
+                % Multiple ranges detected - show all
+                textLines{lineNum} = 'No-Lick Range:';
+                lineNum = lineNum + 1;
+                for i = 1:size(quietTimeRanges, 1)
+                    trialStart = quietTimeRanges(i, 1);
+                    minQuietTime = quietTimeRanges(i, 2);
+                    maxQuietTime = quietTimeRanges(i, 3);
+                    % Determine end trial for this range
+                    if i < size(quietTimeRanges, 1)
+                        endTrial = quietTimeRanges(i+1, 1) - 1;
+                    else
+                        endTrial = nTrials;
+                    end
+                    % Display range
+                    if abs(minQuietTime - maxQuietTime) < 0.001
+                        if trialStart == endTrial
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f s', minQuietTime)];
+                        else
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f s', minQuietTime)];
+                        end
+                    else
+                        if trialStart == endTrial
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) ': ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
+                        else
+                            textLines{lineNum} = ['  Trial ' num2str(trialStart) '-' num2str(endTrial) ': ' sprintf('%.1f-%.1f s', minQuietTime, maxQuietTime)];
+                        end
+                    end
+                    lineNum = lineNum + 1;
+                end
+                lineNum = lineNum - 1;  % Adjust for the extra increment
+            end
+        else
+            textLines{lineNum} = 'No-Lick Range: N/A';
+        end
     end
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
@@ -612,19 +708,36 @@ function PlotSessionSummary(SessionData)
     % Combine all text lines
     fullText = strjoin(textLines, '\n');
     
-    % Display text
-    text(ax, 0.05, 0.95, fullText, 'FontSize', 12, 'FontName', 'Courier', ...
-        'VerticalAlignment', 'top', 'HorizontalAlignment', 'left', ...
-        'Interpreter', 'none');
-    
-    % Set title
-    if isfield(SessionData, 'Info') && isfield(SessionData.Info, 'SubjectName')
-        title(ax, ['Session Summary - ' SessionData.Info.SubjectName ' ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+    % Display text (different font size for online vs offline mode)
+    if isOnlineMode
+        % Online mode: smaller font, use normalized units
+        text(ax, 0.05, 0.95, fullText, 'FontSize', 10, 'FontName', 'Courier', ...
+            'VerticalAlignment', 'top', 'HorizontalAlignment', 'left', ...
+            'Interpreter', 'none', 'Units', 'normalized');
+        
+        % Set title (simplified for online mode)
+        if isfield(SessionData, 'Info') && isfield(SessionData.Info, 'SubjectName')
+            title(ax, ['Session Summary - ' SessionData.Info.SubjectName ' ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+        else
+            title(ax, ['Session Summary - ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+        end
     else
-        title(ax, ['Session Summary - ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+        % Offline mode: larger font, use data units
+        text(ax, 0.05, 0.95, fullText, 'FontSize', 12, 'FontName', 'Courier', ...
+            'VerticalAlignment', 'top', 'HorizontalAlignment', 'left', ...
+            'Interpreter', 'none');
+        
+        % Set title
+        if isfield(SessionData, 'Info') && isfield(SessionData.Info, 'SubjectName')
+            title(ax, ['Session Summary - ' SessionData.Info.SubjectName ' ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+        else
+            title(ax, ['Session Summary - ' SessionData.Info.SessionDate ' ' SessionData.Info.SessionStartTime_UTC], 'FontSize', 12, 'FontWeight', 'bold');
+        end
     end
     
-    % Force update
-    drawnow;
+    % Force update (for online mode)
+    if ~isempty(customPlotFig)
+        drawnow;
+    end
 end
 
