@@ -98,15 +98,7 @@ function AntiBias()
     outcomePlot.CorrectStateNames = {'LeftReward', 'RightReward'}; % States where correct response was made 
     
     % Initialize trial tracking variables
-    % Hard-coded balanced sequence for first 14 trials
-    % 1 = low frequency side, 2 = high frequency side
-    % Constraint: 10 left, 10 right, no 4 consecutive same side % TO DO
-    balancedSequence = [1, 2, 1, 2, 1, 1, 2, 2, 1, 2, 1, 2, 1, 2, 2, 1, 1, 2, 2, 1];
-    BpodSystem.Data.BalancedSequence = balancedSequence;
-    BpodSystem.Data.SequenceIndex = 2;  % Track position in sequence (start at 2 because trial 1 uses index 1)
-    
-    % Set initial side from balanced sequence (trial 1)
-    currentSide = balancedSequence(1); % 1 = low frequency side, 2 = high frequency side (left/right mapping determined by highFreqSpout/lowFreqSpout configuration)
+    currentSide = 1; % 1 = low frequency side, 2 = high frequency side (spout determined by highFreqSpout/lowFreqSpout configuration)
     highFreqIndex = 1; % Index for high frequency table (continuous)
     lowFreqIndex = 1; % Index for low frequency table (continuous)
     
@@ -178,7 +170,7 @@ function AntiBias()
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
         % Save all trial parameters from S BEFORE preparing next trial
-        % For first trial, S was set at line 147. For subsequent trials, S was set in previous iteration.
+        % For subsequent trials, S was set in previous iteration.
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data.CurrentSide(currentTrial) = currentSide;
             % Derive correctSide from currentSide using configuration
@@ -269,42 +261,18 @@ function AntiBias()
         
         % Determine next side based on trial number (BEFORE preparing next trial's state machine)
         if currentTrial < NumTrials
-            if currentTrial < 21
-                % Use hard-coded balanced sequence for trials 2-14
-                % (trial 1 was already set in initialization)
-                sequenceIndex = BpodSystem.Data.SequenceIndex;
-                nextSide = BpodSystem.Data.BalancedSequence(sequenceIndex);
-                BpodSystem.Data.SequenceIndex = sequenceIndex + 1;
+            % Determine next side based on anti-bias logic
+            % PickSideAntiBias returns left/right spout (1=left, 2=right)
+            nextSpout = PickSideAntiBias(BpodSystem.Data);
                 
-                if nextSide ~= currentSide
-                    currentSide = nextSide;
-                    disp(['Trial ' num2str(currentTrial+1) ': Switching to side ' num2str(nextSide) ' (from balanced sequence)']);
-                end
-            else
-                % Trial 14+: Use PickSideAntiBias function
-                % (trial 14 ended, now deciding side for trial 15+)
-                % PickSideAntiBias returns left/right spout (1=left, 2=right)
-                nextSpout = PickSideAntiBias(BpodSystem.Data);
-                
-                % Convert spout selection to frequency side (1=low freq, 2=high freq)
-                if nextSpout == lowFreqSpout
-                    nextSide = 1; % Low frequency side
-                elseif nextSpout == highFreqSpout
-                    nextSide = 2; % High frequency side
-                else
-                    % Fallback: should not happen if configuration is correct
-                    warning('AntiBias: Selected spout does not match configuration. Using current side.');
-                    nextSide = currentSide;
-                end
-                
-                if nextSide ~= currentSide
-                    currentSide = nextSide;
-                    spoutNames = {'left', 'right'};
-                    sideNames = {'low freq', 'high freq'};
-                    disp(['Trial ' num2str(currentTrial+1) ': Switching to ' sideNames{currentSide} ' side (' spoutNames{nextSpout} ' spout) from PickSideAntiBias']);
-                end
+            % Convert spout selection to frequency side (1=low freq, 2=high freq)
+            % Here currentSide is the frequency side, not the spout side（for the next trial）
+            if nextSpout == lowFreqSpout
+                currentSide = 1; % Low frequency side
+            else 
+                currentSide = 2; % High frequency side
             end
-            
+                
             % Update indices for next trial (independent continuous indexing, no cycling)
             if currentSide == 1 % Low frequency side
                 lowFreqIndex = lowFreqIndex + 1;

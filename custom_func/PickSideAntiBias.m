@@ -8,15 +8,29 @@
 function nextTrialSide = PickSideAntiBias(SessionData)
     
     runningAvg = 10;
-    % maxConsec = 3; % TO DO
+    maxConsec = 3; % TO DO
    
-    % Calculate starting trial number with boundary check
+    % If there are less than 2 * runningAvg trials, set probability to 0.5
+    % and choose randomly, but not more than maxConsec consecutive same side trials
     totalTrials = length(SessionData.RawEvents.Trial);
     if totalTrials < 2 * runningAvg
+        % Check if last maxConsec trials have the same side
+        if totalTrials >= maxConsec
+            recentSides = SessionData.CorrectSide((totalTrials - maxConsec + 1):totalTrials);
+            % Check if all recent sides are the same
+            if all(recentSides == recentSides(1))
+                % Force switch to opposite side
+                nextTrialSide = 3 - recentSides(1);
+                return;
+            end
+        end
+        % Choose randomly if not maxConsec consecutive same side
         probL = 0.5;
         nextTrialSide = 2 - (rand() < probL);
-        return
+        return;
     end
+
+    % After 2 * runningAvg trials, calculate the probability of selecting left spout based on anti-bias logic
     trialIdx = 1:totalTrials;
     leftNonCatchTrials = find(SessionData.CorrectSide(trialIdx) == 1 & ~SessionData.IsCatchTrial(trialIdx),...
                                runningAvg, 'last');

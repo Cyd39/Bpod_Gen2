@@ -44,21 +44,6 @@ function PlotHitResponseRate(SessionData, varargin)
     
     % Window size for response rate calculation
     windowSize = 15;
-
-    % Get side configuration from StimParams
-    highFreqSpout = NaN;
-    lowFreqSpout = NaN;
-    if isfield(SessionData, 'StimParams') && isfield(SessionData.StimParams, 'Behave')
-        if isfield(SessionData.StimParams.Behave, 'CorrectSpout')
-            highFreqSpout = SessionData.StimParams.Behave.CorrectSpout; % 1 = left, 2 = right
-            lowFreqSpout = 3 - highFreqSpout; % Opposite of high frequency spout
-        end
-    end
-    % Use default configuration if not found
-    if isnan(highFreqSpout)
-        highFreqSpout = 2; % Default: high frequency -> right
-        lowFreqSpout = 1;  % Default: low frequency -> left
-    end
     
     % Check if data exists
     if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
@@ -94,13 +79,11 @@ function PlotHitResponseRate(SessionData, varargin)
     rightHitRate = NaN(nTrials, 1);
     
     % Initialize arrays to store trial data for sliding window calculation
-    % Store: correctSide, leftResponse, rightResponse, leftHit, rightHit, isCatchTrial
-    trialCorrectSide = NaN(nTrials, 1);
+    % Note: trialCorrectSide and trialIsCatchTrial are not needed - use SessionData directly
     trialLeftResponse = false(nTrials, 1);  % Any lick in response window (left side trials)
     trialRightResponse = false(nTrials, 1); % Any lick in response window (right side trials)
     trialLeftHit = false(nTrials, 1);
-    trialRightHit = false(nTrials, 1);
-    trialIsCatchTrial = false(nTrials, 1);    
+    trialRightHit = false(nTrials, 1);    
     
     % First pass: collect all trial data
     for trialNum = 1:nTrials
@@ -111,28 +94,16 @@ function PlotHitResponseRate(SessionData, varargin)
         % Get trial data
         trialData = SessionData.RawEvents.Trial{trialNum};
         
-        % Check if this is a catch trial
+        % Get correct side and catch trial status from SessionData
+        % These are already stored in SessionData by the protocol
+        correctSide = NaN;
+        if isfield(SessionData, 'CorrectSide') && trialNum <= length(SessionData.CorrectSide)
+            correctSide = SessionData.CorrectSide(trialNum);
+        end
+        
         isCatchTrial = false;
         if isfield(SessionData, 'IsCatchTrial') && trialNum <= length(SessionData.IsCatchTrial)
             isCatchTrial = SessionData.IsCatchTrial(trialNum);
-        end
-        
-        % Determine correct side for this trial
-        correctSide = NaN;
-        if isfield(SessionData, 'CurrentSide') && trialNum <= length(SessionData.CurrentSide)
-            currentSide = SessionData.CurrentSide(trialNum);
-            if ~isnan(currentSide)
-                % Derive correctSide from CurrentSide using configuration
-                if currentSide == 1  % Low frequency side
-                    correctSide = lowFreqSpout;
-                elseif currentSide == 2  % High frequency side
-                    correctSide = highFreqSpout;
-                end
-            end
-        end
-        % Fallback to CorrectSide if CurrentSide is not available
-        if isnan(correctSide) && isfield(SessionData, 'CorrectSide') && trialNum <= length(SessionData.CorrectSide)
-            correctSide = SessionData.CorrectSide(trialNum);
         end
         
         % Get response window duration for this trial
@@ -187,76 +158,50 @@ function PlotHitResponseRate(SessionData, varargin)
         end
         
         % Check if reward was received (for hit rate calculation)
-        leftRewardVisited = false;
-        rightRewardVisited = false;
+        % Use same logic as PickSideAntiBias: check if any reward state was visited
+        rewarded = false;
         if isfield(trialData, 'States')
-            if isfield(trialData.States, 'LeftReward')
-                leftRewardVisited = ~isnan(trialData.States.LeftReward(1));
-            end
-            if isfield(trialData.States, 'RightReward')
-                rightRewardVisited = ~isnan(trialData.States.RightReward(1));
-            end
+            rewarded = any(~isnan([trialData.States.LeftReward, trialData.States.RightReward]));
         end
         
-        % Check if reward was triggered by Port1 click (Condition6)
-        isLeftRewardFromPort1 = false;
-        isRightRewardFromPort1 = false;
-        
-        % Only check Port1 if there was a reward
-        if (leftRewardVisited || rightRewardVisited) && isfield(trialData, 'Events') && isfield(trialData.Events, 'Port1In')
-            try
-                port1InTimes = trialData.Events.Port1In;
-                if ~isempty(port1InTimes)
-                    % Determine valid Port1In times (before or during stimulus)
-                    if ~isnan(stimulusStart)
-                        validPort1InMask = port1InTimes <= stimulusStart;
-                    else
-                        validPort1InMask = port1InTimes >= 0 & port1InTimes <= 10;
-                    end
-                    
-                    if any(validPort1InMask)
-                        % Check if left reward was triggered by Port1
-                        if leftRewardVisited
-                            isLeftRewardFromPort1 = checkPort1TriggeredReward(...
-                                trialData, 'LeftReward', port1InTimes, validPort1InMask, stimulusStart);
-                        end
-                        
-                        % Check if right reward was triggered by Port1
-                        if rightRewardVisited
-                            isRightRewardFromPort1 = checkPort1TriggeredReward(...
-                                trialData, 'RightReward', port1InTimes, validPort1InMask, stimulusStart);
-                        end
-                    end
-                end
-            catch
-                % If extraction fails, assume reward is from animal lick
-            end
+        % Check if reward was triggered by Condition6 (Port1 click)
+        % Use same simple check as PickSideAntiBias
+        isCondition6 = false;
+        if isfield(trialData, 'Events') && isfield(trialData.Events, 'Condition6')
+            isCondition6 = true;
         end
-        
-        % Store trial data
-        trialCorrectSide(trialNum) = correctSide;
-        trialIsCatchTrial(trialNum) = isCatchTrial;
         
         % Count hits (for hit rate calculation using sliding window)
-        % Hit = reward received AND not from Port1 AND not catch trial
-        if leftRewardVisited
-            % Count as hit if: non-catch trial AND not manually triggered (Port1)
-            if ~isCatchTrial && ~isLeftRewardFromPort1
+        % Hit = reward received AND not Condition6 AND not catch trial
+        % Same logic as PickSideAntiBias: rewarded & ~triggered & ~isCatchTrial
+        if rewarded && ~isCatchTrial && ~isCondition6
+            if correctSide == 1  % Left side trial
                 trialLeftHit(trialNum) = true;
-            end
-        end
-        if rightRewardVisited
-            % Count as hit if: non-catch trial AND not manually triggered (Port1)
-            if ~isCatchTrial && ~isRightRewardFromPort1
+            elseif correctSide == 2  % Right side trial
                 trialRightHit(trialNum) = true;
             end
         end
     end
     
     % Second pass: calculate response rate and hit rate using sliding window (last 15 trials)
+    % Use SessionData.CorrectSide and SessionData.IsCatchTrial directly
     for trialNum = 1:nTrials
+        % Get correct side array (handle missing field)
+        if isfield(SessionData, 'CorrectSide')
+            correctSideArray = SessionData.CorrectSide(1:min(trialNum, length(SessionData.CorrectSide)));
+        else
+            correctSideArray = NaN(1, trialNum);
+        end
+        
+        % Get catch trial array (handle missing field)
+        if isfield(SessionData, 'IsCatchTrial')
+            isCatchTrialArray = SessionData.IsCatchTrial(1:min(trialNum, length(SessionData.IsCatchTrial)));
+        else
+            isCatchTrialArray = false(1, trialNum);
+        end
+        
         % Calculate left response rate and hit rate (last 15 left-side trials)
-        leftSideTrials = find(trialCorrectSide(1:trialNum) == 1);
+        leftSideTrials = find(correctSideArray == 1);
         if ~isempty(leftSideTrials)
             % Get last windowSize trials (or all if less than windowSize)
             startIdx = max(1, length(leftSideTrials) - windowSize + 1);
@@ -267,7 +212,7 @@ function PlotHitResponseRate(SessionData, varargin)
                 leftResponseRate(trialNum) = leftResponsesInWindow / min(windowSize, length(recentLeftTrials));
                 
                 % Hit rate: hits / non-catch trials in window
-                leftNonCatchInWindow = recentLeftTrials(~trialIsCatchTrial(recentLeftTrials));
+                leftNonCatchInWindow = recentLeftTrials(~isCatchTrialArray(recentLeftTrials));
                 if ~isempty(leftNonCatchInWindow)
                     leftHitsInWindow = sum(trialLeftHit(leftNonCatchInWindow));
                     leftHitRate(trialNum) = leftHitsInWindow / length(leftNonCatchInWindow);
@@ -276,7 +221,7 @@ function PlotHitResponseRate(SessionData, varargin)
         end
         
         % Calculate right response rate and hit rate (last 15 right-side trials)
-        rightSideTrials = find(trialCorrectSide(1:trialNum) == 2);
+        rightSideTrials = find(correctSideArray == 2);
         if ~isempty(rightSideTrials)
             % Get last windowSize trials (or all if less than windowSize)
             startIdx = max(1, length(rightSideTrials) - windowSize + 1);
@@ -287,7 +232,7 @@ function PlotHitResponseRate(SessionData, varargin)
                 rightResponseRate(trialNum) = rightResponsesInWindow / min(windowSize, length(recentRightTrials));
                 
                 % Hit rate: hits / non-catch trials in window
-                rightNonCatchInWindow = recentRightTrials(~trialIsCatchTrial(recentRightTrials));
+                rightNonCatchInWindow = recentRightTrials(~isCatchTrialArray(recentRightTrials));
                 if ~isempty(rightNonCatchInWindow)
                     rightHitsInWindow = sum(trialRightHit(rightNonCatchInWindow));
                     rightHitRate(trialNum) = rightHitsInWindow / length(rightNonCatchInWindow);
@@ -329,36 +274,5 @@ function PlotHitResponseRate(SessionData, varargin)
     % Force update of the figure (for online mode)
     if ~isempty(customPlotFig)
         drawnow;
-    end
-end
-
-% Helper function to check if a reward was triggered by Port1
-function isTriggered = checkPort1TriggeredReward(trialData, rewardStateName, port1InTimes, validPort1InMask, stimulusStart)
-    % Check if reward state exists and get reward time
-    if ~isfield(trialData, 'States') || ~isfield(trialData.States, rewardStateName)
-        isTriggered = false;
-        return;
-    end
-    
-    try
-        rewardTime = trialData.States.(rewardStateName)(1);
-        if isnan(rewardTime)
-            isTriggered = false;
-            return;
-        end
-        
-        % Check time relationship between Port1In and reward
-        if ~isnan(stimulusStart)
-            % Port1In should be before reward, and reward should be within 2 seconds
-            timeFromPort1ToReward = rewardTime - port1InTimes;
-            isTriggered = any(timeFromPort1ToReward > 0 & timeFromPort1ToReward < 2 & validPort1InMask);
-        else
-            % If no stimulus start, check absolute time difference
-            timeDiff = abs(port1InTimes - rewardTime);
-            isTriggered = any(timeDiff < 2 & validPort1InMask);
-        end
-    catch
-        % If extraction fails, assume reward is from animal lick
-        isTriggered = false;
     end
 end
