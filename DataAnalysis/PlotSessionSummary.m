@@ -41,7 +41,7 @@ function PlotSessionSummary(SessionData, varargin)
     
     % Create axes if not provided (offline mode)
     if isempty(ax)
-        figure('Name', figureName, 'Position', [200 200 600 600]);
+        figure('Name', figureName, 'Position', [200 200 500 600]);
         ax = axes('Position', [0.1 0.05 0.85 0.9]);
     end
     
@@ -73,43 +73,27 @@ function PlotSessionSummary(SessionData, varargin)
     % 1. SESSION CATEGORY/TYPE
     % ========================================================================
     sessionType = SessionData.StimParams.Session.TypeName;
-    textLines{lineNum} = ['Session Type: ' sessionType '      Trials: ' num2str(nTrials)];
+    textLines{lineNum} = ['Session Type: ' sessionType ' | Trials: ' num2str(nTrials)];
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
     lineNum = lineNum + 1;
     % ========================================================================
     % 2. DURATION
     % ========================================================================
-    duration = NaN;
-    if isfield(SessionData, 'TrialStartTimestamp') && ~isempty(SessionData.TrialStartTimestamp)
-        if nTrials > 0 && length(SessionData.TrialStartTimestamp) >= nTrials
-            startTime = SessionData.TrialStartTimestamp(1);
-            % Get end time from last trial's WaitToFinish state
-            if isfield(SessionData, 'RawEvents') && isfield(SessionData.RawEvents, 'Trial')
-                if nTrials <= length(SessionData.RawEvents.Trial)
-                    lastTrial = SessionData.RawEvents.Trial{nTrials};
-                    if isfield(lastTrial, 'States') && isfield(lastTrial.States, 'WaitToFinish')
-                        if ~isempty(lastTrial.States.WaitToFinish) && ~isnan(lastTrial.States.WaitToFinish(1, 2))
-                            endTime = SessionData.TrialStartTimestamp(nTrials) + lastTrial.States.WaitToFinish(1, 2);
-                            duration = endTime - startTime;
-                        end
-                    end
-                end
-            end
-        end
-    end
+    startTime = SessionData.TrialStartTimestamp(1);
+    % Get end time from last trial's WaitToFinish state
+    lastTrial = SessionData.RawEvents.Trial{nTrials};
+    endTime = SessionData.TrialStartTimestamp(nTrials) + lastTrial.States.WaitToFinish(1, 2);
+    duration = endTime - startTime;
+
     
-    if ~isnan(duration)
-        hours = floor(duration / 3600);
-        minutes = floor((duration - hours * 3600) / 60);
-        seconds = duration - hours * 3600 - minutes * 60;
-        if hours > 0
-            textLines{lineNum} = ['Session Duration: ' sprintf('%.0f h %.0f m %.1f s', hours, minutes, seconds)];
-        else
-            textLines{lineNum} = ['Session Duration: ' sprintf('%.0f m %.1f s', minutes, seconds)];
-        end
+    hours = floor(duration / 3600);
+    minutes = floor((duration - hours * 3600) / 60);
+    seconds = duration - hours * 3600 - minutes * 60;
+    if hours > 0
+        textLines{lineNum} = ['Session Duration: ' sprintf('%.0f h %.0f m %.1f s', hours, minutes, seconds)];
     else
-        textLines{lineNum} = 'Session Duration: N/A';
+        textLines{lineNum} = ['Session Duration: ' sprintf('%.0f m %.1f s', minutes, seconds)];
     end
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
@@ -118,16 +102,9 @@ function PlotSessionSummary(SessionData, varargin)
     % ========================================================================
     % 2.5. STIMULUS DURATION
     % ========================================================================
-    stimulusDuration = NaN;
-    if isfield(SessionData, 'StimParams') && isfield(SessionData.StimParams, 'Duration')
-        stimulusDuration = SessionData.StimParams.Duration;
-    end
+    stimulusDuration = SessionData.StimParams.Duration;
     
-    if ~isnan(stimulusDuration)
-        textLines{lineNum} = ['Stimulus Duration: ' sprintf('%.0f ms', stimulusDuration)];
-    else
-        textLines{lineNum} = 'Stimulus Duration: N/A';
-    end
+    textLines{lineNum} = ['Stimulus Duration: ' sprintf('%.0f ms', stimulusDuration)];
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
     lineNum = lineNum + 1;
@@ -137,32 +114,13 @@ function PlotSessionSummary(SessionData, varargin)
     % ========================================================================
     if isOnlineMode
         % Online mode: simplified display (only first range)
-        minITI = NaN;
-        maxITI = NaN;
-        if isfield(SessionData, 'ThisITI')
-            itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
-            if ~isempty(itiValues)
-                minITI = min(itiValues);
-                maxITI = max(itiValues);
-            end
-        elseif isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
-            if isfield(SessionData.TrialSettings(1), 'GUI')
-                if isfield(SessionData.TrialSettings(1).GUI, 'MinITI') && ...
-                   isfield(SessionData.TrialSettings(1).GUI, 'MaxITI')
-                    minITI = SessionData.TrialSettings(1).GUI.MinITI;
-                    maxITI = SessionData.TrialSettings(1).GUI.MaxITI;
-                end
-            end
-        end
-        
-        if ~isnan(minITI) && ~isnan(maxITI)
-            if abs(minITI - maxITI) < 0.001
+        itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
+        minITI = min(itiValues);
+        maxITI = max(itiValues);
+        if abs(minITI - maxITI) < 0.001
                 textLines{lineNum} = ['ITI Range: ' sprintf('%.1f s', minITI)];
             else
                 textLines{lineNum} = ['ITI Range: ' sprintf('%.1f-%.1f s', minITI, maxITI)];
-            end
-        else
-            textLines{lineNum} = 'ITI Range: N/A';
         end
     else
         % Offline mode: full display (all range changes)
@@ -190,14 +148,10 @@ function PlotSessionSummary(SessionData, varargin)
         
         % If no ranges found in TrialSettings, try ThisITI or first trial
         if isempty(itiRanges)
-            if isfield(SessionData, 'ThisITI')
-                itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
-                if ~isempty(itiValues)
-                    minITI = min(itiValues);
-                    maxITI = max(itiValues);
-                    itiRanges = [1, minITI, maxITI];
-                end
-            end
+            itiValues = SessionData.ThisITI(~isnan(SessionData.ThisITI));
+            minITI = min(itiValues);
+            maxITI = max(itiValues);
+            itiRanges = [1, minITI, maxITI];
         end
         
         % Display ITI range(s)
@@ -247,8 +201,6 @@ function PlotSessionSummary(SessionData, varargin)
             textLines{lineNum} = 'ITI Range: N/A';
         end
     end
-    lineNum = lineNum + 1;
-    textLines{lineNum} = '';  % Empty line
     lineNum = lineNum + 1;
     
     % ========================================================================
@@ -390,26 +342,22 @@ function PlotSessionSummary(SessionData, varargin)
     end
     
     if ~isnan(rewardAmount)
-        textLines{lineNum} = ['Volume of water rewarded per trial: ' sprintf('%.0f μL', rewardAmount)];
+        textLines{lineNum} = ['Water rewarded per trial: ' sprintf('%.0f μL', rewardAmount)];
     else
-        textLines{lineNum} = 'Volume of water rewarded per trial: N/A';
+        textLines{lineNum} = 'Water rewarded per trial: N/A';
     end
     lineNum = lineNum + 1;
     textLines{lineNum} = '';  % Empty line
     lineNum = lineNum + 1;
     
     % ========================================================================
-    % 5.5. N TO SWITCH (NCorrectToSwitch)
+    % 5.5. N TO SWITCH (NCorrectToSwitch, if available)
     % ========================================================================
     nToSwitch = NaN;
-    if isfield(SessionData, 'TrialSettings') && ~isempty(SessionData.TrialSettings)
-        % Get from last trial's TrialSettings
-        lastTrialIdx = min(nTrials, length(SessionData.TrialSettings));
-        if isfield(SessionData.TrialSettings(lastTrialIdx), 'GUI')
-            if isfield(SessionData.TrialSettings(lastTrialIdx).GUI, 'NCorrectToSwitch')
-                nToSwitch = SessionData.TrialSettings(lastTrialIdx).GUI.NCorrectToSwitch;
-            end
-        end
+    % Get from last trial's TrialSettings
+    lastTrialIdx = min(nTrials, length(SessionData.TrialSettings));
+    if isfield(SessionData.TrialSettings(lastTrialIdx).GUI, 'NCorrectToSwitch')
+        nToSwitch = SessionData.TrialSettings(lastTrialIdx).GUI.NCorrectToSwitch;
     end
     
     % Only display if the field exists (for compatibility with other protocols)
@@ -419,6 +367,13 @@ function PlotSessionSummary(SessionData, varargin)
         textLines{lineNum} = '';  % Empty line
         lineNum = lineNum + 1;
     end
+    
+    % ========================================================================
+    % 5.6. CATCH TRIAL COUNT
+    % ========================================================================
+    catchTrials = sum(SessionData.IsCatchTrial);
+    textLines{lineNum} = ['Catch Trials: ' num2str(catchTrials)];
+    lineNum = lineNum + 1;
     
     % ========================================================================
     % 6-9. LEFT/RIGHT REWARD STATISTICS AND HIT RATES
@@ -431,12 +386,7 @@ function PlotSessionSummary(SessionData, varargin)
             highFreqSpout = SessionData.StimParams.Behave.CorrectSpout; % 1 = left, 2 = right
             lowFreqSpout = 3 - highFreqSpout; % Opposite of high frequency spout
         end
-    end
-    % Use default configuration if not found
-    if isnan(highFreqSpout)
-        highFreqSpout = 2; % Default: high frequency -> right
-        lowFreqSpout = 1;  % Default: low frequency -> left
-    end
+    end 
     
     % Initialize counters
     leftTrials = 0;
@@ -450,6 +400,7 @@ function PlotSessionSummary(SessionData, varargin)
     leftManualRewards = 0;  % Port1-triggered rewards for left side
     rightManualRewards = 0;  % Port1-triggered rewards for right side
     totalWaterVolume = 0;
+    catchTrialsWithFalseAlarm = 0;  % Count catch trials with BNC1 or BNC2 in response window
     
     % Loop through all trials
     for trialNum = 1:nTrials
@@ -573,18 +524,51 @@ function PlotSessionSummary(SessionData, varargin)
             end
         end
         
+        % Check for False Alarm in catch trials (BNC1 or BNC2 in Response Window)
+        if isCatchTrial
+            % Get Response Window duration for this trial
+            ResWin = SessionData.ResWin(trialNum);
+            
+            % Get Stimulus state timing to define Response Window
+            stimulusStart = trialData.States.Stimulus(1);
+
+            
+            % Check if BNC1 or BNC2 triggered during Response Window
+            hasFalseAlarm = false;
+            responseWindowEnd = stimulusStart + ResWin;
+                
+            % Check for BNC1High events in response window
+            if isfield(trialData.Events, 'BNC1High')
+                bnc1Times = trialData.Events.BNC1High;
+            else
+                bnc1Times = [];
+            end
+            if isfield(trialData.Events, 'BNC2High')
+                bnc2Times = trialData.Events.BNC2High;
+            else
+                bnc2Times = [];
+            end
+            leftLickInWindow = bnc1Times >= stimulusStart & bnc1Times <= responseWindowEnd;
+            rightLickInWindow = bnc2Times >= stimulusStart & bnc2Times <= responseWindowEnd;
+            if any(leftLickInWindow) || any(rightLickInWindow)
+                hasFalseAlarm = true;
+            end
+        
+            % Count catch trials with False Alarm
+            if hasFalseAlarm
+                catchTrialsWithFalseAlarm = catchTrialsWithFalseAlarm + 1;
+            end
+        end
+
         % Count trials by correct side (for trial count)
-        if ~isnan(correctSide)
+        % Exclude catch trials from left/right trial counts
+        if ~isCatchTrial
             if correctSide == 1  % Left side
                 leftTrials = leftTrials + 1;
-                if ~isCatchTrial
-                    leftNonCatchTrials = leftNonCatchTrials + 1;
-                end
+                leftNonCatchTrials = leftNonCatchTrials + 1;
             elseif correctSide == 2  % Right side
                 rightTrials = rightTrials + 1;
-                if ~isCatchTrial
-                    rightNonCatchTrials = rightNonCatchTrials + 1;
-                end
+                rightNonCatchTrials = rightNonCatchTrials + 1;
             end
         end
         
@@ -639,6 +623,18 @@ function PlotSessionSummary(SessionData, varargin)
         end
     end
     
+    % ========================================================================
+    % 5.7. FALSE ALARM RATE (calculated after loop)
+    % ========================================================================
+    % Calculate and display False Alarm rate for catch trials
+    if catchTrials > 0
+        falseAlarmRate = (catchTrialsWithFalseAlarm / catchTrials) * 100;
+        textLines{lineNum} = ['False Alarm Rate: ' sprintf('%.1f%%', falseAlarmRate) ' (' num2str(catchTrialsWithFalseAlarm) '/' num2str(catchTrials) ')'];
+        lineNum = lineNum + 1;
+        textLines{lineNum} = '';  % Empty line
+        lineNum = lineNum + 1;
+    end
+    
     % Display left side statistics
     textLines{lineNum} = 'Left Side:';
     lineNum = lineNum + 1;
@@ -689,7 +685,7 @@ function PlotSessionSummary(SessionData, varargin)
     % Also verify calculation: total rewards × average reward amount
     totalRewards = leftRewards + rightRewards;
     if ~isnan(totalWaterVolume)
-        textLines{lineNum} = ['Total Volume of water rewarded: ' sprintf('%.0f μL', totalWaterVolume)];
+        textLines{lineNum} = ['Total water rewarded: ' sprintf('%.0f μL', totalWaterVolume)];
         % Add verification: expected = totalRewards × rewardAmount
         if ~isnan(rewardAmount) && totalRewards > 0
             expectedVolume = totalRewards * rewardAmount;
@@ -699,7 +695,7 @@ function PlotSessionSummary(SessionData, varargin)
             end
         end
     else
-        textLines{lineNum} = 'Total Volume of water rewarded: N/A';
+        textLines{lineNum} = 'Total water rewarded: N/A';
     end
     
     % ========================================================================
