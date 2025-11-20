@@ -72,6 +72,20 @@ function PlotHitResponseRate(SessionData, varargin)
         return;
     end
     
+    % Extract trial indices from SessionData
+    isCatchTrial = SessionData.IsCatchTrial(:);  % Ensure column vector
+    catchTrialIndices = find(isCatchTrial);
+    nonCatchTrialIndices = find(~isCatchTrial);
+    
+    % Extract side-specific indices from SessionData
+    correctSide = SessionData.CorrectSide(:);  % Ensure column vector
+    leftSideTrials = find(correctSide == 1);
+    rightSideTrials = find(correctSide == 2);
+    
+    % Extract side-specific non-catch trial indices from SessionData
+    leftSideNonCatchTrials = leftSideTrials(~isCatchTrial(leftSideTrials));
+    rightSideNonCatchTrials = rightSideTrials(~isCatchTrial(rightSideTrials));
+    
     % Initialize arrays to store rates
     leftResponseRate = NaN(nTrials, 1);
     leftHitRate = NaN(nTrials, 1);
@@ -94,75 +108,43 @@ function PlotHitResponseRate(SessionData, varargin)
         % Get trial data
         trialData = SessionData.RawEvents.Trial{trialNum};
         
-        % Get correct side and catch trial status from SessionData
-        % These are already stored in SessionData by the protocol
-        correctSide = NaN;
-        if isfield(SessionData, 'CorrectSide') && trialNum <= length(SessionData.CorrectSide)
-            correctSide = SessionData.CorrectSide(trialNum);
-        end
-        
-        isCatchTrial = false;
-        if isfield(SessionData, 'IsCatchTrial') && trialNum <= length(SessionData.IsCatchTrial)
-            isCatchTrial = SessionData.IsCatchTrial(trialNum);
-        end
-        
         % Get response window duration for this trial
-        ResWin = NaN;
-        if isfield(SessionData, 'ResWin') && trialNum <= length(SessionData.ResWin)
-            ResWin = SessionData.ResWin(trialNum);
-        elseif isfield(SessionData, 'TrialSettings') && trialNum <= length(SessionData.TrialSettings)
-            if isfield(SessionData.TrialSettings(trialNum), 'GUI') && isfield(SessionData.TrialSettings(trialNum).GUI, 'ResWin')
-                ResWin = SessionData.TrialSettings(trialNum).GUI.ResWin;
-            end
-        end
+        ResWin = SessionData.ResWin(trialNum);
         
         % Get stimulus start time
-        stimulusStart = NaN;
-        if isfield(trialData, 'States') && isfield(trialData.States, 'Stimulus')
-            stimulusStart = trialData.States.Stimulus(1);
-        end
+        stimulusStart = trialData.States.Stimulus(1);
+        responseWindowEnd = stimulusStart + ResWin;
         
-        % Check if there was any lick in response window (BNC1High or BNC2High)
-        % Response = any lick within response window, regardless of correctness
         hasResponse = false;
-        if ~isnan(stimulusStart) && ~isnan(ResWin)
-            responseWindowEnd = stimulusStart + ResWin;
-            
+        % Check if there was any lick in response window (BNC1High or BNC2High) if not a catch trial
+        if ~SessionData.IsCatchTrial(trialNum)
             % Check for any lick events (BNC1High or BNC2High) in response window
-            if isfield(trialData, 'Events')
-                % Check BNC1High (left lick port)
-                if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
-                    licksInWindow = trialData.Events.BNC1High >= stimulusStart & trialData.Events.BNC1High <= responseWindowEnd;
-                    if any(licksInWindow)
-                        hasResponse = true;
-                    end
+            if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
+                licksInWindow = trialData.Events.BNC1High >= stimulusStart & trialData.Events.BNC1High <= responseWindowEnd;
+                if any(licksInWindow)
+                    hasResponse = true;
                 end
-                
-                % Check BNC2High (right lick port)
-                if ~hasResponse && isfield(trialData.Events, 'BNC2High') && ~isempty(trialData.Events.BNC2High)
-                    licksInWindow = trialData.Events.BNC2High >= stimulusStart & trialData.Events.BNC2High <= responseWindowEnd;
-                    if any(licksInWindow)
-                        hasResponse = true;
-                    end
+            end
+            if isfield(trialData.Events, 'BNC2High') && ~isempty(trialData.Events.BNC2High)
+                licksInWindow = trialData.Events.BNC2High >= stimulusStart & trialData.Events.BNC2High <= responseWindowEnd;
+                if any(licksInWindow)
+                    hasResponse = true;
                 end
             end
         end
         
         % Store response based on correct side (for response rate calculation)
-        if ~isnan(correctSide) && hasResponse
-            if correctSide == 1  % Left side trial
+        if hasResponse
+            if SessionData.CorrectSide(trialNum) == 1  % Left side trial
                 trialLeftResponse(trialNum) = true;
-            elseif correctSide == 2  % Right side trial
+            elseif SessionData.CorrectSide(trialNum) == 2  % Right side trial
                 trialRightResponse(trialNum) = true;
             end
         end
         
         % Check if reward was received (for hit rate calculation)
         % Use same logic as PickSideAntiBias: check if any reward state was visited
-        rewarded = false;
-        if isfield(trialData, 'States')
-            rewarded = any(~isnan([trialData.States.LeftReward, trialData.States.RightReward]));
-        end
+        rewarded = any(~isnan([trialData.States.LeftReward, trialData.States.RightReward]));
         
         % Check if reward was triggered by Condition6 (Port1 click)
         % Use same simple check as PickSideAntiBias
@@ -174,70 +156,70 @@ function PlotHitResponseRate(SessionData, varargin)
         % Count hits (for hit rate calculation using sliding window)
         % Hit = reward received AND not Condition6 AND not catch trial
         % Same logic as PickSideAntiBias: rewarded & ~triggered & ~isCatchTrial
-        if rewarded && ~isCatchTrial && ~isCondition6
-            if correctSide == 1  % Left side trial
+        if rewarded && ~SessionData.IsCatchTrial(trialNum) && ~isCondition6
+            if SessionData.CorrectSide(trialNum) == 1  % Left side trial
                 trialLeftHit(trialNum) = true;
-            elseif correctSide == 2  % Right side trial
+            elseif SessionData.CorrectSide(trialNum) == 2  % Right side trial
                 trialRightHit(trialNum) = true;
             end
         end
     end
     
-    % Second pass: calculate response rate and hit rate using sliding window (last 15 trials)
-    % Use SessionData.CorrectSide and SessionData.IsCatchTrial directly
-    for trialNum = 1:nTrials
-        % Get correct side array (handle missing field)
-        if isfield(SessionData, 'CorrectSide')
-            correctSideArray = SessionData.CorrectSide(1:min(trialNum, length(SessionData.CorrectSide)));
-        else
-            correctSideArray = NaN(1, trialNum);
-        end
-        
-        % Get catch trial array (handle missing field)
-        if isfield(SessionData, 'IsCatchTrial')
-            isCatchTrialArray = SessionData.IsCatchTrial(1:min(trialNum, length(SessionData.IsCatchTrial)));
-        else
-            isCatchTrialArray = false(1, trialNum);
-        end
-        
-        % Calculate left response rate and hit rate (last 15 left-side trials)
-        leftSideTrials = find(correctSideArray == 1);
-        if ~isempty(leftSideTrials)
+    
+    % Second pass: calculate response rate and hit rate using sliding window (last 15 trials), only for non-catch trials
+    for trialNum = nonCatchTrialIndices'
+        % Get left-side non-catch trials up to current trial
+        leftSideTrialsUpToNow = leftSideNonCatchTrials(leftSideNonCatchTrials <= trialNum);
+        if ~isempty(leftSideTrialsUpToNow)
             % Get last windowSize trials (or all if less than windowSize)
-            startIdx = max(1, length(leftSideTrials) - windowSize + 1);
-            recentLeftTrials = leftSideTrials(startIdx:end);
+            startIdx = max(1, length(leftSideTrialsUpToNow) - windowSize + 1);
+            recentLeftTrials = leftSideTrialsUpToNow(startIdx:end);
             if ~isempty(recentLeftTrials)
                 % Response rate: any lick in response window
                 leftResponsesInWindow = sum(trialLeftResponse(recentLeftTrials));
-                leftResponseRate(trialNum) = leftResponsesInWindow / min(windowSize, length(recentLeftTrials));
-                
-                % Hit rate: hits / non-catch trials in window
-                leftNonCatchInWindow = recentLeftTrials(~isCatchTrialArray(recentLeftTrials));
-                if ~isempty(leftNonCatchInWindow)
-                    leftHitsInWindow = sum(trialLeftHit(leftNonCatchInWindow));
-                    leftHitRate(trialNum) = leftHitsInWindow / length(leftNonCatchInWindow);
-                end
+                leftHitsInWindow = sum(trialLeftHit(recentLeftTrials));
+                leftResponseRate(trialNum) = leftResponsesInWindow / length(recentLeftTrials);
+                leftHitRate(trialNum) = leftHitsInWindow / length(recentLeftTrials);
             end
         end
         
-        % Calculate right response rate and hit rate (last 15 right-side trials)
-        rightSideTrials = find(correctSideArray == 2);
-        if ~isempty(rightSideTrials)
+        % Get right-side non-catch trials up to current trial
+        rightSideTrialsUpToNow = rightSideNonCatchTrials(rightSideNonCatchTrials <= trialNum);
+        if ~isempty(rightSideTrialsUpToNow)
             % Get last windowSize trials (or all if less than windowSize)
-            startIdx = max(1, length(rightSideTrials) - windowSize + 1);
-            recentRightTrials = rightSideTrials(startIdx:end);
+            startIdx = max(1, length(rightSideTrialsUpToNow) - windowSize + 1);
+            recentRightTrials = rightSideTrialsUpToNow(startIdx:end);
             if ~isempty(recentRightTrials)
                 % Response rate: any lick in response window
                 rightResponsesInWindow = sum(trialRightResponse(recentRightTrials));
-                rightResponseRate(trialNum) = rightResponsesInWindow / min(windowSize, length(recentRightTrials));
-                
-                % Hit rate: hits / non-catch trials in window
-                rightNonCatchInWindow = recentRightTrials(~isCatchTrialArray(recentRightTrials));
-                if ~isempty(rightNonCatchInWindow)
-                    rightHitsInWindow = sum(trialRightHit(rightNonCatchInWindow));
-                    rightHitRate(trialNum) = rightHitsInWindow / length(rightNonCatchInWindow);
-                end
+                rightHitsInWindow = sum(trialRightHit(recentRightTrials));
+                rightResponseRate(trialNum) = rightResponsesInWindow / length(recentRightTrials);
+                rightHitRate(trialNum) = rightHitsInWindow / length(recentRightTrials);
             end
+        end
+    end
+    
+    % For catch trials, copy values from previous non-catch trial using vectorized operations
+    % This handles consecutive catch trials: all will use the last non-catch trial's values
+    if ~isempty(catchTrialIndices)
+        % Create array: non-catch trials have their index, catch trials have 0
+        % Ensure both are column vectors to avoid dimension mismatch
+        idxArray = (1:nTrials)' .* (~isCatchTrial);
+        
+        % Use cummax to forward-fill: each position gets the maximum (last non-zero) index up to that point
+        % This effectively gives us the last non-catch trial index for each position
+        lastNonCatchIdx = cummax(idxArray);
+        
+        % Copy values for catch trials from their previous non-catch trial
+        % Only process catch trials that have a valid previous non-catch trial
+        validMask = lastNonCatchIdx(catchTrialIndices) > 0;
+        validCatchTrials = catchTrialIndices(validMask);
+        if ~isempty(validCatchTrials)
+            prevIndices = lastNonCatchIdx(validCatchTrials);
+            leftResponseRate(validCatchTrials) = leftResponseRate(prevIndices);
+            leftHitRate(validCatchTrials) = leftHitRate(prevIndices);
+            rightResponseRate(validCatchTrials) = rightResponseRate(prevIndices);
+            rightHitRate(validCatchTrials) = rightHitRate(prevIndices);
         end
     end
     

@@ -114,6 +114,10 @@ catchTrialTable = generateCatchTrialTable(highFreqTable);
 % Create output structure
 LeftRightSeq = struct();
 LeftRightSeq.HighFreqTable = highFreqTable;
+
+% Temporal:Double the Amplitude of lowFreq
+lowFreqTable.('VibAmp') = lowFreqTable.('VibAmp')*2;
+
 LeftRightSeq.LowFreqTable = lowFreqTable;
 LeftRightSeq.BoundaryFreqTable = boundaryFreqTable;
 LeftRightSeq.CatchTrialTable = catchTrialTable;
