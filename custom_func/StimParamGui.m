@@ -1052,7 +1052,7 @@ function StimParams = StimParamGui()
                 
                 % Handle Vibration Amplitude input based on SameAmplitude setting
                 sameAmplitude = get(h.Vib.SameAmplitude, 'Value');
-                
+                StimParams.Vibration.SameAmplitude = sameAmplitude;
                 if sameAmplitude == 1  % Yes - same amplitude for all frequencies
                     % Use original format: StimParams.Vibration.Amplitude
                     ampStr = get(h.Vib.Amplitude, 'String');

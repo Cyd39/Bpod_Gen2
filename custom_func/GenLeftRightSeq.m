@@ -43,17 +43,20 @@ switch sessionTypeName
         end
 end
 
-% Get side configuration (these might need to be added to StimParamGui)
-if isfield(StimParams, 'HighFreqSide')
-    highFreqSide = StimParams.HighFreqSide;
+% Get side configuration
+if isfield(StimParams.Behave, 'CorrectSpout')
+    correctSpout = StimParams.Behave.CorrectSpout;
+    if correctSpout == 1
+        highFreqSide = 'Left';
+        lowFreqSide = 'Right';
+    else
+        highFreqSide = 'Right';
+        lowFreqSide = 'Left';
+    end
 else
     highFreqSide = 'Left';  % Default
-end
-
-if isfield(StimParams, 'LowFreqSide')
-    lowFreqSide = StimParams.LowFreqSide;
-else
     lowFreqSide = 'Right';  % Default
+    warning('CorrectSpoutName and  not found in StimParams.Behave, using default configuration (high freq -> left, low freq -> right)');
 end
 
 
@@ -114,10 +117,6 @@ catchTrialTable = generateCatchTrialTable(highFreqTable);
 % Create output structure
 LeftRightSeq = struct();
 LeftRightSeq.HighFreqTable = highFreqTable;
-
-% Temporal:Double the Amplitude of lowFreq
-lowFreqTable.('VibAmp') = lowFreqTable.('VibAmp')*2;
-
 LeftRightSeq.LowFreqTable = lowFreqTable;
 LeftRightSeq.BoundaryFreqTable = boundaryFreqTable;
 LeftRightSeq.CatchTrialTable = catchTrialTable;
@@ -350,7 +349,14 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
     % get general parameters
     nTrials = StimParams.Behave.NumTrials;
     vibTypeName = StimParams.Vibration.TypeName;
-    vibAmp = StimParams.Vibration.Amplitude;
+    sameAmplitude = true;
+    if isfield(StimParams.Vibration, 'Amplitude')
+        vibAmp = StimParams.Vibration.Amplitude;
+    else
+        vibAmpHigh = StimParams.Vibration.HighFreqAmplitude;
+        vibAmpLow = StimParams.Vibration.LowFreqAmplitude;
+        sameAmplitude = false;
+    end
     vibFreq = StimParams.Vibration.Frequency;
 
     % Separate high and low frequency vibrations
@@ -359,7 +365,11 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
     
     % Generate high frequency table
     if ~isempty(highVibFreq)
-        [highVibAmp, highVibFreq] = ndgrid(vibAmp, highVibFreq);
+        if sameAmplitude
+            [highVibAmp, highVibFreq] = ndgrid(vibAmp, highVibFreq);
+        else
+            [highVibAmp, highVibFreq] = ndgrid(vibAmpHigh, highVibFreq);
+        end
         highStimTableUnq = table(highVibAmp(:), highVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
         
         % Remove invalid rows
@@ -377,7 +387,11 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
     
     % Generate low frequency table
     if ~isempty(lowVibFreq)
-        [lowVibAmp, lowVibFreq] = ndgrid(vibAmp, lowVibFreq);
+        if sameAmplitude
+            [lowVibAmp, lowVibFreq] = ndgrid(vibAmp, lowVibFreq);
+        else
+            [lowVibAmp, lowVibFreq] = ndgrid(vibAmpLow, lowVibFreq);
+        end
         lowStimTableUnq = table(lowVibAmp(:), lowVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
         
         % Remove invalid rows
@@ -526,7 +540,11 @@ function boundaryFreqTable = makeBoundaryTable(StimParams, frequencyBoundary)
         case 'VibrationOnly'
             % For vibration only, create boundary frequency table with vibration at boundary frequency
             vibTypeName = StimParams.Vibration.TypeName;
-            vibAmp = StimParams.Vibration.Amplitude;
+            if isfield(StimParams.Vibration, 'Amplitude')
+                vibAmp = StimParams.Vibration.Amplitude;
+            else
+                vibAmp = StimParams.Vibration.HighFreqAmplitude;
+            end
             
             % Create combinations with boundary frequency
             [vibAmp] = ndgrid(vibAmp);
