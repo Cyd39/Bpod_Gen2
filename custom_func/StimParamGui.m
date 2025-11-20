@@ -4,7 +4,7 @@ function StimParams = StimParamGui()
     
     h_gui = figure('Name', 'Stimulus Parameter Setting', ...
         'NumberTitle', 'off', ...
-        'Position', [500 100 1000 900], ...
+        'Position', [500 100 1100 900], ...
         'MenuBar', 'none');
 
     % Session type selection (normalized)
@@ -600,7 +600,7 @@ function StimParams = StimParamGui()
             'FontSize', 14);
         h.Vib.Frequency = uicontrol('Parent', parent, ...
             'Style', 'edit', ...
-            'String', '100,700', ...
+            'String', '100,400', ...
             'Units', 'normalized', ...
             'Position', [0.5 0.23 0.4 0.13],...
             'FontSize', 14);
@@ -614,7 +614,7 @@ function StimParams = StimParamGui()
             'FontSize', 14);
         h.Vib.BoundaryFreq = uicontrol('Parent', parent, ...
             'Style', 'edit', ...
-            'String', '400', ...
+            'String', '250', ...
             'Units', 'normalized', ...
             'Position', [0.5 0.05 0.4 0.13],...
             'FontSize', 14);
@@ -842,7 +842,7 @@ function StimParams = StimParamGui()
             'Style', 'text', ...
             'String', 'Error Message will be displayed here', ...
             'Units', 'normalized', ...
-            'Position', [0.02 0.01 0.96 0.13],...
+            'Position', [0.02 0.01 0.96 0.15],...
             'FontSize', 12,...
             'ForegroundColor', 'red',...
             'HorizontalAlignment', 'left',...
@@ -852,6 +852,84 @@ function StimParams = StimParamGui()
     function setStimParams(~, ~)
         % Clear previous error message
         set(h.ErrorMsg, 'String', '');
+        
+        % Nested helper function to parse amplitude string with format validation
+        function ampValue = parseAmplitudeString(ampStr)
+            % Parse amplitude string with support for multiple formats:
+            % - Comma separated: "0.2,0.5,0.8"
+            % - Space separated: "[0.2 0.5 0.8]"
+            % - Range with step: "0:0.1:1"
+            % All values must be between 0 and 1
+            
+            try
+                % First try to handle comma-separated numbers
+                if contains(ampStr, ',')
+                    % Split by comma and convert to numbers
+                    parts = strsplit(ampStr, ',');
+                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                    if all(~cellfun(@isnan, parts))
+                        ampValue = cell2mat(parts)';
+                        % Check if all values are within range [0,1]
+                        if any(ampValue < 0) || any(ampValue > 1)
+                            error('Amplitude values must be between 0 and 1');
+                        end
+                        return;
+                    else
+                        error('Invalid number format in comma-separated list');
+                    end
+                else
+                    % Try to evaluate the string as a MATLAB expression
+                    ampValue = eval(ampStr);
+                    % Convert to column vector if it's a row vector
+                    if size(ampValue, 1) == 1
+                        ampValue = ampValue';
+                    end
+                    % Check if all values are within range [0,1]
+                    if any(ampValue < 0) || any(ampValue > 1)
+                        error('Amplitude values must be between 0 and 1');
+                    end
+                    return;
+                end
+            catch
+                % If evaluation fails, try to parse as a range
+                try
+                    % Split the string by ':'
+                    parts = strsplit(ampStr, ':');
+                    % Convert all parts to numbers
+                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
+                    % Check if all parts are valid numbers
+                    if all(~cellfun(@isnan, parts))
+                        switch length(parts)
+                            case 1
+                                % Single value
+                                ampValue = parts{1};
+                            case 2
+                                % Start:End (default step = 1)
+                                ampValue = (parts{1}:parts{2})';
+                            case 3
+                                % Start:Step:End
+                                ampValue = (parts{1}:parts{2}:parts{3})';
+                            otherwise
+                                % Multiple values separated by colons
+                                ampValue = cell2mat(parts)';
+                        end
+                        % Check if all values are within range [0,1]
+                        if any(ampValue < 0) || any(ampValue > 1)
+                            error('Amplitude values must be between 0 and 1');
+                        end
+                        return;
+                    else
+                        error('Invalid number format in range');
+                    end
+                catch
+                    error(sprintf(['Invalid Amplitude format. Please use one of these formats:' newline ...
+                        '- Comma separated: "0.2,0.5,0.8"' newline ...
+                        '- Space separated: "[0.2 0.5 0.8]"' newline ...
+                        '- Range with step: "0:0.1:1"' newline ...
+                        'All values must be between 0 and 1']));
+                end
+            end
+        end
         
         try
             % Get session type
@@ -947,9 +1025,9 @@ function StimParams = StimParamGui()
                                     error('Invalid number format in range');
                                 end
                             catch
-                                error(sprintf(['Invalid Noise Level format. Please use one of these formats:' char(10) ...
-                                    '- Comma separated: "4,5,10"' char(10) ...
-                                    '- Space separated: "[4 5 10]"' char(10) ...
+                                error(sprintf(['Invalid Noise Level format. Please use one of these formats:' newline ...
+                                    '- Comma separated: "4,5,10"' newline ...
+                                    '- Space separated: "[4 5 10]"' newline ...
                                     '- Range with step: "0:5:60"']));
                             end
                         end
@@ -972,74 +1050,43 @@ function StimParams = StimParamGui()
                 StimParams.Vibration.TypeName = vibTypeName{vibType};
                 % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
                 
-                % Handle Vibration Amplitude input with range check
-                ampStr = get(h.Vib.Amplitude, 'String');
-                try
-                    % First try to handle comma-separated numbers
-                    if contains(ampStr, ',')
-                        % Split by comma and convert to numbers
-                        parts = strsplit(ampStr, ',');
-                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                        if all(~cellfun(@isnan, parts))
-                            ampValue = cell2mat(parts)';
-                            % Check if all values are within range [0,1]
-                            if any(ampValue < 0) || any(ampValue > 1)
-                                error('Amplitude values must be between 0 and 1');
-                            end
-                            StimParams.Vibration.Amplitude = ampValue;
-                        else
-                            error('Invalid number format in comma-separated list');
-                        end
-                    else
-                        % Try to evaluate the string as a MATLAB expression
-                        ampValue = eval(ampStr);
-                        % Convert to column vector if it's a row vector
-                        if size(ampValue, 1) == 1
-                            ampValue = ampValue';
-                        end
-                        % Check if all values are within range [0,1]
-                        if any(ampValue < 0) || any(ampValue > 1)
-                            error('Amplitude values must be between 0 and 1');
-                        end
-                        StimParams.Vibration.Amplitude = ampValue;
-                    end
-                catch
-                    % If evaluation fails, try to parse as a range
+                % Handle Vibration Amplitude input based on SameAmplitude setting
+                sameAmplitude = get(h.Vib.SameAmplitude, 'Value');
+                
+                if sameAmplitude == 1  % Yes - same amplitude for all frequencies
+                    % Use original format: StimParams.Vibration.Amplitude
+                    ampStr = get(h.Vib.Amplitude, 'String');
                     try
-                        % Split the string by ':'
-                        parts = strsplit(ampStr, ':');
-                        % Convert all parts to numbers
-                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                        % Check if all parts are valid numbers
-                        if all(~cellfun(@isnan, parts))
-                            switch length(parts)
-                                case 1
-                                    % Single value
-                                    ampValue = parts{1};
-                                case 2
-                                    % Start:End (default step = 1)
-                                    ampValue = (parts{1}:parts{2})';
-                                case 3
-                                    % Start:Step:End
-                                    ampValue = (parts{1}:parts{2}:parts{3})';
-                                otherwise
-                                    % Multiple values separated by colons
-                                    ampValue = cell2mat(parts)';
-                            end
-                            % Check if all values are within range [0,1]
-                            if any(ampValue < 0) || any(ampValue > 1)
-                                error('Amplitude values must be between 0 and 1');
-                            end
-                            StimParams.Vibration.Amplitude = ampValue;
-                        else
-                            error('Invalid number format in range');
+                        StimParams.Vibration.Amplitude = parseAmplitudeString(ampStr);
+                    catch ME
+                        error(['Amplitude: ' ME.message]);
+                    end
+                else  % No - different amplitudes for high/low frequencies
+                    % Use new format: StimParams.Vibration.HighFreqAmplitude and LowFreqAmplitude
+                    % Parse High Frequency Amplitude
+                    highAmpStr = get(h.Vib.HighAmplitude, 'String');
+                    try
+                        StimParams.Vibration.HighFreqAmplitude = parseAmplitudeString(highAmpStr);
+                    catch ME
+                        % Remove leading newline from error message if present
+                        msg = ME.message;
+                        if startsWith(msg, newline)
+                            msg = msg(length(newline)+1:end);
                         end
-                    catch
-                        error(sprintf(['Invalid Amplitude format. Please use one of these formats:' char(10) ...
-                            '- Comma separated: "0.2,0.5,0.8"' char(10) ...
-                            '- Space separated: "[0.2 0.5 0.8]"' char(10) ...
-                            '- Range with step: "0:0.1:1"' char(10) ...
-                            'All values must be between 0 and 1']));
+                        error(['High Frequency Amplitude: ' msg]);
+                    end
+                    
+                    % Parse Low Frequency Amplitude
+                    lowAmpStr = get(h.Vib.LowAmplitude, 'String');
+                    try
+                        StimParams.Vibration.LowFreqAmplitude = parseAmplitudeString(lowAmpStr);
+                    catch ME
+                        % Remove leading newline from error message if present
+                        msg = ME.message;
+                        if startsWith(msg, newline)
+                            msg = msg(length(newline)+1:end);
+                        end
+                        error(['Low Frequency Amplitude: ' msg]);
                     end
                 end
 
@@ -1092,9 +1139,9 @@ function StimParams = StimParamGui()
                             error('Invalid number format in range');
                         end
                     catch
-                        error(sprintf(['Invalid Frequency format. Please use one of these formats:' char(10) ...
-                            '- Comma separated: "100,200,300"' char(10) ...
-                            '- Space separated: "[100 200 300]"' char(10) ...
+                        error(sprintf(['Invalid Frequency format. Please use one of these formats:' newline ...
+                            '- Comma separated: "100,200,300"' newline ...
+                            '- Space separated: "[100 200 300]"' newline ...
                             '- Range with step: "100:50:300"']));
                     end
                 end
