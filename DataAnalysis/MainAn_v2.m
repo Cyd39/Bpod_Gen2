@@ -64,6 +64,15 @@ figRaster = gcf;  % Get the current figure handle after plotting
 PlotSessionSummary(SessionData);
 figSessionSummary = gcf;  % Get the current figure handle after plotting
 
+PlotCDFHitRate(SessionData);
+figCDFHitRate = gcf;  % Get the current figure handle after plotting
+
+PlotBarResponse(SessionData);
+figBarResponse = gcf;  % Get the current figure handle after plotting
+
+PlotHitResponseRate(SessionData);
+figHitResponseRate = gcf;  % Get the current figure handle after plotting
+
 % Save figures to the same directory as the loaded file
 savePath = filepath;  % Use the directory where the data file was loaded from
 
@@ -77,6 +86,12 @@ try
     exportgraphics(figRaster, fullfile(savePath, [name_only,'_Raster', '.png']), ...
         'Resolution', 300, 'ContentType', 'image');
     exportgraphics(figSessionSummary, fullfile(savePath, [name_only,'_SessionSummary', '.png']), ...
+        'Resolution', 300, 'ContentType', 'image');
+    exportgraphics(figCDFHitRate, fullfile(savePath, [name_only,'_CDFHitRate', '.png']), ...
+        'Resolution', 300, 'ContentType', 'image');
+    exportgraphics(figBarResponse, fullfile(savePath, [name_only,'_BarResponse', '.png']), ...
+        'Resolution', 300, 'ContentType', 'image');
+    exportgraphics(figHitResponseRate, fullfile(savePath, [name_only,'_HitResponseRate', '.png']), ...
         'Resolution', 300, 'ContentType', 'image');
 catch
     % Force figure to render before capturing
@@ -97,6 +112,18 @@ catch
     % Save Session Summary figure
     frame = getframe(figSessionSummary);
     imwrite(frame.cdata, fullfile(savePath, [name_only,'_SessionSummary',  '.png']), 'PNG');
+    
+    % Save CDF Hit Rate figure
+    frame = getframe(figCDFHitRate);
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_CDFHitRate',  '.png']), 'PNG');
+    
+    % Save Bar Response figure
+    frame = getframe(figBarResponse);
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_BarResponse',  '.png']), 'PNG');
+    
+    % Save Hit Response Rate figure
+    frame = getframe(figHitResponseRate);
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_HitResponseRate',  '.png']), 'PNG');
 end
 
 disp(['Figures saved to: ' savePath]);
