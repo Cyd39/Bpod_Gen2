@@ -129,8 +129,8 @@ function PlotCDFHitRate(SessionData, varargin)
             isCondition6 = true;
         end
         
-        % Find first correct lick time in response window
-        firstCorrectLickTime = NaN;
+        % Find first lick time (BNC1High or BNC2High) in response window
+        firstLickTime = NaN;
         if isfield(trialData, 'Events')
             if isCatchTrial(trialNum)
                 % Count catch trial
@@ -140,26 +140,26 @@ function PlotCDFHitRate(SessionData, varargin)
                 if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
                     licksInWindow = trialData.Events.BNC1High >= stimulusStart & trialData.Events.BNC1High <= responseWindowEnd;
                     if any(licksInWindow)
-                        firstCorrectLickTime = min(trialData.Events.BNC1High(licksInWindow));
+                        firstLickTime = min(trialData.Events.BNC1High(licksInWindow));
                     end
                 end
                 if isfield(trialData.Events, 'BNC2High') && ~isempty(trialData.Events.BNC2High)
                     licksInWindow = trialData.Events.BNC2High >= stimulusStart & trialData.Events.BNC2High <= responseWindowEnd;
                     if any(licksInWindow)
-                        bnc2Time = min(trialData.Events.BNC2High(licksInWindow));
-                        if isnan(firstCorrectLickTime) || bnc2Time < firstCorrectLickTime
-                            firstCorrectLickTime = bnc2Time;
+                        firstRightLickTime = min(trialData.Events.BNC2High(licksInWindow));
+                        if isnan(firstLickTime) || firstRightLickTime < firstLickTime
+                            firstLickTime = firstRightLickTime;
                         end
                     end
                 end
             else
-                % For non-catch trials, find first correct lick
+                % For non-catch trials, find first lick (BNC1High or BNC2High)
                 if correctSide(trialNum) == 1  % Left side trial
                     nLeftTrials = nLeftTrials + 1;
                     if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
                         licksInWindow = trialData.Events.BNC1High >= stimulusStart & trialData.Events.BNC1High <= responseWindowEnd;
                         if any(licksInWindow)
-                            firstCorrectLickTime = min(trialData.Events.BNC1High(licksInWindow));
+                            firstLickTime = min(trialData.Events.BNC1High(licksInWindow));
                         end
                     end
                 elseif correctSide(trialNum) == 2  % Right side trial
@@ -167,7 +167,7 @@ function PlotCDFHitRate(SessionData, varargin)
                     if isfield(trialData.Events, 'BNC2High') && ~isempty(trialData.Events.BNC2High)
                         licksInWindow = trialData.Events.BNC2High >= stimulusStart & trialData.Events.BNC2High <= responseWindowEnd;
                         if any(licksInWindow)
-                            firstCorrectLickTime = min(trialData.Events.BNC2High(licksInWindow));
+                            firstLickTime = min(trialData.Events.BNC2High(licksInWindow));
                         end
                     end
                 end
@@ -175,8 +175,8 @@ function PlotCDFHitRate(SessionData, varargin)
         end
         
         % Calculate reaction time and store if it's a hit
-        if ~isnan(firstCorrectLickTime)
-            reactionTime = firstCorrectLickTime - stimulusStart;
+        if ~isnan(firstLickTime)
+            reactionTime = firstLickTime - stimulusStart;
             
             if isCatchTrial(trialNum)
                 % For catch trials, store false alarm reaction times
