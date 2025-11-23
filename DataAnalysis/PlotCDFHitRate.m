@@ -76,7 +76,7 @@ function PlotCDFHitRate(SessionData, varargin)
     if isfield(SessionData, 'ResWin')
         maxResWin = max(SessionData.ResWin);
     else
-        maxResWin = 2; % Default if ResWin not available
+        maxResWin = 1; % Default if ResWin not available
     end
     
     % Collect reaction times for hits in each condition
