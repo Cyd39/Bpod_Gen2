@@ -130,6 +130,8 @@ function PlotCDFHitRate(SessionData, varargin)
         end
         
         % Find first lick time (BNC1High or BNC2High) in response window
+        % In catch trials, first lick time is the first lick in the response window,regardless of side
+        % In non-catch trials, first lick time is the first lick on the correct side
         firstLickTime = NaN;
         if isfield(trialData, 'Events')
             if isCatchTrial(trialNum)
