@@ -237,24 +237,24 @@ function PlotCDFHitRate(SessionData, varargin)
     % Plot CDF as step function (histogram style)
     if nLeftTrials > 0
         nLeftHits = sum(~isnan(leftReactionTimes));
-        stairs(ax, timeBins, leftCDF, 'b-', 'LineWidth', 2, 'DisplayName', ['Left (hits=' num2str(nLeftHits) '/' num2str(nLeftTrials) ')']);
+        stairs(ax, timeBins, leftCDF, 'b-', 'LineWidth', 2, 'DisplayName', 'Left');
     end
     
     if nRightTrials > 0
         nRightHits = sum(~isnan(rightReactionTimes));
-        stairs(ax, timeBins, rightCDF, 'r-', 'LineWidth', 2, 'DisplayName', ['Right (hits=' num2str(nRightHits) '/' num2str(nRightTrials) ')']);
+        stairs(ax, timeBins, rightCDF, 'r-', 'LineWidth', 2, 'DisplayName','Right');
     end
     
     if nCatchTrials > 0
         nCatchResponses = sum(~isnan(catchReactionTimes));
-        stairs(ax, timeBins, catchCDF, 'g-', 'LineWidth', 2, 'DisplayName', ['Catch (responses=' num2str(nCatchResponses) '/' num2str(nCatchTrials) ')']);
+        stairs(ax, timeBins, catchCDF, 'g-', 'LineWidth', 2, 'DisplayName', 'Catch');
     end
     
     % Formatting
-    xlabel(ax, 'Reaction Time (seconds from stimulus start)', 'FontSize', 12);
-    ylabel(ax, 'Cumulative Proportion of Hits', 'FontSize', 12);
-    title(ax, 'CDF of Hit Reaction Times in Response Window', 'FontSize', 12);
-    legend(ax, 'Location', 'northwest', 'FontSize', 10);
+    xlabel(ax, 'Reaction Time (seconds from stimulus start)');
+    ylabel(ax, 'Cumulative Proportion of Hits');
+    title(ax, 'CDF of Hit Reaction Times in Response Window');
+    legend(ax, 'Location', 'northwest');
     grid(ax, 'on');
     ylim(ax, [0 1]);
     xlim(ax, [0 maxResWin]);

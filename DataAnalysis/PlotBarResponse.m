@@ -247,15 +247,15 @@ function PlotBarResponse(SessionData, varargin)
     % Set x-axis labels
     ax.XTick = 1:3; % Set tick positions
     ax.XTickLabel = {'Left', 'Right', 'Catch'}; % Set tick labels
-    xlabel(ax, 'Stimulus Condition', 'FontSize', 12);
-    ylabel(ax, 'Response Rate', 'FontSize', 12);
-    title(ax, 'Response Rate by Condition', 'FontSize', 12);
+    xlabel(ax, 'Stimulus Condition');
+    ylabel(ax, 'Response Rate');
+    title(ax, 'Response Rate by Condition');
     
     % Set y-axis limits
     ylim(ax, [0 1]);
     
     % Add legend
-    legend(ax, {'Left Response', 'Right Response'}, 'Location', 'northeast', 'FontSize', 10);
+    legend(ax, {'Left Response', 'Right Response'}, 'Location', 'northeast');
     
     % Add grid
     grid(ax, 'on');

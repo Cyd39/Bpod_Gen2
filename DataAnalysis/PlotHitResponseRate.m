@@ -243,10 +243,10 @@ function PlotHitResponseRate(SessionData, varargin)
     plot(ax, trialNumbers, rightHitRate, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Right Hit Rate');
     
     % Formatting
-    xlabel(ax, 'Trial Number', 'FontSize', 12);
-    ylabel(ax, 'Rate', 'FontSize', 12);
-    title(ax, ['Hit Rate and Response Rate Over Trials (window size = ' num2str(windowSize) ' trials)'], 'FontSize', 12);
-    legend(ax, 'Location', 'best', 'FontSize', 10);
+    xlabel(ax, 'Trial Number');
+    ylabel(ax, 'Rate');
+    title(ax, ['Hit Rate and Response Rate Over Trials (window size = ' num2str(windowSize) ' trials)']);
+    legend(ax, 'Location', 'best');
     grid(ax, 'on');
     ylim(ax, [0 1]);
     xlim(ax, [1 nTrials]);

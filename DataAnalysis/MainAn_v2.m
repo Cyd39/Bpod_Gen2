@@ -128,6 +128,66 @@ end
 
 disp(['Figures saved to: ' savePath]);
 
+%% Create combined figure with all plots
+% Create a large figure with multiple subplots containing all plots
+figCombined = figure('Name', 'Combined Analysis Plot', 'Position', [100, 100, 1500, 800]);
+
+% Layout: 3 rows x 3 columns
+% Row 1: PlotLickIntervals, PlotResLatency, PlotLickRaster
+% Row 2: PlotSessionSummary, PlotCDFHitRate, PlotBarResponse
+% Row 3: PlotHitResponseRate (centered), empty, empty
+
+% Create subplots and plot each graph
+% Subplot 1: Session Summary (1,1)
+ax1 = subplot(3, 3, [1,4]);
+PlotSessionSummary(SessionData, 'FigureHandle', figCombined, 'Axes', ax1);
+
+% Subplot 2: Lick Intervals (1,2)
+ax2 = subplot(3, 3, 5);
+PlotLickIntervals(SessionData, 'FigureHandle', figCombined, 'Axes', ax2);
+
+% Subplot 3: Response Latency (1,3)
+ax3 = subplot(3, 3, 6);
+PlotResLatency(SessionData, 'FigureHandle', figCombined, 'Axes', ax3);
+
+% Subplot 4: Lick Raster (2,1)
+ax4 = subplot(3, 3, [2,3]);
+PlotLickRaster(SessionData, 'FigureHandle', figCombined, 'Axes', ax4);
+
+% Subplot 5: CDF Hit Rate (2,2)
+ax5 = subplot(3, 3, 8);
+PlotCDFHitRate(SessionData, 'FigureHandle', figCombined, 'Axes', ax5);
+
+% Subplot 6: Bar Response (2,3)
+ax6 = subplot(3, 3, 7);
+PlotBarResponse(SessionData, 'FigureHandle', figCombined, 'Axes', ax6);
+
+% Subplot 7: Hit Response Rate (3,2)
+ax7 = subplot(3, 3, 9);
+PlotHitResponseRate(SessionData, 'FigureHandle', figCombined, 'Axes', ax7);
+
+% Add overall title
+sgtitle(figCombined, name_only, 'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
+
+% Adjust subplot spacing for better layout
+set(figCombined, 'Units', 'normalized');
+
+drawnow;
+
+% Save combined figure
+try
+    exportgraphics(figCombined, fullfile(savePath, [name_only,'_Combined', '.png']), ...
+        'Resolution', 300, 'ContentType', 'image');
+    disp(['Combined figure saved to: ' fullfile(savePath, [name_only,'_Combined', '.png'])]);
+catch
+    % Force figure to render before capturing
+    drawnow;
+    frame = getframe(figCombined);
+    imwrite(frame.cdata, fullfile(savePath, [name_only,'_Combined', '.png']), 'PNG');
+    disp(['Combined figure saved to: ' fullfile(savePath, [name_only,'_Combined', '.png'])]);
+end
+
 % close figures
 figHandles = findall(0, 'Type', 'figure');
 close(figHandles);
+
