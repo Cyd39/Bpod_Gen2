@@ -126,40 +126,72 @@ function AntiBias()
     BpodSystem.Data.IsCatchTrial = [];
     BpodSystem.Data.CurrentStimRow = cell(1, NumTrials);
     
-    %% Initialize custom figure for lick interval, response latency histograms, raster plot, and session summary
-    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100 100 1200 720]);
-    % Upper left subplot for lick intervals
-    lickIntervalAx = subplot(3, 3, 1);
+    %% Initialize custom figure with layout matching MainAn_v2 combined figure
+    % Layout: 3 rows x 3 columns
+    % Row 1: PlotLickIntervals, PlotResLatency, PlotLickRaster
+    % Row 2: PlotSessionSummary, PlotCDFHitRate, PlotBarResponse
+    % Row 3: PlotHitResponseRate (centered), empty, empty
+    customPlotFig = figure('Name', 'Behavior Analysis', 'Position', [100, 100, 1500, 800]);
+    
+    % Subplot 1: Session Summary (1,1) - left column, spans 2 rows
+    summaryAx = subplot(3, 3, [1,4]);
+    axis(summaryAx, 'off');
+    
+    % Subplot 2: Lick Intervals (1,2) - middle column, row 2
+    lickIntervalAx = subplot(3, 3, 5);
     title(lickIntervalAx, 'Lick Intervals Distribution');
     xlabel(lickIntervalAx, 'Lick Interval (seconds)');
     ylabel(lickIntervalAx, 'Count');
     grid(lickIntervalAx, 'on');
     hold(lickIntervalAx, 'on');
-    % Lower left subplot for response latency
-    resLatencyAx = subplot(3, 3, 4);
+    
+    % Subplot 3: Response Latency (1,3) - middle column, row 3
+    resLatencyAx = subplot(3, 3, 6);
     title(resLatencyAx, 'Response Latency Distribution');
     xlabel(resLatencyAx, 'Response Latency (seconds)');
     ylabel(resLatencyAx, 'Count');
     grid(resLatencyAx, 'on');
     hold(resLatencyAx, 'on');
-    % Middle panel (spans both rows) for raster plot
-    rasterAx = subplot(3, 3, [2, 5]);
+    
+    % Subplot 4: Lick Raster (2,1) - top 2 rows, spans 2 columns
+    rasterAx = subplot(3, 3, [2,3]);
     title(rasterAx, 'Licks aligned to stimulus onset');
     xlabel(rasterAx, 'Time re stim. onset (s)');
     ylabel(rasterAx, 'Trial number');
     grid(rasterAx, 'on');
     hold(rasterAx, 'on');
-    % Right panel (spans both rows) for session summary
-    summaryAx = subplot(3, 3, [3, 6]);
-    axis(summaryAx, 'off');
-    title(summaryAx, 'Session Summary', 'FontSize', 12, 'FontWeight', 'bold');
-    % Bottom panel for Hit Rate and Response Rate
-    responseRateAx = subplot(3, 3, [7, 8, 9]);
+    
+    % Subplot 5: CDF Hit Rate (2,2) - middle column, row 3
+    cdfHitRateAx = subplot(3, 3, 8);
+    title(cdfHitRateAx, 'CDF of Hit Rate');
+    xlabel(cdfHitRateAx, 'Reaction Time (s)');
+    ylabel(cdfHitRateAx, 'Cumulative Proportion');
+    grid(cdfHitRateAx, 'on');
+    hold(cdfHitRateAx, 'on');
+    
+    % Subplot 6: Bar Response (2,3) - right column, row 2
+    barResponseAx = subplot(3, 3, 7);
+    title(barResponseAx, 'Response Rate by Condition');
+    xlabel(barResponseAx, 'Condition');
+    ylabel(barResponseAx, 'Response Rate');
+    grid(barResponseAx, 'on');
+    hold(barResponseAx, 'on');
+    
+    % Subplot 7: Hit Response Rate (3,2) - right column, row 3
+    responseRateAx = subplot(3, 3, 9);
     title(responseRateAx, 'Hit Rate and Response Rate');
     xlabel(responseRateAx, 'Trial number');
     ylabel(responseRateAx, 'Rate');
     grid(responseRateAx, 'on');
     hold(responseRateAx, 'on');
+    
+    % Adjust subplot spacing for better layout
+    set(customPlotFig, 'Units', 'normalized');
+    
+    % Add overall title
+    sgtitle(customPlotFig, ['Behavior Analysis: ' BpodSystem.GUIData.SubjectName], ...
+        'FontSize', 14, 'FontWeight', 'bold', 'Interpreter', 'none');
+    
     % Register figure with BpodSystem so it closes when protocol ends
     BpodSystem.ProtocolFigures.CustomPlotFig = customPlotFig;
     
@@ -289,12 +321,14 @@ function AntiBias()
             % Update outcome plot
             outcomePlot.update(trialTypes, BpodSystem.Data);
             
-            % Update lick interval, response latency histograms, raster plot, session summary, and hit/response rate
+            % Update all plots with layout matching MainAn_v2 combined figure
             try
+                PlotSessionSummary(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', summaryAx);
                 PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
                 PlotResLatency(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', resLatencyAx);
                 PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
-                PlotSessionSummary(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', summaryAx);
+                PlotCDFHitRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', cdfHitRateAx);
+                PlotBarResponse(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', barResponseAx);
                 PlotHitResponseRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', responseRateAx);
             catch ME
                 % Silent error handling - don't let plot errors interrupt the protocol
