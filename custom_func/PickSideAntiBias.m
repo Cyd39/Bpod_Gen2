@@ -30,6 +30,16 @@ function nextTrialSide = PickSideAntiBias(SessionData)
         return;
     end
 
+    % Check if last 5 trials have the same side after 2 * runningAvg trials
+    % This is to avoid getting stuck on the same side for too long
+    recentSides = SessionData.CorrectSide((totalTrials - 5 + 1):totalTrials);
+    % Check if all recent sides are the same
+    if all(recentSides == recentSides(1))
+        % Force switch to opposite side
+        nextTrialSide = 3 - recentSides(1);
+        return;
+    end
+    
     % After 2 * runningAvg trials, calculate the probability of selecting left spout based on anti-bias logic
     trialIdx = 1:totalTrials;
     leftNonCatchTrials = find(SessionData.CorrectSide(trialIdx) == 1 & ~SessionData.IsCatchTrial(trialIdx),...
