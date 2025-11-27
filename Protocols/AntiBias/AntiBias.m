@@ -153,13 +153,20 @@ function AntiBias()
     grid(resLatencyAx, 'on');
     hold(resLatencyAx, 'on');
     
-    % Subplot 4: Lick Raster (2,1) - top 2 rows, spans 2 columns
-    rasterAx = subplot(3, 3, [2,3]);
-    title(rasterAx, 'Licks aligned to stimulus onset');
-    xlabel(rasterAx, 'Time re stim. onset (s)');
-    ylabel(rasterAx, 'Trial number');
-    grid(rasterAx, 'on');
-    hold(rasterAx, 'on');
+    % Subplot 4: Lick Raster (2,1) - top 2 rows, spans 2 columns (split into 2 subplots)
+    rasterAx1 = subplot(3, 3, 2);
+    title(rasterAx1, 'Licks aligned to stimulus onset (full range)');
+    xlabel(rasterAx1, 'Time re stim. onset (s)');
+    ylabel(rasterAx1, 'Trial number');
+    grid(rasterAx1, 'on');
+    hold(rasterAx1, 'on');
+    
+    rasterAx2 = subplot(3, 3, 3);
+    title(rasterAx2, 'Licks aligned to stimulus onset (response window)');
+    xlabel(rasterAx2, 'Time re stim. onset (s)');
+    ylabel(rasterAx2, 'Trial number');
+    grid(rasterAx2, 'on');
+    hold(rasterAx2, 'on');
     
     % Subplot 5: CDF Hit Rate (2,2) - middle column, row 3
     cdfHitRateAx = subplot(3, 3, 8);
@@ -326,7 +333,7 @@ function AntiBias()
                 PlotSessionSummary(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', summaryAx);
                 PlotLickIntervals(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', lickIntervalAx);
                 PlotResLatency(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', resLatencyAx);
-                PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
+                PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', {rasterAx1, rasterAx2});
                 PlotCDFHitRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', cdfHitRateAx);
                 PlotBarResponse(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', barResponseAx);
                 PlotHitResponseRate(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', responseRateAx);

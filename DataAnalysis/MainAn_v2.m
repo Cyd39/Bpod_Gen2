@@ -147,7 +147,7 @@ figHitResponseRate = gcf;  % Get the current figure handle after plotting
     figCombined = figure('Name', ['Combined Analysis Plot: ' name_only], 'Position', [100, 100, 1500, 800]);
 
     % Layout: 3 rows x 3 columns
-    % Row 1: PlotLickIntervals, PlotResLatency, PlotLickRaster
+    % Row 1: PlotLickIntervals, PlotResLatency, PlotLickRaster (2 subplots)
     % Row 2: PlotSessionSummary, PlotCDFHitRate, PlotBarResponse
     % Row 3: PlotHitResponseRate (centered), empty, empty
 
@@ -164,9 +164,10 @@ figHitResponseRate = gcf;  % Get the current figure handle after plotting
     ax3 = subplot(3, 3, 6);
     PlotResLatency(SessionData, 'FigureHandle', figCombined, 'Axes', ax3);
 
-    % Subplot 4: Lick Raster (2,1)
-    ax4 = subplot(3, 3, [2,3]);
-    PlotLickRaster(SessionData, 'FigureHandle', figCombined, 'Axes', ax4);
+    % Subplot 4: Lick Raster (2,1) - split into 2 subplots
+    ax4a = subplot(3, 3, 2);
+    ax4b = subplot(3, 3, 3);
+    PlotLickRaster(SessionData, 'FigureHandle', figCombined, 'Axes', {ax4a, ax4b});
 
     % Subplot 5: CDF Hit Rate (2,2)
     ax5 = subplot(3, 3, 8);
