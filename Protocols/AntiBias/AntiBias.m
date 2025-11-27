@@ -354,12 +354,6 @@ function AntiBias()
     
     % Final save to ensure all data is persisted
     SaveBpodSessionData;
-
-    %Save Custom Plot Figure with subject name and date
-    sessionDate = datetime(BpodSystem.Data.Info.SessionStartTime_MATLAB, ...
-                      'ConvertFrom', 'datenum', ...
-                      'Format', 'yyyyMMdd_HHmmss');
-    savefig(customPlotFig, [BpodSystem.GUIData.SubjectName '_' char(sessionDate) '_CustomPlotFig.fig']);
 end
 
 function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, isCatchTrial)
