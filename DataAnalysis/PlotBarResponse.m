@@ -68,18 +68,26 @@ function PlotBarResponse(SessionData, varargin)
     
     % Extract trial information
     isCatchTrial = SessionData.IsCatchTrial(:);
-    correctSide = SessionData.CorrectSide(:);
     
-    % Define conditions: 1=Left, 2=Right, 3=Catch
-    leftTrials = find(correctSide == 1 & ~isCatchTrial);
-    rightTrials = find(correctSide == 2 & ~isCatchTrial);
-    catchTrials = find(isCatchTrial);
+    % Get vibration frequencies from StimTable
+    vibFreqs = SessionData.StimTable.VibFreq(:);
+    % Get unique vibration frequencies (excluding catch trials if needed)
+    uniqueVibFreqs = unique(vibFreqs(~isCatchTrial));
+    uniqueVibFreqs = uniqueVibFreqs(~isnan(uniqueVibFreqs)); % Remove NaN values
+    uniqueVibFreqs = sort(uniqueVibFreqs); % Sort for consistent ordering
     
     % Initialize counters for each condition
     % For each condition: [total responses, left responses, right responses]
-    leftCondition = [0, 0, 0];   % [total, left responses, right responses]
-    rightCondition = [0, 0, 0];
+    % Create condition structure for each unique VibFreq
+    nConditions = length(uniqueVibFreqs);
+    conditions = struct();
+    for i = 1:nConditions
+        freq = uniqueVibFreqs(i);
+        conditions.(['freq_' num2str(freq)]) = [0, 0, 0]; % [total, left responses, right responses]
+    end
+    % Add catch condition
     catchCondition = [0, 0, 0];
+
     
     % Process each trial to determine responses
     for trialNum = 1:nTrials
@@ -141,96 +149,99 @@ function PlotBarResponse(SessionData, varargin)
         % If neither side has lick, firstResponseSide remains NaN
         
         % Determine which condition this trial belongs to
+        % Skip if no response
+        if isnan(firstResponseSide)
+            continue;
+        end
+        
         if isCatchTrial(trialNum)
             % Catch trial
-            if ~isnan(firstResponseSide)
-                catchCondition(1) = catchCondition(1) + 1; % Total responses
-                if firstResponseSide == 1
-                    catchCondition(2) = catchCondition(2) + 1; % Left responses
-                else
-                    catchCondition(3) = catchCondition(3) + 1; % Right responses
-                end
+            catchCondition(1) = catchCondition(1) + 1; % Total responses
+            if firstResponseSide == 1
+                catchCondition(2) = catchCondition(2) + 1; % Left responses
+            else
+                catchCondition(3) = catchCondition(3) + 1; % Right responses
             end
-        elseif correctSide(trialNum) == 1
-            % Left condition trial
-            if ~isnan(firstResponseSide)
-                if firstResponseSide == 1
-                    leftCondition(1) = leftCondition(1) + 1; % Total responses
-                    leftCondition(2) = leftCondition(2) + 1; % Left responses
-                else
-                    leftCondition(1) = leftCondition(1) + 1; % Total responses
-                    leftCondition(3) = leftCondition(3) + 1; % Right responses
-                end
+        else
+            % Classify by VibFreq
+            currentVibFreq = vibFreqs(trialNum);
+            if isnan(currentVibFreq)
+                continue;
             end
-        elseif correctSide(trialNum) == 2
-            % Right condition trial
-            if ~isnan(firstResponseSide)
-                if firstResponseSide == 1
-                    rightCondition(1) = rightCondition(1) + 1; % Total responses
-                    rightCondition(2) = rightCondition(2) + 1; % Left responses
-                else
-                    rightCondition(1) = rightCondition(1) + 1; % Total responses
-                    rightCondition(3) = rightCondition(3) + 1; % Right responses
-                end
+            
+            freqKey = ['freq_' num2str(currentVibFreq)];
+            if ~isfield(conditions, freqKey)
+                continue;
+            end
+            
+            conditions.(freqKey)(1) = conditions.(freqKey)(1) + 1; % Total responses
+            if firstResponseSide == 1
+                conditions.(freqKey)(2) = conditions.(freqKey)(2) + 1; % Left responses
+            else
+                conditions.(freqKey)(3) = conditions.(freqKey)(3) + 1; % Right responses
             end
         end
     end
     
     % Calculate response rates for each condition
-    nLeftTrials = length(leftTrials);
-    nRightTrials = length(rightTrials);
+    % Count trials for each frequency condition
+    nTrialsPerFreq = zeros(1, nConditions);
+    for i = 1:nConditions
+        freq = uniqueVibFreqs(i);
+        nTrialsPerFreq(i) = sum(vibFreqs == freq & ~isCatchTrial);
+    end
+    
+    % Calculate response rates and proportions for each frequency
+    responseRates = zeros(1, nConditions);
+    leftProps = zeros(1, nConditions);
+    rightProps = zeros(1, nConditions);
+    
+    for i = 1:nConditions
+        freq = uniqueVibFreqs(i);
+        freqKey = ['freq_' num2str(freq)];
+        conditionData = conditions.(freqKey);
+        
+        if nTrialsPerFreq(i) > 0
+            responseRates(i) = conditionData(1) / nTrialsPerFreq(i);
+            if conditionData(1) > 0
+                leftProps(i) = (conditionData(2) / conditionData(1)) * responseRates(i);
+                rightProps(i) = (conditionData(3) / conditionData(1)) * responseRates(i);
+            end
+        end
+    end
+    
+    % Calculate catch trial response rate
+    catchTrials = find(isCatchTrial);
     nCatchTrials = length(catchTrials);
-    
-    % Response rates (proportion of trials with any response)
-    if nLeftTrials > 0
-        leftResponseRate = leftCondition(1) / nLeftTrials;
-    else
-        leftResponseRate = 0;
-    end
-    
-    if nRightTrials > 0
-        rightResponseRate = rightCondition(1) / nRightTrials;
-    else
-        rightResponseRate = 0;
-    end
-    
     if nCatchTrials > 0
         catchResponseRate = catchCondition(1) / nCatchTrials;
-    else
-        catchResponseRate = 0;
-    end
-    
-    % Calculate proportions of left and right responses within each condition
-    % (as proportion of total response rate)
-    if leftCondition(1) > 0
-        leftLeftProp = (leftCondition(2) / leftCondition(1)) * leftResponseRate;
-        leftRightProp = (leftCondition(3) / leftCondition(1)) * leftResponseRate;
-    else
-        leftLeftProp = 0;
-        leftRightProp = 0;
-    end
-    
-    if rightCondition(1) > 0
-        rightLeftProp = (rightCondition(2) / rightCondition(1)) * rightResponseRate;
-        rightRightProp = (rightCondition(3) / rightCondition(1)) * rightResponseRate;
-    else
-        rightLeftProp = 0;
-        rightRightProp = 0;
-    end
-    
-    if catchCondition(1) > 0
-        catchLeftProp = (catchCondition(2) / catchCondition(1)) * catchResponseRate;
-        catchRightProp = (catchCondition(3) / catchCondition(1)) * catchResponseRate;
+        if catchCondition(1) > 0
+            catchLeftProp = (catchCondition(2) / catchCondition(1)) * catchResponseRate;
+            catchRightProp = (catchCondition(3) / catchCondition(1)) * catchResponseRate;
+        else
+            catchLeftProp = 0;
+            catchRightProp = 0;
+        end
     else
         catchLeftProp = 0;
         catchRightProp = 0;
     end
-    
+        
     % Prepare data for stacked bar plot
     % Each row represents a condition, columns are: [left responses, right responses]
-    barData = [leftLeftProp, leftRightProp; ...
-               rightLeftProp, rightRightProp; ...
-               catchLeftProp, catchRightProp];
+    barData = [leftProps', rightProps'];
+    if nCatchTrials > 0
+        barData = [barData; catchLeftProp, catchRightProp];
+    end
+    
+    % Prepare labels for x-axis
+    xLabels = cell(1, nConditions);
+    for i = 1:nConditions
+        xLabels{i} = [num2str(uniqueVibFreqs(i)) ' Hz'];
+    end
+    if nCatchTrials > 0
+        xLabels{end+1} = 'Catch';
+    end
     
     % Plot stacked bar chart
     axes(ax);
@@ -245,8 +256,9 @@ function PlotBarResponse(SessionData, varargin)
     b(2).FaceColor = [0.8 0.2 0.2]; % Red for right responses
     
     % Set x-axis labels
-    ax.XTick = 1:3; % Set tick positions
-    ax.XTickLabel = {'Left', 'Right', 'Catch'}; % Set tick labels
+    nBars = size(barData, 1);
+    ax.XTick = 1:nBars; % Set tick positions
+    ax.XTickLabel = xLabels; % Set tick labels
     xlabel(ax, 'Stimulus Condition');
     ylabel(ax, 'Response Rate');
     title(ax, 'Response Rate by Condition');
@@ -255,7 +267,7 @@ function PlotBarResponse(SessionData, varargin)
     ylim(ax, [0 1]);
     
     % Add legend
-    legend(ax, {'Left Response', 'Right Response'}, 'Location', 'northeast');
+    legend(ax, {'Left', 'Right'}, 'Location', 'northeast');
     
     % Add grid
     grid(ax, 'on');
