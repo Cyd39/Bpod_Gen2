@@ -69,21 +69,35 @@ function PlotBarResponse(SessionData, varargin)
     % Extract trial information
     isCatchTrial = SessionData.IsCatchTrial(:);
     
-    % Get vibration frequencies from StimTable
+    % Get vibration frequencies and amplitudes from StimTable
     vibFreqs = SessionData.StimTable.VibFreq(:);
-    % Get unique vibration frequencies (excluding catch trials if needed)
-    uniqueVibFreqs = unique(vibFreqs(~isCatchTrial));
-    uniqueVibFreqs = uniqueVibFreqs(~isnan(uniqueVibFreqs)); % Remove NaN values
-    uniqueVibFreqs = sort(uniqueVibFreqs); % Sort for consistent ordering
+    vibAmps = SessionData.StimTable.VibAmp(:);
+    
+    % Get unique combinations of (VibFreq, VibAmp) excluding catch trials
+    nonCatchIndices = ~isCatchTrial;
+    uniqueCombinations = unique([vibFreqs(nonCatchIndices), vibAmps(nonCatchIndices)], 'rows');
+    % Remove rows with NaN values
+    validRows = ~any(isnan(uniqueCombinations), 2);
+    uniqueCombinations = uniqueCombinations(validRows, :);
+    % Sort by frequency first, then by amplitude for consistent ordering
+    [~, sortIdx] = sortrows(uniqueCombinations, [1, 2]);
+    uniqueCombinations = uniqueCombinations(sortIdx, :);
     
     % Initialize counters for each condition
     % For each condition: [total responses, left responses, right responses]
-    % Create condition structure for each unique VibFreq
-    nConditions = length(uniqueVibFreqs);
+    % Create condition structure for each unique (VibFreq, VibAmp) combination
+    nConditions = size(uniqueCombinations, 1);
     conditions = struct();
+    conditionKeys = cell(1, nConditions);
     for i = 1:nConditions
-        freq = uniqueVibFreqs(i);
-        conditions.(['freq_' num2str(freq)]) = [0, 0, 0]; % [total, left responses, right responses]
+        freq = uniqueCombinations(i, 1);
+        amp = uniqueCombinations(i, 2);
+        % Create a safe field name (replace dots and special characters)
+        key = ['freq_' num2str(freq) '_amp_' num2str(amp)];
+        key = strrep(key, '.', 'p'); % Replace dots with 'p'
+        key = strrep(key, '-', 'm'); % Replace minus with 'm'
+        conditionKeys{i} = key;
+        conditions.(key) = [0, 0, 0]; % [total, left responses, right responses]
     end
     % Add catch condition
     catchCondition = [0, 0, 0];
@@ -163,46 +177,51 @@ function PlotBarResponse(SessionData, varargin)
                 catchCondition(3) = catchCondition(3) + 1; % Right responses
             end
         else
-            % Classify by VibFreq
+            % Classify by VibFreq and VibAmp combination
             currentVibFreq = vibFreqs(trialNum);
-            if isnan(currentVibFreq)
+            currentVibAmp = vibAmps(trialNum);
+            if isnan(currentVibFreq) || isnan(currentVibAmp)
                 continue;
             end
             
-            freqKey = ['freq_' num2str(currentVibFreq)];
-            if ~isfield(conditions, freqKey)
+            % Create key for this combination
+            key = ['freq_' num2str(currentVibFreq) '_amp_' num2str(currentVibAmp)];
+            key = strrep(key, '.', 'p');
+            key = strrep(key, '-', 'm');
+            
+            if ~isfield(conditions, key)
                 continue;
             end
             
-            conditions.(freqKey)(1) = conditions.(freqKey)(1) + 1; % Total responses
+            conditions.(key)(1) = conditions.(key)(1) + 1; % Total responses
             if firstResponseSide == 1
-                conditions.(freqKey)(2) = conditions.(freqKey)(2) + 1; % Left responses
+                conditions.(key)(2) = conditions.(key)(2) + 1; % Left responses
             else
-                conditions.(freqKey)(3) = conditions.(freqKey)(3) + 1; % Right responses
+                conditions.(key)(3) = conditions.(key)(3) + 1; % Right responses
             end
         end
     end
     
     % Calculate response rates for each condition
-    % Count trials for each frequency condition
-    nTrialsPerFreq = zeros(1, nConditions);
+    % Count trials for each (VibFreq, VibAmp) combination
+    nTrialsPerCondition = zeros(1, nConditions);
     for i = 1:nConditions
-        freq = uniqueVibFreqs(i);
-        nTrialsPerFreq(i) = sum(vibFreqs == freq & ~isCatchTrial);
+        freq = uniqueCombinations(i, 1);
+        amp = uniqueCombinations(i, 2);
+        nTrialsPerCondition(i) = sum(vibFreqs == freq & vibAmps == amp & ~isCatchTrial);
     end
     
-    % Calculate response rates and proportions for each frequency
+    % Calculate response rates and proportions for each condition
     responseRates = zeros(1, nConditions);
     leftProps = zeros(1, nConditions);
     rightProps = zeros(1, nConditions);
     
     for i = 1:nConditions
-        freq = uniqueVibFreqs(i);
-        freqKey = ['freq_' num2str(freq)];
-        conditionData = conditions.(freqKey);
+        key = conditionKeys{i};
+        conditionData = conditions.(key);
         
-        if nTrialsPerFreq(i) > 0
-            responseRates(i) = conditionData(1) / nTrialsPerFreq(i);
+        if nTrialsPerCondition(i) > 0
+            responseRates(i) = conditionData(1) / nTrialsPerCondition(i);
             if conditionData(1) > 0
                 leftProps(i) = (conditionData(2) / conditionData(1)) * responseRates(i);
                 rightProps(i) = (conditionData(3) / conditionData(1)) * responseRates(i);
@@ -237,7 +256,9 @@ function PlotBarResponse(SessionData, varargin)
     % Prepare labels for x-axis
     xLabels = cell(1, nConditions);
     for i = 1:nConditions
-        xLabels{i} = [num2str(uniqueVibFreqs(i)) ' Hz'];
+        freq = uniqueCombinations(i, 1);
+        amp = uniqueCombinations(i, 2);
+        xLabels{i} = [num2str(freq) ' Hz @ ' num2str(amp)];
     end
     if nCatchTrials > 0
         xLabels{end+1} = 'Catch';
