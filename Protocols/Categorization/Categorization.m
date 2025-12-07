@@ -1,6 +1,6 @@
 % Categorization protocol
 % This protocol is used to categorize the stimuli into different categories by frequency
-% 
+% Stimuli will be played in a random order, and the animal will be rewarded for licking the correct spout
 function Categorization()
     global BpodSystem
 
