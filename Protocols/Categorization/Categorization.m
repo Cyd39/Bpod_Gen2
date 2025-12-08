@@ -13,6 +13,7 @@ function Categorization()
 
     % get parameters from StimParamGui
     StimParams = BpodSystem.ProtocolSettings.StimParams;
+    Ramp = StimParams.Ramp;
     NumTrials = StimParams.Behave.NumTrials;
     StimDur = StimParams.Duration/1000;
 
@@ -165,8 +166,7 @@ function Categorization()
     BpodSystem.ProtocolFigures.CustomPlotFig = customPlotFig;
 
     % Prepare and start first trial
-    genAndLoadStimulus(1);
-    [sma, S, updateFlag] = PrepareStateMachine(S, 1, updateFlag);
+    [sma, S, updateFlag] = PrepareStateMachine(S, 1, updateFlag, StimTable, CalTable, H, Ramp);
 
     % Store trial parameters before starting the trial
     BpodSystem.Data.ThisITI(1) = S.ThisITI;
@@ -233,8 +233,7 @@ function Categorization()
         % Determine next side based on trial number (BEFORE preparing next trial's state machine)
         if currentTrial < NumTrials
             % Prepare next trial's state machine
-            genAndLoadStimulus(currentTrial+1);
-            [sma, S, updateFlag] = PrepareStateMachine(S, currentTrial+1, updateFlag);
+            [sma, S, updateFlag] = PrepareStateMachine(S, currentTrial+1, updateFlag, StimTable, CalTable, H, Ramp);
             
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
@@ -290,18 +289,31 @@ function Categorization()
 
         HandlePauseCondition;
         if BpodSystem.Status.BeingUsed == 0
-            disp('End of session');
-            CleanupHiFi();
             return
         end
     end
 
     % Nested helpers
-    function [sma, S, updateFlag] = PrepareStateMachine(S, currentTrial, updateFlag)
+    function [sma, S, updateFlag] = PrepareStateMachine(S, currentTrial, updateFlag, StimTable, CalTable, H, Ramp)
         if updateFlag
             S = BpodParameterGUI('sync', S);
             updateFlag = false;
         end
+
+        % Get current stimulus row from StimTable
+        currentStimRow = StimTable(currentTrial, :);
+        
+        % Generate sound&vibration waveform
+        soundWave = GenStimWave(currentStimRow, CalTable);
+        soundWave = ApplySinRamp(soundWave, Ramp, H.SamplingRate);
+        
+        % Display trial info
+        disp(currentStimRow);
+        
+        % Load the sound wave into BpodHiFi
+        H.load(1, soundWave);
+        H.push();
+        disp(['Trial ' num2str(currentTrial) ': Sound loaded to buffer 1']);
 
         % Generate random ITI and quiet time for this trial
         ITIBefore = S.GUI.MinITI/2;
@@ -452,28 +464,4 @@ function Categorization()
             'OutputActions', {});
     end
 
-    function genAndLoadStimulus(currentTrial)
-        % Generate sound&vibration waveform
-        soundWave = GenStimWave(StimTable(currentTrial,:), CalTable);
-        soundWave = soundWave(:,1:end-1); % remove last sample for safety
-        disp(StimTable(currentTrial,:));
-
-        % Load to HiFi without loop to ensure single playback
-        H.load(1, soundWave); % default is single shot
-        H.push();
-        disp(['Trial ' num2str(currentTrial) ': Sound loaded to buffer 1 (single playback)']);
-    end
-
-
-    % Session cleanup
-    function CleanupHiFi()
-        try
-            H.stop();
-        catch
-        end
-        try
-            clear H;
-        catch
-        end
-    end
 end

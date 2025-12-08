@@ -37,13 +37,27 @@ function PlotLickRaster(SessionData, varargin)
         figure(customPlotFig);
     end
     
+    % Determine mode: online (single or dual axes) or offline (multiple subplots)
+    % Check this early to handle error cases properly
+    isOnlineMode = ~isempty(ax);
+    isDualAxesMode = iscell(ax) && length(ax) == 2;
+    
     % Check if data exists
     if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
         warning('SessionData.RawEvents.Trial not found');
         if ~isempty(ax)
-            cla(ax);
-            text(ax, 0.5, 0.5, 'No data available', ...
-                'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            if isDualAxesMode
+                cla(ax{1});
+                cla(ax{2});
+                text(ax{1}, 0.5, 0.5, 'No data available', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+                text(ax{2}, 0.5, 0.5, 'No data available', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            else
+                cla(ax);
+                text(ax, 0.5, 0.5, 'No data available', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            end
             if ~isempty(customPlotFig)
                 drawnow;
             end
@@ -57,9 +71,18 @@ function PlotLickRaster(SessionData, varargin)
     catch ME
         warning(['Failed to extract timestamps: ' ME.message]);
         if ~isempty(ax)
-            cla(ax);
-            text(ax, 0.5, 0.5, 'Failed to extract data', ...
-                'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            if isDualAxesMode
+                cla(ax{1});
+                cla(ax{2});
+                text(ax{1}, 0.5, 0.5, 'Failed to extract data', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+                text(ax{2}, 0.5, 0.5, 'Failed to extract data', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            else
+                cla(ax);
+                text(ax, 0.5, 0.5, 'Failed to extract data', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            end
             if ~isempty(customPlotFig)
                 drawnow;
             end
@@ -70,9 +93,18 @@ function PlotLickRaster(SessionData, varargin)
     % Check if Session_tbl is empty
     if isempty(Session_tbl) || height(Session_tbl) == 0
         if ~isempty(ax)
-            cla(ax);
-            text(ax, 0.5, 0.5, 'No trials completed', ...
-                'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            if isDualAxesMode
+                cla(ax{1});
+                cla(ax{2});
+                text(ax{1}, 0.5, 0.5, 'No trials completed', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+                text(ax{2}, 0.5, 0.5, 'No trials completed', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            else
+                cla(ax);
+                text(ax, 0.5, 0.5, 'No trials completed', ...
+                    'HorizontalAlignment', 'center', 'FontSize', 14, 'Units', 'normalized');
+            end
             if ~isempty(customPlotFig)
                 drawnow;
             end
@@ -81,10 +113,6 @@ function PlotLickRaster(SessionData, varargin)
     end
     
     n_trial = height(Session_tbl);
-    
-    % Determine mode: online (single or dual axes) or offline (multiple subplots)
-    isOnlineMode = ~isempty(ax);
-    isDualAxesMode = iscell(ax) && length(ax) == 2;
     
     if isOnlineMode
         if isDualAxesMode
