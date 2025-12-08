@@ -167,35 +167,6 @@ function Categorization()
 
     % Prepare and start first trial
     [sma, S, updateFlag] = PrepareStateMachine(S, 1, updateFlag, StimTable, CalTable, H, Ramp);
-
-    % Store trial parameters before starting the trial
-    BpodSystem.Data.ThisITI(1) = S.ThisITI;
-    BpodSystem.Data.QuietTime(1) = S.QuietTime;
-    BpodSystem.Data.CorrectSide(1) = S.CorrectSide;
-    BpodSystem.Data.RewardAmount(1) = S.RewardAmount;
-    BpodSystem.Data.IsCatchTrial(1) = S.IsCatchTrial;
-    BpodSystem.Data.ITIBefore(1) = S.ITIBefore;
-    BpodSystem.Data.ITIAfter(1) = S.ITIAfter;
-    BpodSystem.Data.TimerDuration(1) = S.TimerDuration;
-    BpodSystem.Data.ResWin(1) = S.ResWin;
-    BpodSystem.Data.CutOff(1) = S.CutOff;
-
-    % Display trial info
-    disp(['Trial 1: ITI = ' num2str(S.ThisITI) ' s, QuietTime = ' num2str(S.QuietTime) ' s']);
-    if S.IsCatchTrial
-        disp('Trial 1: Catch trial');
-    else
-        if S.CorrectSide == 1
-            correctResponse = 'left';
-        elseif S.CorrectSide == 2
-            correctResponse = 'right';
-        elseif S.CorrectSide == 3
-            correctResponse = 'boundary';
-        else
-            correctResponse = 'left';
-        end
-        disp(['Trial 1: Correct response = ' correctResponse]);
-    end
     trialManager.startTrial(sma);
 
     % Main loop, runs once per trial
@@ -228,6 +199,7 @@ function Categorization()
             BpodSystem.Data.RewardAmount(currentTrial) = S.RewardAmount;
             BpodSystem.Data.ResWin(currentTrial) = S.ResWin;
             BpodSystem.Data.CutOff(currentTrial) = S.CutOff;
+            BpodSystem.Data.CorrectSide(currentTrial) = S.CorrectSide;
         end
         
         % Determine next side based on trial number (BEFORE preparing next trial's state machine)
