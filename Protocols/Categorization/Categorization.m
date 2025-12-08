@@ -254,8 +254,8 @@ function Categorization()
             % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
             
-            % Get current trial parameters from saved data (all were saved earlier to avoid shift)
-            correctSide = BpodSystem.Data.CorrectSide(currentTrial);
+            % Get current trial parameters directly from StimTable (already generated)
+            correctSide = StimTable.CorrectSide(currentTrial);
             trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout, 3 = boundary (both)
             
             % Extend trialTypes array to prevent index out of bounds in LiveOutcomePlot
