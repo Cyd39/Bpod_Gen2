@@ -60,7 +60,7 @@ end
 
 % Add Duration and RampDur columns
 StimTable.Duration = repmat(StimParams.Duration, height(StimTable), 1);
-StimTable.RampDur = zeros(height(StimTable), 1); % Set all ramp durations to 0 - using HiFi envelope instead
+StimTable.RampDur = repmat(StimParams.Ramp, height(StimTable), 1);
 
 % Save StimTable to workspace
 assignin('base', 'StimTable', StimTable);
@@ -72,20 +72,88 @@ function StimTable = makeMultiTable(StimParams)
     nTrials = StimParams.Behave.NumTrials;
     soundTypeName = StimParams.Sound.TypeName;
     vibTypeName = StimParams.Vibration.TypeName;
+    
+    % Get frequency boundary for separating high and low frequencies
+    if isfield(StimParams.Vibration, 'BoundaryFreq')
+        frequencyBoundary = StimParams.Vibration.BoundaryFreq;
+    else
+        frequencyBoundary = []; % No boundary specified, use same amplitude for all
+    end
+    
+    % Check if separate amplitudes for high/low frequencies are specified
+    sameAmplitude = true;
+    if isfield(StimParams.Vibration, 'Amplitude')
+        vibAmp = StimParams.Vibration.Amplitude;
+    else
+        if isfield(StimParams.Vibration, 'HighFreqAmplitude') && isfield(StimParams.Vibration, 'LowFreqAmplitude')
+            vibAmpHigh = StimParams.Vibration.HighFreqAmplitude;
+            vibAmpLow = StimParams.Vibration.LowFreqAmplitude;
+            sameAmplitude = false;
+        else
+            % Fallback to Amplitude if separate amplitudes not found
+            vibAmp = StimParams.Vibration.Amplitude;
+        end
+    end
+    
     switch soundTypeName
         case 'Noise Burst'
             sndLevel = StimParams.Sound.Noise.Level;
-            vibAmp = StimParams.Vibration.Amplitude;
             vibFreq = StimParams.Vibration.Frequency;
 
-            % Create unique combinations of parameters
-            [sndLevel, vibAmp, vibFreq] = ndgrid(sndLevel, vibAmp, vibFreq);
-            stimTableUnq = table(sndLevel(:), vibAmp(:), vibFreq(:), 'VariableNames', {'AudIntensity', 'VibAmp', 'VibFreq'});
-            
-            % Remove combinations that would be equivalent to catch trials
-            % (where sndLevel is NaN and at least one of vibAmp or vibFreq is NaN)
-            invalidRows = stimTableUnq.AudIntensity == -inf & (stimTableUnq.VibAmp == 0 | stimTableUnq.VibFreq == 0);
-            stimTableUnq = stimTableUnq(~invalidRows, :);
+            % If frequency boundary is specified and different amplitudes are used, separate by frequency
+            if ~isempty(frequencyBoundary) && ~sameAmplitude
+                % Separate high and low frequency vibrations
+                highVibFreq = vibFreq(vibFreq > frequencyBoundary);
+                lowVibFreq = vibFreq(vibFreq < frequencyBoundary);
+                boundaryVibFreq = vibFreq(vibFreq == frequencyBoundary);
+                
+                % Generate high frequency combinations
+                highStimTableUnq = table();
+                if ~isempty(highVibFreq)
+                    [highSndLevel, highVibAmp, highVibFreqGrid] = ndgrid(sndLevel, vibAmpHigh, highVibFreq);
+                    highStimTableUnq = table(highSndLevel(:), highVibAmp(:), highVibFreqGrid(:), 'VariableNames', {'AudIntensity', 'VibAmp', 'VibFreq'});
+                    invalidRows = highStimTableUnq.AudIntensity == -inf & (highStimTableUnq.VibAmp == 0 | highStimTableUnq.VibFreq == 0);
+                    highStimTableUnq = highStimTableUnq(~invalidRows, :);
+                end
+                
+                % Generate low frequency combinations
+                lowStimTableUnq = table();
+                if ~isempty(lowVibFreq)
+                    [lowSndLevel, lowVibAmp, lowVibFreqGrid] = ndgrid(sndLevel, vibAmpLow, lowVibFreq);
+                    lowStimTableUnq = table(lowSndLevel(:), lowVibAmp(:), lowVibFreqGrid(:), 'VariableNames', {'AudIntensity', 'VibAmp', 'VibFreq'});
+                    invalidRows = lowStimTableUnq.AudIntensity == -inf & (lowStimTableUnq.VibAmp == 0 | lowStimTableUnq.VibFreq == 0);
+                    lowStimTableUnq = lowStimTableUnq(~invalidRows, :);
+                end
+                
+                % Generate boundary frequency combinations (use high amplitude)
+                boundaryStimTableUnq = table();
+                if ~isempty(boundaryVibFreq)
+                    [boundarySndLevel, boundaryVibAmp, boundaryVibFreqGrid] = ndgrid(sndLevel, vibAmpHigh, boundaryVibFreq);
+                    boundaryStimTableUnq = table(boundarySndLevel(:), boundaryVibAmp(:), boundaryVibFreqGrid(:), 'VariableNames', {'AudIntensity', 'VibAmp', 'VibFreq'});
+                    invalidRows = boundaryStimTableUnq.AudIntensity == -inf & (boundaryStimTableUnq.VibAmp == 0 | boundaryStimTableUnq.VibFreq == 0);
+                    boundaryStimTableUnq = boundaryStimTableUnq(~invalidRows, :);
+                end
+                
+                % Combine all frequency categories
+                stimTableUnq = table();
+                if ~isempty(highStimTableUnq)
+                    stimTableUnq = [stimTableUnq; highStimTableUnq];
+                end
+                if ~isempty(lowStimTableUnq)
+                    stimTableUnq = [stimTableUnq; lowStimTableUnq];
+                end
+                if ~isempty(boundaryStimTableUnq)
+                    stimTableUnq = [stimTableUnq; boundaryStimTableUnq];
+                end
+            else
+                % Use same amplitude for all frequencies (original behavior)
+                [sndLevel, vibAmp, vibFreq] = ndgrid(sndLevel, vibAmp, vibFreq);
+                stimTableUnq = table(sndLevel(:), vibAmp(:), vibFreq(:), 'VariableNames', {'AudIntensity', 'VibAmp', 'VibFreq'});
+                
+                % Remove combinations that would be equivalent to catch trials
+                invalidRows = stimTableUnq.AudIntensity == -inf & (stimTableUnq.VibAmp == 0 | stimTableUnq.VibFreq == 0);
+                stimTableUnq = stimTableUnq(~invalidRows, :);
+            end
             
             % Calculate number of blocks needed
             blockSize = height(stimTableUnq);
@@ -227,7 +295,16 @@ function StimTable = makeVibTable(StimParams)
     nTrials = StimParams.Behave.NumTrials;
     propCatch = StimParams.Behave.PropCatch;
     vibTypeName = StimParams.Vibration.TypeName;
-    vibAmp = StimParams.Vibration.Amplitude;
+    
+    % Check if separate amplitudes for high/low frequencies are specified
+    sameAmplitude = true;
+    if isfield(StimParams.Vibration, 'Amplitude')
+        vibAmp = StimParams.Vibration.Amplitude;
+    else
+        vibAmpHigh = StimParams.Vibration.HighFreqAmplitude;
+        vibAmpLow = StimParams.Vibration.LowFreqAmplitude;
+        sameAmplitude = false;
+    end
     vibFreq = StimParams.Vibration.Frequency;
     
     % Get reward probability and boundary frequency parameters
@@ -235,13 +312,83 @@ function StimTable = makeVibTable(StimParams)
     boundaryRewardProbability = StimParams.Behave.BoundaryRewardProbability; % 0-1 - reward probability for boundary frequency
     boundaryFreq = StimParams.Vibration.BoundaryFreq; % Hz - frequency boundary for left/right decision
 
-    % Create unique combinations of parameters
-    [vibAmp, vibFreq] = ndgrid(vibAmp, vibFreq);
-    stimTableUnq = table(vibAmp(:), vibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+    % Separate high and low frequency vibrations
+    highVibFreq = vibFreq(vibFreq > boundaryFreq);
+    lowVibFreq = vibFreq(vibFreq < boundaryFreq);
+    boundaryVibFreq = vibFreq(vibFreq == boundaryFreq);
     
-    % Remove invalid rows
-    invalidRows = stimTableUnq.VibAmp == 0 | stimTableUnq.VibFreq == 0;
-    stimTableUnq = stimTableUnq(~invalidRows, :);
+    % Create unique combinations of parameters
+    % For high frequency
+    highStimTableUnq = table();
+    if ~isempty(highVibFreq)
+        if sameAmplitude
+            [highVibAmp, highVibFreqGrid] = ndgrid(vibAmp, highVibFreq);
+        else
+            [highVibAmp, highVibFreqGrid] = ndgrid(vibAmpHigh, highVibFreq);
+        end
+        highStimTableUnq = table(highVibAmp(:), highVibFreqGrid(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+        % Remove invalid rows
+        invalidRows = highStimTableUnq.VibAmp == 0 | highStimTableUnq.VibFreq == 0;
+        highStimTableUnq = highStimTableUnq(~invalidRows, :);
+    end
+    
+    % For low frequency
+    lowStimTableUnq = table();
+    if ~isempty(lowVibFreq)
+        if sameAmplitude
+            [lowVibAmp, lowVibFreqGrid] = ndgrid(vibAmp, lowVibFreq);
+        else
+            [lowVibAmp, lowVibFreqGrid] = ndgrid(vibAmpLow, lowVibFreq);
+        end
+        lowStimTableUnq = table(lowVibAmp(:), lowVibFreqGrid(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+        % Remove invalid rows
+        invalidRows = lowStimTableUnq.VibAmp == 0 | lowStimTableUnq.VibFreq == 0;
+        lowStimTableUnq = lowStimTableUnq(~invalidRows, :);
+    end
+    
+    % For boundary frequency (use high amplitude if different amplitudes are specified)
+    boundaryStimTableUnq = table();
+    if ~isempty(boundaryVibFreq)
+        if sameAmplitude
+            [boundaryVibAmp, boundaryVibFreqGrid] = ndgrid(vibAmp, boundaryVibFreq);
+        else
+            % For boundary frequency, use high frequency amplitude (or could use average, but using high for consistency)
+            [boundaryVibAmp, boundaryVibFreqGrid] = ndgrid(vibAmpHigh, boundaryVibFreq);
+        end
+        boundaryStimTableUnq = table(boundaryVibAmp(:), boundaryVibFreqGrid(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+        % Remove invalid rows
+        invalidRows = boundaryStimTableUnq.VibAmp == 0 | boundaryStimTableUnq.VibFreq == 0;
+        boundaryStimTableUnq = boundaryStimTableUnq(~invalidRows, :);
+    end
+    
+    % Combine all frequency categories
+    stimTableUnq = table();
+    if ~isempty(highStimTableUnq)
+        if height(stimTableUnq) == 0
+            stimTableUnq = highStimTableUnq;
+        else
+            stimTableUnq = [stimTableUnq; highStimTableUnq];
+        end
+    end
+    if ~isempty(lowStimTableUnq)
+        if height(stimTableUnq) == 0
+            stimTableUnq = lowStimTableUnq;
+        else
+            stimTableUnq = [stimTableUnq; lowStimTableUnq];
+        end
+    end
+    if ~isempty(boundaryStimTableUnq)
+        if height(stimTableUnq) == 0
+            stimTableUnq = boundaryStimTableUnq;
+        else
+            stimTableUnq = [stimTableUnq; boundaryStimTableUnq];
+        end
+    end
+    
+    % Check if stimTableUnq is empty
+    if height(stimTableUnq) == 0
+        error('No valid stimulus combinations found. Please check your amplitude and frequency parameters.');
+    end
     
     % Calculate number of blocks needed
     blockSize = height(stimTableUnq);
