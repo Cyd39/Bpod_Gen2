@@ -161,48 +161,72 @@ function Categorization()
 
     % Prepare and start first trial
     genAndLoadStimulus(1);
-    [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount, TrialInfo] = PrepareStateMachine(S, 1, updateFlag);
+    [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount, isCatchTrial] = PrepareStateMachine(S, 1, updateFlag);
 
     % Store trial parameters before starting the trial
     BpodSystem.Data.ThisITI(1) = ThisITI;
     BpodSystem.Data.QuietTime(1) = QuietTime;
     BpodSystem.Data.CorrectSide(1) = correctSide;
     BpodSystem.Data.RewardAmount(1) = RewardAmount;
-    BpodSystem.Data.IsCatchTrial(1) = TrialInfo.IsCatchTrial;
+    BpodSystem.Data.IsCatchTrial(1) = isCatchTrial;
 
-    displayTrialInfo(1, ThisITI, QuietTime, TrialInfo);
+    % Display trial info
+    disp(['Trial 1: ITI = ' num2str(ThisITI) ' s, QuietTime = ' num2str(QuietTime) ' s']);
+    if isCatchTrial
+        disp('Trial 1: Catch trial');
+    else
+        if correctSide == 1
+            correctResponse = 'left';
+        elseif correctSide == 2
+            correctResponse = 'right';
+        elseif correctSide == 3
+            correctResponse = 'boundary';
+        else
+            correctResponse = 'left';
+        end
+        disp(['Trial 1: Correct response = ' correctResponse]);
+    end
     trialManager.startTrial(sma);
 
     % Main loop, runs once per trial
     for currentTrial = 1:NumTrials
-        if BpodSystem.Status.BeingUsed == 0
-            CleanupHiFi();
-            return;
+        % Check if update button was pressed
+        if updateFlag
+            % Get parameters from GUI
+            S = BpodParameterGUI('sync', S);
+            updateFlag = false; % reset flag
         end
-
+        
+        % Wait for trigger states (LeftReward, RightReward, WaitToFinish)
+        trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'WaitToFinish'});
+        if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
+        
+        % Get trial data
+        RawEvents = trialManager.getTrialData;
+        if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
+        
+        % Determine next side based on trial number (BEFORE preparing next trial's state machine)
         if currentTrial < NumTrials
+            % Prepare next trial's state machine
             genAndLoadStimulus(currentTrial+1);
-            [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount, NextTrialInfo] = PrepareStateMachine(S, currentTrial+1, updateFlag);
-
+            [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount, NextIsCatchTrial] = PrepareStateMachine(S, currentTrial+1, updateFlag);
+            
             % Store next trial parameters
             BpodSystem.Data.ThisITI(currentTrial+1) = NextITI;
             BpodSystem.Data.QuietTime(currentTrial+1) = NextQuietTime;
             BpodSystem.Data.CorrectSide(currentTrial+1) = NextCorrectSide;
             BpodSystem.Data.RewardAmount(currentTrial+1) = NextRewardAmount;
-            BpodSystem.Data.IsCatchTrial(currentTrial+1) = NextTrialInfo.IsCatchTrial;
-
-            SendStateMachine(sma, 'RunASAP');
+            BpodSystem.Data.IsCatchTrial(currentTrial+1) = NextIsCatchTrial;
+            
+            SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
-
-        RawEvents = trialManager.getTrialData; % waits until current trial is finished
-        if BpodSystem.Status.BeingUsed == 0
-            CleanupHiFi();
-            return;
-        end
-
+        
+        % Handle pause condition
         HandlePauseCondition;
+        
+        % Start next trial if not the last one
         if currentTrial < NumTrials
-            trialManager.startTrial();
+            trialManager.startTrial(); % Start processing the next trial's events
         end
 
         % Save trial data and update plots
@@ -253,7 +277,7 @@ function Categorization()
     end
 
     % Nested helpers
-    function [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount, TrialInfo] = PrepareStateMachine(S, currentTrial, updateFlag)
+    function [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount, isCatchTrial] = PrepareStateMachine(S, currentTrial, updateFlag)
         if updateFlag
             S = BpodParameterGUI('sync', S);
             updateFlag = false;
@@ -276,7 +300,6 @@ function Categorization()
         
         % Determine trial conditions from StimTable
         correctSide = StimTable.CorrectSide(currentTrial);
-        isRewarded = StimTable.Rewarded(currentTrial);
         isCatchTrial = (StimTable.VibFreq(currentTrial) == 0);
 
         if correctSide == 1
@@ -284,30 +307,34 @@ function Categorization()
         elseif correctSide == 2
             correctResponse = 'right';
         elseif correctSide == 3
-            correctResponse = 'boundary';
+            correctResponse = 'boundary'; % Special case for boundary frequency
         else
-            correctResponse = 'left';
+            correctResponse = 'left'; % Default fallback
         end
 
-        TrialInfo = struct('ITIBefore', ITIBefore, 'ITIAfter', ITIAfter, 'TimerDuration', TimerDuration, ...
-                           'ResWin', ResWin, 'CutOff', CutOff, 'LeftValveTime', LeftValveTime, ...
-                           'RightValveTime', RightValveTime, 'CorrectResponse', correctResponse, ...
-                           'IsRewarded', isRewarded, 'IsCatchTrial', isCatchTrial);
+        if isCatchTrial
+            disp('Catch trial');
+        end
 
-        % Build state machine
+        % Create state machine
         sma = NewStateMachine();
+  
+        % Set condition for BNC1 state
+        sma = SetCondition(sma, 1, 'BNC1', 0); % Condition 1: BNC1 is HIGH (licking detected)
+        sma = SetCondition(sma, 2, 'BNC1', 1); % Condition 2: BNC1 is LOW (no licking detected)
+        sma = SetCondition(sma, 3, 'BNC2', 0); % Condition 3: BNC2 is HIGH (licking detected)
+        sma = SetCondition(sma, 4, 'BNC2', 1); % Condition 4: BNC2 is LOW (no licking detected)
+        
 
-        % Lick conditions
-        sma = SetCondition(sma, 1, 'Port1', 0);
-        sma = SetCondition(sma, 2, 'Port2', 0);
-        sma = SetCondition(sma, 3, 'Port1', 1);
-        sma = SetCondition(sma, 4, 'Port2', 1);
-
-        % Cut-off
+        % Set timer and condition for the cut-off period
         sma = SetGlobalTimer(sma, 'TimerID', 1, 'Duration', CutOff);
-        sma = SetCondition(sma, 5, 'GlobalTimer1', 0);
+        sma = SetCondition(sma, 5, 'GlobalTimer1', 0); % Condition 5: GlobalTimer1 has ended
 
-        % Ready / NoLick
+        % Set Condition for Port1In as manual Switch for reward given together with stimulus
+        sma = SetCondition(sma, 6, 'Port1', 0);
+        
+        % Add states
+        % Ready state under different conditions
         if ITIBefore-QuietTime > 0
             sma = AddState(sma, 'Name', 'Ready', ...
                 'Timer', ITIBefore-QuietTime, ...
@@ -315,123 +342,79 @@ function Categorization()
                 'OutputActions', {'GlobalTimerTrig', 1});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'Port1In', 'ResetNoLick','Port2In', 'ResetNoLick','Tup', 'Stimulus','Condition5', 'Stimulus'}, ...
+                'StateChangeConditions', {'Condition1', 'ResetNoLick','Condition3', 'ResetNoLick', 'Tup', 'Stimulus','Condition5', 'Stimulus'}, ...
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'ResetNoLick', ...
                 'Timer', 0, ...
-                'StateChangeConditions', {'Condition1', 'NoLick','Condition2', 'NoLick','Condition5', 'Stimulus'}, ...
+                'StateChangeConditions', {'Condition2', 'NoLick','Condition4', 'NoLick','Condition5', 'Stimulus'}, ...
                 'OutputActions', {});
         else
             sma = AddState(sma, 'Name', 'Ready', ...
                 'Timer', ITIBefore, ...
-                'StateChangeConditions', {'Port1In', 'ResetNoLick','Port2In', 'ResetNoLick','Tup', 'Stimulus'}, ...
+                'StateChangeConditions', {'Condition1', 'ResetNoLick','Condition3', 'ResetNoLick','Tup', 'Stimulus'}, ...
                 'OutputActions', {'GlobalTimerTrig', 1});
             sma = AddState(sma, 'Name', 'NoLick', ...
                 'Timer', QuietTime, ...
-                'StateChangeConditions', {'Port1In', 'ResetNoLick','Port2In', 'ResetNoLick', 'Tup', 'Stimulus','Condition5', 'Stimulus'}, ...
+                'StateChangeConditions', {'Condition1', 'ResetNoLick', 'Condition3', 'ResetNoLick','Tup', 'Stimulus'}, ...
                 'OutputActions', {});
             sma = AddState(sma, 'Name', 'ResetNoLick', ...
                 'Timer', 0, ...
-                'StateChangeConditions', {'Condition1', 'NoLick','Condition2', 'NoLick','Condition5', 'Stimulus'}, ...
+                'StateChangeConditions', {'Condition2', 'NoLick','Condition4', 'NoLick','Condition5', 'Stimulus'}, ...
                 'OutputActions', {});
         end
 
-        % Trial global timer: stimulus + ITI after
-        sma = SetGlobalTimer(sma, 'TimerID', 2, 'Duration', TimerDuration);
+        % The timer begins at the stimulus state, the duration is Stimulus+ITI
+        sma = SetGlobalTimer(sma, 'TimerID', 2, 'Duration', TimerDuration); 
 
-        % Stimulus: single playback for StimDur
-        sma = AddState(sma, 'Name', 'Stimulus', ...
-            'Timer', StimDur, ...
-            'StateChangeConditions', {'Tup', 'Response'}, ...
-            'OutputActions', {'HiFi1', ['P' 0], 'GlobalTimerTrig', 2});
-
-        % Response mapping
+        % Stimulus state - plays stimulus until animal licks correct side
         if isCatchTrial
-            sma = AddState(sma, 'Name', 'Response', ...
-                'Timer', ResWin, ...
-                'StateChangeConditions', {'Port1In', 'Checking', 'Port2In', 'Checking', 'Tup', 'Checking'}, ...
-                'OutputActions', {});
+            % Catch trial - no response expected, just play stimulus for fixed duration
+            sma = AddState(sma, 'Name', 'Stimulus', ...
+                'Timer', ResWin, ... % "Response window"
+                'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
+                'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
         else
+            % Regular trial - stimulus plays until correct lick
             if strcmp(correctResponse, 'left')
-                if isRewarded
-                    sma = AddState(sma, 'Name', 'Response', ...
-                        'Timer', ResWin, ...
-                        'StateChangeConditions', {'Port1In', 'LeftReward', 'Port2In', 'WrongChoice', 'Tup', 'Checking'}, ...
-                        'OutputActions', {});
-                else
-                    sma = AddState(sma, 'Name', 'Response', ...
-                        'Timer', ResWin, ...
-                        'StateChangeConditions', {'Port1In', 'LeftNoReward', 'Port2In', 'WrongChoice', 'Tup', 'Checking'}, ...
-                        'OutputActions', {});
-                end
+                % Left is correct - only respond to left lick (BNC1High)
+                sma = AddState(sma, 'Name', 'Stimulus', ...
+                    'Timer', ResWin, ... % Response window
+                    'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'WaitToFinish', 'Tup', 'WaitToFinish','Condition6', 'LeftReward'}, ...
+                    'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
             elseif strcmp(correctResponse, 'right')
-                if isRewarded
-                    sma = AddState(sma, 'Name', 'Response', ...
-                        'Timer', ResWin, ...
-                        'StateChangeConditions', {'Port1In', 'WrongChoice', 'Port2In', 'RightReward', 'Tup', 'Checking'}, ...
-                        'OutputActions', {});
-                else
-                    sma = AddState(sma, 'Name', 'Response', ...
-                        'Timer', ResWin, ...
-                        'StateChangeConditions', {'Port1In', 'WrongChoice', 'Port2In', 'RightNoReward', 'Tup', 'Checking'}, ...
-                        'OutputActions', {});
-                end
+                % Right is correct - only respond to right lick (BNC2High)
+                sma = AddState(sma, 'Name', 'Stimulus', ...
+                    'Timer', ResWin, ... 
+                    'StateChangeConditions', {'BNC1High', 'WaitToFinish', 'BNC2High', 'RightReward', 'Tup', 'WaitToFinish','Condition6', 'RightReward'}, ...
+                    'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
             elseif strcmp(correctResponse, 'boundary')
-                if isRewarded
-                    sma = AddState(sma, 'Name', 'Response', ...
-                        'Timer', ResWin, ...
-                        'StateChangeConditions', {'Port1In', 'LeftReward', 'Port2In', 'RightReward', 'Tup', 'Checking'}, ...
-                        'OutputActions', {});
-                else
-                    sma = AddState(sma, 'Name', 'Response', ...
-                        'Timer', ResWin, ...
-                        'StateChangeConditions', {'Port1In', 'LeftNoReward', 'Port2In', 'RightNoReward', 'Tup', 'Checking'}, ...
-                        'OutputActions', {});
-                end
+                % Boundary frequency - both sides are correct
+                sma = AddState(sma, 'Name', 'Stimulus', ...
+                    'Timer', ResWin, ... 
+                    'StateChangeConditions', {'BNC1High', 'LeftReward', 'BNC2High', 'RightReward', 'Tup', 'WaitToFinish'}, ...
+                    'OutputActions', {'HiFi1', ['P' 0],'GlobalTimerTrig', 2});
             end
         end
-
-        % Reward / no reward / wrong choice
+        
+        % Left reward state - always reward for correct left lick
         sma = AddState(sma, 'Name', 'LeftReward', ...
             'Timer', LeftValveTime, ...
-            'StateChangeConditions', {'Tup', 'DrinkingLeft'}, ...
-            'OutputActions', {'ValveState', 1});
+            'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
+            'OutputActions', {'ValveState', 1}); % Valve 1 for left port
+        
+        % Right reward state - always reward for correct right lick
         sma = AddState(sma, 'Name', 'RightReward', ...
             'Timer', RightValveTime, ...
-            'StateChangeConditions', {'Tup', 'DrinkingRight'}, ...
-            'OutputActions', {'ValveState', 2});
-        sma = AddState(sma, 'Name', 'WrongChoice', ...
-            'Timer', 2, ...
-            'StateChangeConditions', {'Tup', 'Checking'}, ...
-            'OutputActions', {});
-        sma = AddState(sma, 'Name', 'LeftNoReward', ...
-            'Timer', 0.5, ...
-            'StateChangeConditions', {'Tup', 'DrinkingLeft'}, ...
-            'OutputActions', {});
-        sma = AddState(sma, 'Name', 'RightNoReward', ...
-            'Timer', 0.5, ...
-            'StateChangeConditions', {'Tup', 'DrinkingRight'}, ...
-            'OutputActions', {});
+            'StateChangeConditions', {'Tup', 'WaitToFinish'}, ...
+            'OutputActions', {'ValveState', 2}); % Valve 2 for right port
 
-        % Drinking and grace
-        sma = AddState(sma, 'Name', 'DrinkingLeft', ...
-            'Timer', 0, ...
-            'StateChangeConditions', {'Port1Out', 'DrinkingGrace'}, ...
-            'OutputActions', {});
-        sma = AddState(sma, 'Name', 'DrinkingRight', ...
-            'Timer', 0, ...
-            'StateChangeConditions', {'Port2Out', 'DrinkingGrace'}, ...
-            'OutputActions', {});
-        sma = AddState(sma, 'Name', 'DrinkingGrace', ...
-            'Timer', 0.5, ...
-            'StateChangeConditions', {'Tup', 'Checking', 'Port1In', 'DrinkingLeft', 'Port2In', 'DrinkingRight'}, ...
-            'OutputActions', {});
-
-        % End-of-trial condition (GlobalTimer2 ends)
-        sma = SetCondition(sma, 6, 'GlobalTimer2', 0);
-        sma = AddState(sma, 'Name', 'Checking', ...
-            'Timer', 0, ...
-            'StateChangeConditions', {'Condition6', 'exit'}, ...
+        % Set condition to check if GlobalTimer2 has ended
+        sma = SetCondition(sma, 7, 'GlobalTimer2', 0); % Condition 7: GlobalTimer2 has ended
+        
+        % Checking state
+        sma = AddState(sma, 'Name', 'WaitToFinish', ...
+            'Timer', 0, ...  
+            'StateChangeConditions', {'Condition7', 'exit'}, ...
             'OutputActions', {});
     end
 
@@ -447,14 +430,6 @@ function Categorization()
         disp(['Trial ' num2str(currentTrial) ': Sound loaded to buffer 1 (single playback)']);
     end
 
-    function displayTrialInfo(currentTrial, ThisITI, QuietTime, TrialInfo)
-        disp(['Trial ' num2str(currentTrial) ': ITI = ' num2str(ThisITI) ' s, QuietTime = ' num2str(QuietTime) ' s']);
-        if TrialInfo.IsCatchTrial
-            disp(['Trial ' num2str(currentTrial) ': Catch trial']);
-        else
-            disp(['Trial ' num2str(currentTrial) ': Correct response = ' TrialInfo.CorrectResponse ', Rewarded = ' num2str(TrialInfo.IsRewarded)]);
-        end
-    end
 
     % Session cleanup
     function CleanupHiFi()
