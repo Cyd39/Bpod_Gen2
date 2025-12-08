@@ -71,6 +71,11 @@ function Categorization()
     % Initialize data arrays
     BpodSystem.Data.CorrectSide = [];
     BpodSystem.Data.IsCatchTrial = [];
+    BpodSystem.Data.ITIBefore = [];
+    BpodSystem.Data.ITIAfter = [];
+    BpodSystem.Data.TimerDuration = [];
+    BpodSystem.Data.ResWin = [];
+    BpodSystem.Data.CutOff = [];
     
     %% Initialize plots
     % Initialize the outcome plot with different trial types for left/right spouts
@@ -161,25 +166,30 @@ function Categorization()
 
     % Prepare and start first trial
     genAndLoadStimulus(1);
-    [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount, isCatchTrial] = PrepareStateMachine(S, 1, updateFlag);
+    [sma, S, updateFlag] = PrepareStateMachine(S, 1, updateFlag);
 
     % Store trial parameters before starting the trial
-    BpodSystem.Data.ThisITI(1) = ThisITI;
-    BpodSystem.Data.QuietTime(1) = QuietTime;
-    BpodSystem.Data.CorrectSide(1) = correctSide;
-    BpodSystem.Data.RewardAmount(1) = RewardAmount;
-    BpodSystem.Data.IsCatchTrial(1) = isCatchTrial;
+    BpodSystem.Data.ThisITI(1) = S.ThisITI;
+    BpodSystem.Data.QuietTime(1) = S.QuietTime;
+    BpodSystem.Data.CorrectSide(1) = S.CorrectSide;
+    BpodSystem.Data.RewardAmount(1) = S.RewardAmount;
+    BpodSystem.Data.IsCatchTrial(1) = S.IsCatchTrial;
+    BpodSystem.Data.ITIBefore(1) = S.ITIBefore;
+    BpodSystem.Data.ITIAfter(1) = S.ITIAfter;
+    BpodSystem.Data.TimerDuration(1) = S.TimerDuration;
+    BpodSystem.Data.ResWin(1) = S.ResWin;
+    BpodSystem.Data.CutOff(1) = S.CutOff;
 
     % Display trial info
-    disp(['Trial 1: ITI = ' num2str(ThisITI) ' s, QuietTime = ' num2str(QuietTime) ' s']);
-    if isCatchTrial
+    disp(['Trial 1: ITI = ' num2str(S.ThisITI) ' s, QuietTime = ' num2str(S.QuietTime) ' s']);
+    if S.IsCatchTrial
         disp('Trial 1: Catch trial');
     else
-        if correctSide == 1
+        if S.CorrectSide == 1
             correctResponse = 'left';
-        elseif correctSide == 2
+        elseif S.CorrectSide == 2
             correctResponse = 'right';
-        elseif correctSide == 3
+        elseif S.CorrectSide == 3
             correctResponse = 'boundary';
         else
             correctResponse = 'left';
@@ -205,18 +215,26 @@ function Categorization()
         RawEvents = trialManager.getTrialData;
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
+        % Save all trial parameters from S BEFORE preparing next trial
+        % For subsequent trials, S was set in previous iteration.
+        if ~isempty(fieldnames(RawEvents))
+            % Save all parameters from S (before S gets updated for next trial)
+            BpodSystem.Data.IsCatchTrial(currentTrial) = S.IsCatchTrial;
+            BpodSystem.Data.ITIBefore(currentTrial) = S.ITIBefore;
+            BpodSystem.Data.ITIAfter(currentTrial) = S.ITIAfter;
+            BpodSystem.Data.ThisITI(currentTrial) = S.ThisITI;
+            BpodSystem.Data.QuietTime(currentTrial) = S.QuietTime;
+            BpodSystem.Data.TimerDuration(currentTrial) = S.TimerDuration;
+            BpodSystem.Data.RewardAmount(currentTrial) = S.RewardAmount;
+            BpodSystem.Data.ResWin(currentTrial) = S.ResWin;
+            BpodSystem.Data.CutOff(currentTrial) = S.CutOff;
+        end
+        
         % Determine next side based on trial number (BEFORE preparing next trial's state machine)
         if currentTrial < NumTrials
             % Prepare next trial's state machine
             genAndLoadStimulus(currentTrial+1);
-            [sma, S, updateFlag, NextITI, NextQuietTime, NextCorrectSide, NextRewardAmount, NextIsCatchTrial] = PrepareStateMachine(S, currentTrial+1, updateFlag);
-            
-            % Store next trial parameters
-            BpodSystem.Data.ThisITI(currentTrial+1) = NextITI;
-            BpodSystem.Data.QuietTime(currentTrial+1) = NextQuietTime;
-            BpodSystem.Data.CorrectSide(currentTrial+1) = NextCorrectSide;
-            BpodSystem.Data.RewardAmount(currentTrial+1) = NextRewardAmount;
-            BpodSystem.Data.IsCatchTrial(currentTrial+1) = NextIsCatchTrial;
+            [sma, S, updateFlag] = PrepareStateMachine(S, currentTrial+1, updateFlag);
             
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
@@ -229,13 +247,15 @@ function Categorization()
             trialManager.startTrial(); % Start processing the next trial's events
         end
 
-        % Save trial data and update plots
+        % Process trial data if available
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data = AddTrialEvents(BpodSystem.Data, RawEvents);
             BpodSystem.Data.TrialSettings(currentTrial) = S;
+            
+            % Save trial timestamp
             BpodSystem.Data.TrialStartTimestamp(currentTrial) = RawEvents.TrialStartTimestamp;
             
-            % Update trial type for outcome plot based on correct side
+            % Get current trial parameters from saved data (all were saved earlier to avoid shift)
             correctSide = BpodSystem.Data.CorrectSide(currentTrial);
             trialTypes(currentTrial) = correctSide; % 1 = left spout, 2 = right spout, 3 = boundary (both)
             
@@ -277,7 +297,7 @@ function Categorization()
     end
 
     % Nested helpers
-    function [sma, S, updateFlag, ThisITI, QuietTime, correctSide, RewardAmount, isCatchTrial] = PrepareStateMachine(S, currentTrial, updateFlag)
+    function [sma, S, updateFlag] = PrepareStateMachine(S, currentTrial, updateFlag)
         if updateFlag
             S = BpodParameterGUI('sync', S);
             updateFlag = false;
@@ -301,6 +321,20 @@ function Categorization()
         % Determine trial conditions from StimTable
         correctSide = StimTable.CorrectSide(currentTrial);
         isCatchTrial = (StimTable.VibFreq(currentTrial) == 0);
+        
+        % Store trial parameters in S for later use (similar to AntiBias)
+        S.ITIBefore = ITIBefore;
+        S.ITIAfter = ITIAfter;
+        S.ThisITI = ThisITI;
+        S.QuietTime = QuietTime;
+        S.TimerDuration = TimerDuration;
+        S.RewardAmount = RewardAmount;
+        S.LeftValveTime = LeftValveTime;
+        S.RightValveTime = RightValveTime;
+        S.ResWin = ResWin;
+        S.CutOff = CutOff;
+        S.CorrectSide = correctSide;
+        S.IsCatchTrial = isCatchTrial;
 
         if correctSide == 1
             correctResponse = 'left';
