@@ -83,7 +83,13 @@ function PlotSessionSummary(SessionData, varargin)
     startTime = SessionData.TrialStartTimestamp(1);
     % Get end time from last trial's WaitToFinish state
     lastTrial = SessionData.RawEvents.Trial{nTrials};
-    endTime = SessionData.TrialStartTimestamp(nTrials) + lastTrial.States.WaitToFinish(1, 2);
+    if isfield(lastTrial, 'States') && isfield(lastTrial.States, 'WaitToFinish') && ...
+       size(lastTrial.States.WaitToFinish, 2) >= 2
+        endTime = SessionData.TrialStartTimestamp(nTrials) + lastTrial.States.WaitToFinish(1, 2);
+    else
+        % Fallback: use a default duration if WaitToFinish is not available
+        endTime = startTime + 60; % Default 60 seconds
+    end
     duration = endTime - startTime;
 
     
