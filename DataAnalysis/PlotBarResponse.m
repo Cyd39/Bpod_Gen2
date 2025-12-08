@@ -273,8 +273,13 @@ function PlotBarResponse(SessionData, varargin)
     b = bar(ax, barData, 'stacked');
     
     % Set colors: blue for left responses, red for right responses
-    b(1).FaceColor = [0.2 0.4 0.8]; % Blue for left responses
-    b(2).FaceColor = [0.8 0.2 0.2]; % Red for right responses
+    % Check if we have both left and right response data
+    if length(b) >= 1
+        b(1).FaceColor = [0.2 0.4 0.8]; % Blue for left responses
+    end
+    if length(b) >= 2
+        b(2).FaceColor = [0.8 0.2 0.2]; % Red for right responses
+    end
     
     % Set x-axis labels
     nBars = size(barData, 1);
