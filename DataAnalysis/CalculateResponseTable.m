@@ -19,13 +19,15 @@ function [responseTable, fileList] = CalculateResponseTable()
     
     % Loop to select multiple files from different directories
     fprintf('=== File Selection ===\n');
+    fprintf('You can select multiple files at once (hold Ctrl/Cmd to select multiple)\n');
 
     fileCount = 0;
     while true
-        % Select a single file
+        % Select files (supports multiple selection)
         [filename, filepath, ~] = uigetfile('*.mat', ...
-            sprintf('Select file %d (Cancel to finish)', fileCount + 1), ...
-            currentPath);
+            sprintf('Select file(s) (Cancel to finish) - Currently %d file(s) selected', fileCount), ...
+            currentPath, ...
+            'MultiSelect', 'on');
         
         % Check if user canceled
         if isequal(filename, 0) || isequal(filepath, 0)
@@ -40,17 +42,34 @@ function [responseTable, fileList] = CalculateResponseTable()
             end
         end
         
-        % Add file to list
-        fileCount = fileCount + 1;
-        fullPath = fullfile(filepath, filename);
-        selectedFiles{fileCount} = fullPath;
+        % Handle both single file (string) and multiple files (cell array)
+        if ischar(filename)
+            % Single file selected - convert to cell array for uniform processing
+            filenames = {filename};
+        else
+            % Multiple files selected - filename is already a cell array
+            filenames = filename;
+        end
+        
+        % Add all selected files to list
+        for i = 1:length(filenames)
+            fileCount = fileCount + 1;
+            fullPath = fullfile(filepath, filenames{i});
+            selectedFiles{fileCount} = fullPath;
+            fprintf('File %d: %s\n', fileCount, fullPath);
+        end
         currentPath = filepath; % Remember last directory for next selection
         
-        fprintf('File %d: %s\n', fileCount, fullPath);
-        
         % Ask if user wants to select more files
-        choice = questdlg(sprintf('File %d selected:\n%s\n\nDo you want to select another file?', ...
-            fileCount, fullPath), ...
+        if isscalar(filenames)
+            msg = sprintf('File %d selected:\n%s\n\nDo you want to select more files?', ...
+                fileCount, fullPath);
+        else
+            msg = sprintf('%d files selected (total: %d)\n\nDo you want to select more files?', ...
+                length(filenames), fileCount);
+        end
+        
+        choice = questdlg(msg, ...
             'File Selection', ...
             'Yes', 'No', 'Yes');
         

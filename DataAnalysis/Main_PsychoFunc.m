@@ -136,7 +136,7 @@ nCols = ceil(sqrt(nFreqs));
 nRows = ceil(nFreqs / nCols);
 
 % Create figure
-fig = figure('Name', 'Psychometric Functions by Frequency', ...
+psychometric_fig = figure('Name', 'Psychometric Functions by Frequency', ...
     'Position', [100, 100, 1200, 800]);
 
 % Color map for different mice
@@ -227,7 +227,7 @@ nCols = ceil(sqrt(nFreqs));
 nRows = ceil(nFreqs / nCols);
 
 % Create figure
-fig = figure('Name', 'Left Rate by Frequency', ...
+left_rate_fig = figure('Name', 'Left Rate by Frequency', ...
     'Position', [100, 100, 1200, 800]);
 
 for freqIdx = 1:nFreqs
@@ -281,17 +281,25 @@ end
 % Add overall title
 sgtitle('Left Rate by Frequency', 'FontSize', 14, 'FontWeight', 'bold');
 %% Save fit parameters, file list, and response table
-timestamp = datetime('now', 'Format', 'yyyyMMdd_HHMMSS');
+timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
 timestamp_str = char(timestamp);
-save_dir = pwd;
+% directory to save the figures and data
+save_dir = 'G:\Data\ProcessedData\Yudi\OperantConditioning\PooledPsychoFunc&LeftRate';
+
 save_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.mat']);
 save(save_path, 'fit_params', 'fileList', 'responseTable');
 fprintf('\nData saved to: %s\n', save_path);
 
-%% Save figure
-fig_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.fig']);
-savefig(fig, fig_path);
-fprintf('Figure saved to: %s\n', fig_path);
-    
-fprintf('\nPsychometric function plotted and saved successfully!\n');
+%% Save figures
+psychometric_fig_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.fig']);
+savefig(psychometric_fig, psychometric_fig_path);
+saveas(psychometric_fig, psychometric_fig_path, 'png');
+fprintf('Psychometric function figure saved to: %s\n', psychometric_fig_path);
+
+left_rate_fig_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.fig']);
+savefig(left_rate_fig, left_rate_fig_path);
+saveas(left_rate_fig, left_rate_fig_path, 'png');
+fprintf('Left rate figure saved to: %s\n', left_rate_fig_path);
+
+fprintf('\nAll figures plotted and saved successfully!\n');
 fprintf('========================================\n');
