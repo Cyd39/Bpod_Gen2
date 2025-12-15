@@ -292,14 +292,18 @@ fprintf('\nData saved to: %s\n', save_path);
 
 %% Save figures
 psychometric_fig_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.fig']);
+psychometric_png_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.png']);
 savefig(psychometric_fig, psychometric_fig_path);
-saveas(psychometric_fig, psychometric_fig_path, 'png');
+saveas(psychometric_fig, psychometric_png_path, 'png');
 fprintf('Psychometric function figure saved to: %s\n', psychometric_fig_path);
+fprintf('Psychometric function PNG saved to: %s\n', psychometric_png_path);
 
 left_rate_fig_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.fig']);
+left_rate_png_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.png']);
 savefig(left_rate_fig, left_rate_fig_path);
-saveas(left_rate_fig, left_rate_fig_path, 'png');
+saveas(left_rate_fig, left_rate_png_path, 'png');
 fprintf('Left rate figure saved to: %s\n', left_rate_fig_path);
+fprintf('Left rate PNG saved to: %s\n', left_rate_png_path);
 
 fprintf('\nAll figures plotted and saved successfully!\n');
 fprintf('========================================\n');
