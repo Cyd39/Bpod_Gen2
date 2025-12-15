@@ -172,27 +172,31 @@ for freqIdx = 1:nFreqs
         vibAmps = vibAmps(validIdx);
         
         % Plot data points
-        scatter(vibAmps, responseRate, 50, colors(mouseIdx, :), 'filled', ...
+        % scatter(vibAmps, responseRate, 50, colors(mouseIdx, :), 'filled', ...
+        %     'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+        [vibAmps,ampIdx] = sort(vibAmps);
+        responseRate = responseRate(ampIdx);
+        plot(vibAmps, responseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
             'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
         
-        % Plot fitted curve if available
-        mouseFit = fit_params(strcmp(fit_params.MouseID, mouseID) & ...
-            abs(fit_params.VibFreq - freq) < tol, :);
-        
-        if ~isempty(mouseFit)
-            % Generate smooth curve
-            % Ensure mouseFit has only one row (take first if multiple)
-            if height(mouseFit) > 1
-                mouseFit = mouseFit(1, :);
-            end
-            % Generate curve from 0 to max amplitude (include VibAmp = 0)
-            ampRange = linspace(0, max(vibAmps), 100);
-            params = [mouseFit.GuessRate(1), mouseFit.LapseRate(1), mouseFit.Slope(1), mouseFit.Threshold(1)];
-            fittedCurve = psychometric_model(params, ampRange);
-            
-            plot(ampRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
-                'LineWidth', 2, 'LineStyle', '-', 'HandleVisibility', 'off');
-        end
+        % % Plot fitted curve if available
+        % mouseFit = fit_params(strcmp(fit_params.MouseID, mouseID) & ...
+        %     abs(fit_params.VibFreq - freq) < tol, :);
+        % 
+        % if ~isempty(mouseFit)
+        %     % Generate smooth curve
+        %     % Ensure mouseFit has only one row (take first if multiple)
+        %     if height(mouseFit) > 1
+        %         mouseFit = mouseFit(1, :);
+        %     end
+        %     % Generate curve from 0 to max amplitude (include VibAmp = 0)
+        %     ampRange = linspace(0, max(vibAmps), 100);
+        %     params = [mouseFit.GuessRate(1), mouseFit.LapseRate(1), mouseFit.Slope(1), mouseFit.Threshold(1)];
+        %     fittedCurve = psychometric_model(params, ampRange);
+        % 
+        %     plot(ampRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
+        %         'LineWidth', 2, 'LineStyle', '-', 'HandleVisibility', 'off');
+        % end
     end
     
     % Format subplot
@@ -208,6 +212,74 @@ end
 % Add overall title
 sgtitle('Psychometric Functions by Frequency', 'FontSize', 14, 'FontWeight', 'bold');
 
+%% Plot left rate by frequency
+fprintf('\n=== Plotting Left Rate by Frequency ===\n');
+
+% Determine subplot layout
+nFreqs = length(uniqueFreqs);
+if nFreqs == 0
+    warning('No frequencies to plot.');
+    return;
+end
+
+% Calculate subplot dimensions
+nCols = ceil(sqrt(nFreqs));
+nRows = ceil(nFreqs / nCols);
+
+% Create figure
+fig = figure('Name', 'Left Rate by Frequency', ...
+    'Position', [100, 100, 1200, 800]);
+
+for freqIdx = 1:nFreqs
+    freq = uniqueFreqs(freqIdx);
+    subplot(nRows, nCols, freqIdx);
+    hold on;
+    
+    % Get all data for this frequency
+    freqData = responseTable(abs(responseTable.VibFreq - freq) < tol, :);
+    
+    % Plot data points and fitted curves for each mouse
+    for mouseIdx = 1:length(uniqueMice)
+        mouseID = uniqueMice{mouseIdx};
+        mouseFreqData = freqData(strcmp(freqData.MouseID, mouseID), :);
+        
+        if isempty(mouseFreqData)
+            continue;
+        end
+        
+        % Calculate left response rate
+        leftResponseRate = mouseFreqData.LeftRes ./ mouseFreqData.Response;
+        vibAmps = mouseFreqData.VibAmp;
+        
+        % Remove invalid data (keep VibAmp = 0 for plotting)
+        validIdx = ~isnan(responseRate) & ~isnan(vibAmps);
+        if sum(validIdx) == 0
+            continue;
+        end
+        responseRate = responseRate(validIdx);
+        vibAmps = vibAmps(validIdx);
+        
+        % Plot data points
+        % scatter(vibAmps, responseRate, 50, colors(mouseIdx, :), 'filled', ...
+        %     'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+        [vibAmps,ampIdx] = sort(vibAmps);
+        leftResponseRate = leftResponseRate(ampIdx);
+        plot(vibAmps, leftResponseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
+            'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+    end
+    
+    % Format subplot
+    xlabel('Vibration Amplitude');
+    ylabel('Response Rate');
+    title(sprintf('%.2f Hz', freq));
+    legend('Location', 'northwest', 'FontSize', 8);
+    grid on;
+    ylim([0, 1]);
+    hold off;
+end
+
+% Add overall title
+sgtitle('Left Rate by Frequency', 'FontSize', 14, 'FontWeight', 'bold');
 %% Save fit parameters, file list, and response table
 timestamp = datetime('now', 'Format', 'yyyyMMdd_HHMMSS');
 timestamp_str = char(timestamp);
