@@ -1,4 +1,4 @@
-function PlotPsychoFunc(SessionData)
+function PlotPsychoFunc()
     % PlotPsychoFunc - Plot psychometric function from SessionData
     % 
     % This function plots the psychometric function from SessionData.
@@ -9,13 +9,8 @@ function PlotPsychoFunc(SessionData)
     % Usage:
     %   PlotPsychoFunc(SessionData);
     
-    %% Calculate response rates for each stimulus(including false alarm rate)
-    %  Get unique stimuli from SessionData
-    all_stimuli = unique(SessionData.StimTable(:,{'VibAmp','VibFreq'}),'rows'); % including catch trials (Freq = 0, Amp = 0)
-    stimulus_freqs = unique(all_stimuli.VibFreq); % unique frequencies
-
-    % Calculate response rates for each stimulus
-    ResponseRates = zeros(length(stimulus_freqs), 2);
+    %% calculate response table from multiple files
+    [responseTable, fileList] = CalculateResponseTable()
 
 
     %% Define and fit psychometric function for each frequency

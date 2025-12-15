@@ -1,7 +1,8 @@
-function responseTable = CalculateResponseTable()
+function [responseTable, fileList] = CalculateResponseTable()
     % Calculate response rate for each stimuli(including catch trials)
     % Output:
     %   responseTable - Table with stimuli and corresponding response rates
+    %   fileList - Table with information about loaded files (MouseID, FileName, FilePath, NumTrials)
     % Hit rate is calculated as: (Number of trials with Reward=1) / (Total trials for that stimuli)
 
     %% load data from multiple files (can be from different directories)
@@ -31,6 +32,7 @@ function responseTable = CalculateResponseTable()
             if fileCount == 0
                 fprintf('No files selected. Exiting...\n');
                 responseTable = table();
+                fileList = table();
                 return;
             else
                 fprintf('\nFinished selecting files. Total: %d file(s)\n\n', fileCount);
@@ -62,7 +64,9 @@ function responseTable = CalculateResponseTable()
     fprintf('=== Loading Data ===\n');
     allSessionData = {};
     allFileNames = {};
+    allFilePaths = {}; % Store full file paths
     allSubjectIDs = {}; % Store subject IDs extracted from file names
+    allNumTrials = []; % Store number of trials for each file
     
     for i = 1:length(selectedFiles)
         filePath = selectedFiles{i};
@@ -124,7 +128,9 @@ function responseTable = CalculateResponseTable()
             % Store SessionData
             allSessionData{end+1} = SessionData;
             allFileNames{end+1} = fileName;
+            allFilePaths{end+1} = filePath;
             allSubjectIDs{end+1} = subjectID;
+            allNumTrials(end+1) = length(SessionData.RawEvents.Trial);
             
             fprintf('  Subject ID: %s, Successfully loaded %d trials\n', subjectID, length(SessionData.RawEvents.Trial));
             
@@ -388,17 +394,23 @@ function responseTable = CalculateResponseTable()
     responseTable = sortrows(responseTable, {'MouseID', 'VibFreq', 'VibAmp'});
     
     % Display results
-    fprintf('\n=== Final Aggregated Results ===\n');
-    fprintf('(Aggregated by MouseID and (VibFreq, VibAmp) combination)\n\n');
-    for i = 1:height(responseTable)
-        fprintf('%s - VibFreq=%.2f, VibAmp=%.2f: NTrials=%d, Response=%d (Left=%d, Right=%d)\n', ...
-            responseTable.MouseID{i}, ...
-            responseTable.VibFreq(i), ...
-            responseTable.VibAmp(i), ...
-            responseTable.NTrials(i), ...
-            responseTable.Response(i), ...
-            responseTable.LeftRes(i), ...
-            responseTable.RightRes(i));
+    fprintf('\n=== Aggregate Finished ===\n');
+
+    
+    % Create file list table
+    if ~isempty(allFileNames)
+        fileList = table(allSubjectIDs(:), allFileNames(:), allFilePaths(:), allNumTrials(:), ...
+            'VariableNames', {'MouseID', 'FileName', 'FilePath', 'NumTrials'});
+        % Sort by MouseID and FileName
+        fileList = sortrows(fileList, {'MouseID', 'FileName'});
+    else
+        fileList = table();
+    end
+    
+    fprintf('=== File List ===\n');
+    fprintf('%d files loaded:\n', height(fileList));
+    for i = 1:height(fileList)
+        fprintf('  %s: %s (%d trials)\n', fileList.MouseID{i}, fileList.FileName{i}, fileList.NumTrials(i));
     end
     fprintf('\n');
     
