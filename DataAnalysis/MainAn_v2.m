@@ -12,33 +12,84 @@ if ~exist(defaultDataPath, 'dir')
     defaultDataPath = pwd;
 end
 
-% Select files and get absolute paths (supports both single and multiple file selection)
-[filenames, filepath] = uigetfile('*.mat', 'Select file(s) to load', defaultDataPath, 'MultiSelect', 'on');
+% Initialize file list
+selectedFiles = {};
+currentPath = defaultDataPath;
 
-if isequal(filenames, 0)
-    disp('User canceled file selection');
-    return;  % Exit if user canceled
-end
+% Loop to select multiple files from different directories
+fprintf('=== File Selection ===\n');
+fprintf('You can select multiple files at once (hold Ctrl/Cmd to select multiple)\n');
 
-% Handle both single file (string) and multiple files (cell array) cases
-if ischar(filenames)
-    % Single file selected - convert to cell array for uniform processing
-    filenames = {filenames};
+fileCount = 0;
+while true
+    % Select files (supports multiple selection)
+    [filename, filepath, ~] = uigetfile('*.mat', ...
+        sprintf('Select file(s) (Cancel to finish) - Currently %d file(s) selected', fileCount), ...
+        currentPath, ...
+        'MultiSelect', 'on');
+    
+    % Check if user canceled
+    if isequal(filename, 0) || isequal(filepath, 0)
+        if fileCount == 0
+            fprintf('No files selected. Exiting...\n');
+            return;
+        else
+            fprintf('\nFinished selecting files. Total: %d file(s)\n\n', fileCount);
+            break;
+        end
+    end
+    
+    % Handle both single file (string) and multiple files (cell array)
+    if ischar(filename)
+        % Single file selected - convert to cell array for uniform processing
+        filenames = {filename};
+    else
+        % Multiple files selected - filename is already a cell array
+        filenames = filename;
+    end
+    
+    % Add all selected files to list
+    for i = 1:length(filenames)
+        fileCount = fileCount + 1;
+        fullPath = fullfile(filepath, filenames{i});
+        selectedFiles{fileCount} = fullPath;
+        fprintf('File %d: %s\n', fileCount, fullPath);
+    end
+    currentPath = filepath; % Remember last directory for next selection
+    
+    % Ask if user wants to select more files
+    if isscalar(filenames)
+        msg = sprintf('File %d selected:\n%s\n\nDo you want to select more files?', ...
+            fileCount, fullPath);
+    else
+        msg = sprintf('%d files selected (total: %d)\n\nDo you want to select more files?', ...
+            length(filenames), fileCount);
+    end
+    
+    choice = questdlg(msg, ...
+        'File Selection', ...
+        'Yes', 'No', 'Yes');
+    
+    if strcmp(choice, 'No')
+        fprintf('\nFinished selecting files. Total: %d file(s)\n\n', fileCount);
+        break;
+    end
 end
 
 % Get number of files
-numFiles = length(filenames);
+numFiles = length(selectedFiles);
 disp(['Selected ' num2str(numFiles) ' file(s) to process']);
 
 % Loop through each file
 for fileIdx = 1:numFiles
-    filename = filenames{fileIdx};
+    absolute_path = selectedFiles{fileIdx};
     
-    % Get absolute path
-    absolute_path = fullfile(filepath, filename);
+    % Get filepath and filename from full path
+    [filepath, filename, ~] = fileparts(absolute_path);
+    filename = [filename, '.mat'];  % Add extension back for display
     
     % Get filename without extension
-    [~, name_only, ~] = fileparts(filename);
+    [~, name_only, ~] = fileparts(absolute_path);
     
     % Display file information
     disp('========================================');
