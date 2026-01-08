@@ -23,6 +23,24 @@ function Categorization()
     
     % Generate complete randomized StimTable (includes CorrectSide and Rewarded columns)
     StimTable = GenStimSeq(StimParams);
+
+    % Add "Easy" trials if Trials are 200 Hz and 300 Hz（by replacing certain trials）
+    % find 200Hz trials and replace the 5th,10th... with [100Hz 0.55]
+    idx_200 = find(StimTable.VibFreq == 200);
+    if ~isempty(idx_200)
+        positions_to_replace_200 = 5:10:length(idx_200);
+        indices_to_replace_200 = idx_200(positions_to_replace_200);
+        StimTable.VibFreq(indices_to_replace_200) = 100;
+        StimTable.VibAmp(indices_to_replace_200) = 0.55;
+    end
+    % find 300Hz trials and replace the 5th,10th... with [400Hz 0.02]
+    idx_300 = find(StimTable.VibFreq == 300);
+    if ~isempty(idx_300)
+        positions_to_replace_300 = 5:10:length(idx_300);
+        indices_to_replace_300 = idx_300(positions_to_replace_300);
+        StimTable.VibFreq(indices_to_replace_300)=400;
+        StimTable.VibAmp(indices_to_replace_300)=0.02;
+    end
     
     % Generate LeftRightSeq structure for data consistency (similar to AntiBias)
     LeftRightSeq = GenLeftRightSeq(StimParams);
