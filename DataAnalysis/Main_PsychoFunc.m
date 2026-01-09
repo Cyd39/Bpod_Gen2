@@ -173,32 +173,50 @@ for freqIdx = 1:nFreqs
         responseRate = responseRate(validIdx);
         vibAmps = vibAmps(validIdx);
         
-        % Plot data points
-        % scatter(vibAmps, responseRate, 50, colors(mouseIdx, :), 'filled', ...
-        %     'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+        % Sort data for plotting
         [vibAmps,ampIdx] = sort(vibAmps);
         responseRate = responseRate(ampIdx);
-        plot(vibAmps, responseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
-            'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
         
-        % % Plot fitted curve if available
-        % mouseFit = fit_params(strcmp(fit_params.MouseID, mouseID) & ...
-        %     abs(fit_params.VibFreq - freq) < tol, :);
-        % 
-        % if ~isempty(mouseFit)
-        %     % Generate smooth curve
-        %     % Ensure mouseFit has only one row (take first if multiple)
-        %     if height(mouseFit) > 1
-        %         mouseFit = mouseFit(1, :);
-        %     end
-        %     % Generate curve from 0 to max amplitude (include VibAmp = 0)
-        %     ampRange = linspace(0, max(vibAmps), 100);
-        %     params = [mouseFit.GuessRate(1), mouseFit.LapseRate(1), mouseFit.Slope(1), mouseFit.Threshold(1)];
-        %     fittedCurve = psychometric_model(params, ampRange);
-        % 
-        %     plot(ampRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
-        %         'LineWidth', 2, 'LineStyle', '-', 'HandleVisibility', 'off');
-        % end
+        % Plot data points (scatter)
+        plot(vibAmps, responseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
+            'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5, 'LineStyle', 'none');
+        
+        % Plot fitted curve or connecting line
+        if ~isempty(fit_params) && height(fit_params) > 0
+            % Check if fit parameters exist for this mouse and frequency
+            mouseFit = fit_params(strcmp(fit_params.MouseID, mouseID) & ...
+                abs(fit_params.VibFreq - freq) < tol, :);
+            
+            if ~isempty(mouseFit)
+                % Plot fitted curve
+                % Ensure mouseFit has only one row (take first if multiple)
+                if height(mouseFit) > 1
+                    mouseFit = mouseFit(1, :);
+                end
+                % Generate smooth curve from 0 to max amplitude
+                maxAmp = max(vibAmps);
+                if maxAmp > 0
+                    ampRange = linspace(0, maxAmp, 100);
+                    params = [mouseFit.GuessRate(1), mouseFit.LapseRate(1), mouseFit.Slope(1), mouseFit.Threshold(1)];
+                    fittedCurve = psychometric_model(params, ampRange);
+                    
+                    plot(ampRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
+                        'LineWidth', 2, 'LineStyle', '-', 'HandleVisibility', 'off');
+                else
+                    % Only catch trials (VibAmp = 0), plot connecting line instead
+                    plot(vibAmps, responseRate, 'Color', colors(mouseIdx, :), ...
+                        'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
+                end
+            else
+                % No fit available, plot connecting line
+                plot(vibAmps, responseRate, 'Color', colors(mouseIdx, :), ...
+                    'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
+            end
+        else
+            % No fit_params available, plot connecting line
+            plot(vibAmps, responseRate, 'Color', colors(mouseIdx, :), ...
+                'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
+        end
     end
     
     % Format subplot
@@ -261,13 +279,17 @@ for freqIdx = 1:nFreqs
         leftResponseRate = leftResponseRate(validIdx);
         vibAmps = vibAmps(validIdx);
         
-        % Plot data points
-        % scatter(vibAmps, responseRate, 50, colors(mouseIdx, :), 'filled', ...
-        %     'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+        % Sort data for plotting
         [vibAmps,ampIdx] = sort(vibAmps);
         leftResponseRate = leftResponseRate(ampIdx);
+        
+        % Plot data points (scatter)
         plot(vibAmps, leftResponseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
-            'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5);
+            'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5, 'LineStyle', 'none');
+        
+        % Plot connecting line (no fit for left rate)
+        plot(vibAmps, leftResponseRate, 'Color', colors(mouseIdx, :), ...
+            'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
     end
     
     % Format subplot
