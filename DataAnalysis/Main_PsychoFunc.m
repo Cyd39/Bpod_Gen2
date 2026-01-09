@@ -49,6 +49,8 @@ if ~isempty(catchTrials) && ~isempty(uniqueFreqs)
     % Combine regular trials with expanded catch trials
     responseTable = [regularTrials; expandedCatchTrials];
     fprintf('Catch trials assigned to all %d frequencies as VibAmp = 0\n', length(uniqueFreqs));
+    % Add Displacement Column
+    responseTable.FullDisplace_um = responseTable.VibAmp*93.1;
 end
 
 fprintf('Found %d unique frequencies and %d unique mice\n', length(uniqueFreqs), length(uniqueMice));
@@ -252,11 +254,11 @@ for freqIdx = 1:nFreqs
         vibAmps = mouseFreqData.VibAmp;
         
         % Remove invalid data (keep VibAmp = 0 for plotting)
-        validIdx = ~isnan(responseRate) & ~isnan(vibAmps);
+        validIdx = ~isnan(leftResponseRate) & ~isnan(vibAmps);
         if sum(validIdx) == 0
             continue;
         end
-        responseRate = responseRate(validIdx);
+        leftResponseRate = leftResponseRate(validIdx);
         vibAmps = vibAmps(validIdx);
         
         % Plot data points
