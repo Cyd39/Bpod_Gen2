@@ -42,6 +42,18 @@ function Categorization()
         StimTable.VibAmp(indices_to_replace_300)=0.02;
     end
     
+    % Find 100Hz@0.15 and 400Hz@0.0025 trials and replace with 200Hz@0.13 and 300Hz@0.04
+    idx_100_015 = find(StimTable.VibFreq == 100 & StimTable.VibAmp == 0.15);
+    if ~isempty(idx_100_015)
+        StimTable.VibFreq(idx_100_015) = 200;
+        StimTable.VibAmp(idx_100_015) = 0.13;
+    end
+    idx_400_00025 = find(StimTable.VibFreq == 400 & StimTable.VibAmp == 0.0025);
+    if ~isempty(idx_400_00025)
+        StimTable.VibFreq(idx_400_00025) = 300;
+        StimTable.VibAmp(idx_400_00025) = 0.04;
+    end
+
     % Generate LeftRightSeq structure for data consistency (similar to AntiBias)
     LeftRightSeq = GenLeftRightSeq(StimParams);
 
