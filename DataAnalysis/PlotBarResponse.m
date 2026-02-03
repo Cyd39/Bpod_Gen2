@@ -67,11 +67,41 @@ function PlotBarResponse(SessionData, varargin)
     end
     
     % Extract trial information
-    isCatchTrial = SessionData.IsCatchTrial(:);
+    if isfield(SessionData,"IsCatchTrial")
+        isCatchTrial = SessionData.IsCatchTrial(:);
+    else
+        isCatchTrial = zeros(SessionData.nTrials, 1);
+    end
     
-    % Get vibration frequencies and amplitudes from StimTable
-    vibFreqs = SessionData.StimTable.VibFreq(:);
-    vibAmps = SessionData.StimTable.VibAmp(:);
+    % Get vibration frequencies and amplitudes from StimTable(if it is in SessionData)
+    if ~isfield(SessionData,"StimTable")
+        % remake the StimTable from LeftRightSeq, CurrentSide
+        currentSideArray = SessionData.CurrentSide;
+        T1 = SessionData.LeftRightSeq.LowFreqTable;  
+        T2 = SessionData.LeftRightSeq.HighFreqTable;
+        % counter
+        t1_row = 1;
+        t2_row = 1;
+    
+        StimTable = table();
+        
+        for i = 1:length(currentSideArray)
+            if currentSideArray(i) == 1
+                StimTable(i, :) = T1(t1_row, :);
+                t1_row = t1_row + 1;  
+            elseif currentSideArray(i) == 2
+                StimTable(i, :) = T2(t2_row, :);
+                t2_row = t2_row + 1;  
+            end
+        end
+        
+    else   
+        StimTable = SessionData.StimTable;
+    end
+    vibFreqs = StimTable.VibFreq(:);
+    vibAmps = StimTable.VibAmp(:);
+
+
     
     % Get unique combinations of (VibFreq, VibAmp) excluding catch trials
     nonCatchIndices = ~isCatchTrial;
