@@ -73,12 +73,20 @@ function PlotHitResponseRate(SessionData, varargin)
     end
     
     % Extract trial indices from SessionData
-    isCatchTrial = SessionData.IsCatchTrial(:);  % Ensure column vector
+    if isfield(SessionData,"IsCatchTrial")
+        isCatchTrial = SessionData.IsCatchTrial(:);  % Ensure column vector
+    else
+        isCatchTrial = zeros(SessionData.nTrials, 1);
+    end
     catchTrialIndices = find(isCatchTrial);
     nonCatchTrialIndices = find(~isCatchTrial);
     
     % Extract side-specific indices from SessionData
-    correctSide = SessionData.CorrectSide(:);  % Ensure column vector
+    if height(SessionData.CorrectSide) ~= nTrials
+        correctSide = SessionData.CorrectSide(1:nTrials);
+    else
+        correctSide = SessionData.CorrectSide(:);  % Ensure column vector
+    end
     leftSideTrials = find(correctSide == 1);
     rightSideTrials = find(correctSide == 2);
     
@@ -109,15 +117,20 @@ function PlotHitResponseRate(SessionData, varargin)
         trialData = SessionData.RawEvents.Trial{trialNum};
         
         % Get response window duration for this trial
-        ResWin = SessionData.ResWin(trialNum);
-        
+        if ~isfield(SessionData,'ResWin')
+            % setting for conditioning 
+            ResWin = 50;
+        else
+            ResWin = SessionData.ResWin(trialNum);
+        end
+
         % Get stimulus start time
         stimulusStart = trialData.States.Stimulus(1);
         responseWindowEnd = stimulusStart + ResWin;
         
         hasResponse = false;
         % Check if there was any lick in response window (BNC1High or BNC2High) if not a catch trial
-        if ~SessionData.IsCatchTrial(trialNum)
+        if ~isCatchTrial(trialNum)
             % Check for any lick events (BNC1High or BNC2High) in response window
             if isfield(trialData.Events, 'BNC1High') && ~isempty(trialData.Events.BNC1High)
                 licksInWindow = trialData.Events.BNC1High >= stimulusStart & trialData.Events.BNC1High <= responseWindowEnd;
@@ -156,7 +169,7 @@ function PlotHitResponseRate(SessionData, varargin)
         % Count hits (for hit rate calculation using sliding window)
         % Hit = reward received AND not Condition6 AND not catch trial
         % Same logic as PickSideAntiBias: rewarded & ~triggered & ~isCatchTrial
-        if rewarded && ~SessionData.IsCatchTrial(trialNum) && ~isCondition6
+        if rewarded && ~isCatchTrial(trialNum) && ~isCondition6
             if SessionData.CorrectSide(trialNum) == 1  % Left side trial
                 trialLeftHit(trialNum) = true;
             elseif SessionData.CorrectSide(trialNum) == 2  % Right side trial
