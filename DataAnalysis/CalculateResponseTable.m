@@ -108,7 +108,7 @@ function [responseTable, fileList] = CalculateResponseTable()
                 % Try to find SessionData in the loaded structure
                 % Sometimes the structure might have different field names
                 fieldNames = fieldnames(loadedData);
-                if length(fieldNames) == 1 && isstruct(loadedData.(fieldNames{1}))
+                if isscalar(fieldNames) && isstruct(loadedData.(fieldNames{1}))
                     % If there's only one field and it's a struct, try using it
                     potentialSessionData = loadedData.(fieldNames{1});
                     if isfield(potentialSessionData, 'RawEvents')

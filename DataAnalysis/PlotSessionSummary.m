@@ -377,10 +377,13 @@ function PlotSessionSummary(SessionData, varargin)
     % ========================================================================
     % 5.6. CATCH TRIAL COUNT
     % ========================================================================
-    catchTrials = sum(SessionData.IsCatchTrial);
-    textLines{lineNum} = ['Catch Trials: ' num2str(catchTrials)];
-    lineNum = lineNum + 1;
-    
+    catchTrials = 0;
+    if isfield(SessionData,'IsCatchTrial')
+        catchTrials = sum(SessionData.IsCatchTrial);
+        textLines{lineNum} = ['Catch Trials: ' num2str(catchTrials)];
+        lineNum = lineNum + 1;
+    end
+
     % ========================================================================
     % 6-9. LEFT/RIGHT REWARD STATISTICS AND HIT RATES
     % ========================================================================
