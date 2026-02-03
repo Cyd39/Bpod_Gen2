@@ -69,7 +69,11 @@ function PlotCDFHitRate(SessionData, varargin)
     end
     
     % Extract trial information
-    isCatchTrial = SessionData.IsCatchTrial(:);
+    if isfield(SessionData,"IsCatchTrial")
+        isCatchTrial = SessionData.IsCatchTrial(:);
+    else
+        isCatchTrial = zeros(SessionData.nTrials, 1);
+    end
     correctSide = SessionData.CorrectSide(:);
     
     % Get maximum ResWin for x-axis range
