@@ -1,47 +1,8 @@
-function PlotLickRaster(SessionData, varargin)
-    % PlotLickRaster - Plot raster plot of lick events aligned to stimulus onset
-    % 
-    % This function extracts lick events from SessionData and plots them in a raster format.
-    % Logic is based on plotraster_behavior_v2, with support for both online and offline modes.
-    %
-    % Inputs:
-    %   SessionData - Session data structure
-    %   Optional name-value pairs:
-    %     'FigureHandle' - figure handle for the combined plot (optional, for activation in online mode)
-    %     'Axes' - axes handle(s) for the plot (optional, can be single axes or cell array of 2 axes for dual subplot mode)
-    %              If 2 axes provided, generates 2 subplots with legend in right subplot's northwest
-    %     'FigureName' - name for new figure if axes not provided (default: 'Licks aligned to stimulus onset')
-    %
-    % Usage:
-    %   Online mode (single): PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', rasterAx);
-    %   Online mode (dual): PlotLickRaster(BpodSystem.Data, 'FigureHandle', customPlotFig, 'Axes', {rasterAx1, rasterAx2});
-    %   Offline mode: PlotLickRaster(SessionData);
-    
-    % Parse optional inputs
-    p = inputParser;
-    addParameter(p, 'FigureHandle', [], @(x) isempty(x) || isgraphics(x, 'figure'));
-    % Validate Axes: can be empty, single axes, or cell array of 2 axes
-    validateAxes = @(x) isempty(x) || ...
-        (~iscell(x) && isgraphics(x, 'axes')) || ...
-        (iscell(x) && length(x) == 2 && all(cellfun(@(y) isgraphics(y, 'axes'), x)));
-    addParameter(p, 'Axes', [], validateAxes);
-    addParameter(p, 'FigureName', 'Licks aligned to stimulus onset', @ischar);
-    parse(p, varargin{:});
-    
-    customPlotFig = p.Results.FigureHandle;
-    ax = p.Results.Axes;
-    figureName = p.Results.FigureName;
-    
-    % Activate figure if provided (for online mode)
-    if ~isempty(customPlotFig) && isvalid(customPlotFig)
-        figure(customPlotFig);
-    end
-    
-    % Determine mode: online (single or dual axes) or offline (multiple subplots)
-    % Check this early to handle error cases properly
-    isOnlineMode = ~isempty(ax);
-    isDualAxesMode = iscell(ax) && length(ax) == 2;
-    
+function PlotLickRasterSortedByFreq(SessionData)
+    % PlotLickRasterSortedByFreq is similar to PlotLickRaster
+    % This function operates in offline mode only and plots data 
+    % sorted by frequency values.
+   
     % Check if data exists
     if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
         warning('SessionData.RawEvents.Trial not found');
@@ -250,7 +211,6 @@ function PlotLickRasterOnlineDual(ax1, ax2, Session_tbl, SessionData, n_trial, c
     rightLickLegendCreated = false;
     rewardedLickLegendCreated = false;
     port1RewardLegendCreated = false;
-
     hResWin = [];
     
     % Loop through data subplots
@@ -471,8 +431,7 @@ function PlotLickRasterOffline(Session_tbl, SessionData, n_trial, figureName)
     rightLickLegendCreated = false;
     rewardedLickLegendCreated = false;
     port1RewardLegendCreated = false;
-    inCorrectLickLegendCreated = false;
-
+    
     % Loop through data subplots
     for i_ax = 1:2
         if i_ax == 1
@@ -541,10 +500,8 @@ function PlotLickRasterOffline(Session_tbl, SessionData, n_trial, figureName)
                 end
             end
             
-            isRewarded = false;
             % Plot reward markers
             if ~isnan(tempLeftReward)
-                isRewarded = true;
                 if isLeftRewardFromPort1
                     if ~port1RewardLegendCreated && i_ax == 1
                         plot(ax, tempLeftReward, pos, '^', 'MarkerFaceColor', [0.2 0.2 1], 'Color', [0.2 0.2 1], 'MarkerSize', 8, 'DisplayName', 'Manual reward');
@@ -563,7 +520,6 @@ function PlotLickRasterOffline(Session_tbl, SessionData, n_trial, figureName)
             end
             
             if ~isnan(tempRightReward)
-                isRewarded = true;
                 if isRightRewardFromPort1
                     if ~port1RewardLegendCreated && i_ax == 1
                         plot(ax, tempRightReward, pos, '^', 'MarkerFaceColor', [1 0.2 0.2], 'Color', [1 0.2 0.2], 'MarkerSize', 8, 'DisplayName', 'Manual reward');
@@ -578,28 +534,6 @@ function PlotLickRasterOffline(Session_tbl, SessionData, n_trial, figureName)
                     else
                         plot(ax, tempRightReward, pos, 's', 'MarkerFaceColor', [1 0.2 0.2], 'Color', [1 0.2 0.2]);
                     end
-                end
-            end
-
-
-            % Plot incorrect markers(first lick in unrewarded trial)
-            % Get first licks after Stimulus Onset（or return NAN）
-            minLeftTime = min([tempLeftLicks(tempLeftLicks > 0 & tempLeftLicks < ResWin), Inf]);
-            minRightTime = min([tempRightLicks(tempRightLicks > 0 & tempRightLicks < ResWin), Inf]);
-            if ~isRewarded
-                [earliestTime, lickSide] = min([minLeftTime, minRightTime]);
-                if isfinite(earliestTime)
-
-                    if lickSide == 1               % left lick first
-                        lickColor = [0.2 0.2 1];    % blue
-                    else                            % right lick first
-                        lickColor = [1 0.2 0.2];    % red
-                    end
-                    
-                    % marker "x"
-                    plot(ax, earliestTime, pos, 'x', 'Color', lickColor, ...
-                        'MarkerSize', 8, 'LineWidth', 1.5);
-                    inCorrectLickLegendCreated = true;
                 end
             end
         end
@@ -670,10 +604,6 @@ function PlotLickRasterOffline(Session_tbl, SessionData, n_trial, figureName)
     hPort1RewardDummy = plot(ax3, NaN, NaN, '^', 'MarkerFaceColor', [0.2 0.2 1], 'Color', [0.2 0.2 1], 'MarkerSize', 8);
     legendHandles = [legendHandles, hPort1RewardDummy];
     legendLabels{end+1} = 'Manual reward';
-
-    hIncorrectLickDummy = plot(ax3, NaN, NaN, 'x', 'MarkerFaceColor', [0.2 0.2 1], 'Color', [0.2 0.2 1], 'MarkerSize', 8);
-    legendHandles = [legendHandles, hIncorrectLickDummy];
-    legendLabels{end+1} = 'Incorrect first lick';
     
     if ~isempty(hResWin) && ~isnan(ResWin)
         hResWinDummy = plot(ax3, NaN, NaN, '--', 'Color', [0 0.5 0], 'LineWidth', 1.5);
