@@ -95,7 +95,10 @@ function PlotBarResponse(SessionData, varargin)
             end
         end
         
-    else   
+    elseif nTrials ~= height(SessionData.StimTable)
+        % meaning session wasn't fully finished
+        StimTable = SessionData.StimTable(1:nTrials, :);
+    else
         StimTable = SessionData.StimTable;
     end
     vibFreqs = StimTable.VibFreq(:);
