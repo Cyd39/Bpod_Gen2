@@ -304,30 +304,30 @@ end
 
 % Add overall title
 sgtitle('Left Rate by Frequency', 'FontSize', 14, 'FontWeight', 'bold');
-% %% Save fit parameters, file list, and response table
-% timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
-% timestamp_str = char(timestamp);
-% % directory to save the figures and data
-% save_dir = 'G:\Data\ProcessedData\Yudi\OperantConditioning\PooledPsychoFunc&LeftRate';
-% 
-% save_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.mat']);
-% save(save_path, 'fit_params', 'fileList', 'responseTable');
-% fprintf('\nData saved to: %s\n', save_path);
-% 
-% %% Save figures
-% psychometric_fig_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.fig']);
-% psychometric_png_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.png']);
-% savefig(psychometric_fig, psychometric_fig_path);
-% saveas(psychometric_fig, psychometric_png_path, 'png');
-% fprintf('Psychometric function figure saved to: %s\n', psychometric_fig_path);
-% fprintf('Psychometric function PNG saved to: %s\n', psychometric_png_path);
-% 
-% left_rate_fig_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.fig']);
-% left_rate_png_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.png']);
-% savefig(left_rate_fig, left_rate_fig_path);
-% saveas(left_rate_fig, left_rate_png_path, 'png');
-% fprintf('Left rate figure saved to: %s\n', left_rate_fig_path);
-% fprintf('Left rate PNG saved to: %s\n', left_rate_png_path);
+%% Save fit parameters, file list, and response table
+timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
+timestamp_str = char(timestamp);
+% directory to save the figures and data
+save_dir = 'G:\Data\ProcessedData\Yudi\OperantConditioning\PooledPsychoFunc&LeftRate';
+
+save_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.mat']);
+save(save_path, 'fit_params', 'fileList', 'responseTable');
+fprintf('\nData saved to: %s\n', save_path);
+
+%% Save figures
+psychometric_fig_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.fig']);
+psychometric_png_path = fullfile(save_dir, ['psychometric_function_' timestamp_str '.png']);
+savefig(psychometric_fig, psychometric_fig_path);
+saveas(psychometric_fig, psychometric_png_path, 'png');
+fprintf('Psychometric function figure saved to: %s\n', psychometric_fig_path);
+fprintf('Psychometric function PNG saved to: %s\n', psychometric_png_path);
+
+left_rate_fig_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.fig']);
+left_rate_png_path = fullfile(save_dir, ['left_rate_function_' timestamp_str '.png']);
+savefig(left_rate_fig, left_rate_fig_path);
+saveas(left_rate_fig, left_rate_png_path, 'png');
+fprintf('Left rate figure saved to: %s\n', left_rate_fig_path);
+fprintf('Left rate PNG saved to: %s\n', left_rate_png_path);
 
 fprintf('\nAll figures plotted and saved successfully!\n');
 fprintf('========================================\n');

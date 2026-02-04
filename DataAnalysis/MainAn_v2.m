@@ -116,27 +116,27 @@ for fileIdx = 1:numFiles
     disp('Behavior Data loaded');
 
     %% Plot and save figure
-% Plot functions create their own figures, so we get the figure handles after plotting
-PlotLickIntervals(SessionData);
-figLickIntervals = gcf;  % Get the current figure handle after plotting
+    % Plot functions create their own figures, so we get the figure handles after plotting
+    PlotLickIntervals(SessionData);
+    figLickIntervals = gcf;  % Get the current figure handle after plotting
 
-PlotResLatency(SessionData);
-figResLatency = gcf;  % Get the current figure handle after plotting
+    PlotResLatency(SessionData);
+    figResLatency = gcf;  % Get the current figure handle after plotting
 
-PlotLickRaster(SessionData);
-figRaster = gcf;  % Get the current figure handle after plotting
+    PlotLickRaster(SessionData);
+    figRaster = gcf;  % Get the current figure handle after plotting
 
-PlotSessionSummary(SessionData);
-figSessionSummary = gcf;  % Get the current figure handle after plotting
+    PlotSessionSummary(SessionData);
+    figSessionSummary = gcf;  % Get the current figure handle after plotting
 
-PlotCDFHitRate(SessionData);
-figCDFHitRate = gcf;  % Get the current figure handle after plotting
+    PlotCDFHitRate(SessionData);
+    figCDFHitRate = gcf;  % Get the current figure handle after plotting
 
-PlotBarResponse(SessionData);
-figBarResponse = gcf;  % Get the current figure handle after plotting
+    PlotBarResponse(SessionData);
+    figBarResponse = gcf;  % Get the current figure handle after plotting
 
-PlotHitResponseRate(SessionData);
-figHitResponseRate = gcf;  % Get the current figure handle after plotting
+    PlotHitResponseRate(SessionData);
+    figHitResponseRate = gcf;  % Get the current figure handle after plotting
 
     % Save figures to the same directory as the loaded file
     savePath = filepath;  % Use the directory where the data file was loaded from
