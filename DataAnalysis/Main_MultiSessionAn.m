@@ -339,8 +339,10 @@ function [firstSide, response_latency] = getFirstResponseSide(SessionData, trial
     rightFirst = [];
     if isfield(tr,"HiFi1_1")
         stimOn = tr.Events.HiFi1_1;
-    else
+    elseif isfield(tr,"GlobalTimer2_Start")
         stimOn = tr.Events.GlobalTimer2_Start;
+    else 
+        return
     end
 
     if isfield(tr, 'Events')
