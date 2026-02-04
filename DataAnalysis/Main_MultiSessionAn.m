@@ -337,11 +337,12 @@ function [firstSide, response_latency] = getFirstResponseSide(SessionData, trial
     rightTimes = [];
     leftFirst = [];
     rightFirst = [];
-    if isfield(tr,"HiFi1_1")
+    if isfield(tr.Events,"HiFi1_1")
         stimOn = tr.Events.HiFi1_1;
-    elseif isfield(tr,"GlobalTimer2_Start")
+    elseif isfield(tr.Events,"GlobalTimer2_Start")
         stimOn = tr.Events.GlobalTimer2_Start;
     else 
+        disp("trial not triggered")
         return
     end
 
@@ -371,19 +372,5 @@ function [firstSide, response_latency] = getFirstResponseSide(SessionData, trial
         firstSide = 2;
         response_latency = rightFirst;
     end
-end
-
-% Helper: apply log-linear correction to rates and compute adjusted hit/FA rates
-function [hitRateAdj, faRateAdj] = computeRatesWithCorrection(hits, hitTrials, fas, faTrials)
-    hitRateAdj = (hits + 0.5) / (hitTrials + 1);
-    faRateAdj  = (fas  + 0.5) / (faTrials  + 1);
-end
-
-% Helper: inverse normal CDF using base MATLAB (no Statistics Toolbox)
-function z = zFromP(p)
-    % Clamp probabilities to (0,1)
-    p = max(min(p, 1 - eps), eps);
-    % norminv(p) = -sqrt(2) * erfcinv(2p)
-    z = -sqrt(2) * erfcinv(2 * p);
 end
 
