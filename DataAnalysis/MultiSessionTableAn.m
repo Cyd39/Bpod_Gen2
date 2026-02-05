@@ -294,6 +294,75 @@ grid on;
 legend('Location', 'best', 'FontSize', 10);
 hold off;
 sgtitle('Easiest Stimulus(Hightest Freq) Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
+%% Plot by DateTime
+figure('Position', [100, 100, 1500, 800]);
+
+animalColors = lines(nAnimals);  
+
+subplot(2, 1, 1);
+ax1 = gca;
+hold(ax1, 'on');
+
+subplot(2, 1, 2);
+ax2 = gca;
+hold(ax2, 'on');
+
+allDatetimes = [];
+
+for i = 1:nAnimals
+    if i == 1 || i == 3 
+        axes(ax1);
+        currentAx = ax1;
+    else
+        axes(ax2);
+        currentAx = ax2;
+    end
+
+    mask = strcmp(sl.AnimalID, animals{i});
+    
+    x = sl.DateTime(mask);
+    y = sl.ResponseRateEasy(mask);
+    
+    % 收集所有DateTime
+    allDatetimes = [allDatetimes; x];
+    
+    [x_sorted, sort_idx] = sort(x);
+    y_sorted = y(sort_idx);
+    
+    plot(x_sorted, y_sorted, 'o-', ...
+         'Color', animalColors(i, :), ...
+         'MarkerSize', 3, ...
+         'MarkerFaceColor', animalColors(i, :), ...
+         'LineWidth', 2, ...
+         'DisplayName', char(animals{i}));
+end
+
+% 设置子图1
+axes(ax1);
+xlabel('Date & Time', 'FontSize', 14);
+ylabel('Response Rate', 'FontSize', 14);
+grid on;
+legend('Location', 'best', 'FontSize', 10);
+
+% 优化日期显示
+datetick('x', 'mm/dd', 'keepticks');
+xlim([min(allDatetimes)-hours(12), max(allDatetimes)+hours(12)]);
+hold off;
+
+% 设置子图2
+axes(ax2);
+xlabel('Date & Time', 'FontSize', 14);
+ylabel('Response Rate', 'FontSize', 14);
+grid on;
+legend('Location', 'best', 'FontSize', 10);
+
+% 优化日期显示
+datetick('x', 'mm/dd', 'keepticks');
+xlim([min(allDatetimes)-hours(12), max(allDatetimes)+hours(12)]);
+hold off;
+
+sgtitle('Easiest Stimuli Response Rate Progression (by DateTime)', 'FontSize', 14, 'FontWeight', 'bold');
+
 %%  Latency analysis
 
 
