@@ -24,6 +24,8 @@ sl.Protocol = T.Protocol(idx);
 % remove NaT DateTime
 validRows = ~isnat(sl.DateTime);
 sl = sl(validRows, :);
+validRows = ~isnat(T.DateTime);
+T = T(validRows, :);
 
 % Calculation of ground hit rate, ground response rate and false alarm rate by session per mouse
 nSessions = height(sl);
@@ -101,6 +103,15 @@ for i = 1:nAnimals
     animalMask = strcmp(sl.AnimalID, animals{i});
     % number the sessions for this animal
     sl.NumSession(animalMask) = (1:sum(animalMask))';
+end
+T = sortrows(T,{'AnimalID','DateTime','VibFreq','VibAmp'});
+for i = 1:nAnimals
+    animalMask = strcmp(T.AnimalID, animals{i});
+    animalDateTimes = T.DateTime(animalMask);
+    % number the sessions for this animal
+    T.NumSession(animalMask) = (1:sum(animalMask))';
+    [~, ~, idx] = unique(animalDateTimes);
+    T.NumSession(animalMask) = idx;
 end
 %% Plotting
 % false alarm rate
@@ -364,6 +375,7 @@ hold off;
 
 sgtitle('Easiest Stimuli Response Rate Progression (by DateTime)', 'FontSize', 14, 'FontWeight', 'bold');
 
+%% Stimuli and protocol used
+
+
 %%  Latency analysis
-
-
