@@ -600,40 +600,39 @@ summaryLatency = table();
 currentCombo = '';
 
 for i = 1:height(T_sorted)
-    % 创建当前行的组合标识符
+    % combination for current row
     comboStr = sprintf('%s_%d_%g', ...
         T_sorted.AnimalID{i}, ...
         T_sorted.NumSession(i), ...
         T_sorted.VibFreq(i));
     
-    % 如果是新组合，则保留这行（因为按VibAmp降序排列，第一行就是最大值）
+    % keep the row if new combination
     if ~strcmp(comboStr, currentCombo)
         currentCombo = comboStr;
         
-        % 提取需要的数据
+        % extract data
         newRow = T_sorted(i, {'AnimalID', 'NumSession', 'VibFreq', 'VibAmp', 'RT_Median'});
         newRow.Properties.VariableNames{'VibAmp'} = 'VibAmp_Max';
         
         summaryLatency = [summaryLatency; newRow];
     end
 end
-% 获取所有唯一值
+% all unique values
 animals = unique(summaryLatency.AnimalID);
 vibFreqs = unique(summaryLatency.VibFreq);
 nAnimals = length(animals);
 nFreqs = length(vibFreqs);
 
-% 创建颜色映射
+% colors
 if nFreqs <= 8
-    colors = lines(nFreqs);  % lines颜色区分度好
+    colors = lines(nFreqs);  
 else
-    colors = turbo(nFreqs);  % 频率多时用渐变色
+    colors = turbo(nFreqs);  
 end
 
-% 创建图形
 figure('Position', [100, 100, 1400, 800]);
 
-% 计算子图布局
+% subplot positions
 rows = ceil(sqrt(nAnimals));
 cols = ceil(nAnimals / rows);
 
@@ -643,14 +642,14 @@ for i = 1:nAnimals
     
     currentAnimal = animals{i};
     
-    % 筛选当前动物的数据
+    % filter for animal
     animalMask = strcmp(summaryLatency.AnimalID, currentAnimal);
     animalData = summaryLatency(animalMask, :);
     
-    % 确保按NumSession排序
+    % sort by NumSession
     animalData = sortrows(animalData, 'NumSession');
     
-    % 绘制每个频率的数据
+    % data for each freq
     legendHandles = [];
     legendLabels = {};
     
@@ -659,7 +658,7 @@ for i = 1:nAnimals
         freqMask = animalData.VibFreq == currentFreq;
         
         if any(freqMask)
-            % 提取该频率的数据
+            % get data for this freq
             freqData = animalData(freqMask, :);
             freqData = sortrows(freqData, 'NumSession');
             
@@ -681,8 +680,8 @@ for i = 1:nAnimals
             %          'VerticalAlignment', 'bottom');
             %end
             
-            % 保存图例句柄
-            if f <= 6  % 只显示前6个频率的图例
+            % save handles
+            if f <= 6  % only show first 6 legends
                 legendHandles(end+1) = h;
                 legendLabels{end+1} = sprintf('%g Hz', currentFreq);
             end
@@ -691,7 +690,6 @@ for i = 1:nAnimals
     
     hold off;
     
-    % 添加标签
     title(sprintf('Animal: %s', currentAnimal), 'FontSize', 11, 'FontWeight', 'bold');
     xlabel('Session Number', 'FontSize', 9);
     ylabel('Response Latency Median', 'FontSize', 9);
@@ -699,7 +697,7 @@ for i = 1:nAnimals
     
     ylim([0,0.5])
     
-    % 只在第一个子图显示图例
+    % only show legend in the first subplot
     if i == 1 && ~isempty(legendHandles)
         legend(legendHandles, legendLabels, ...
                'Location', 'best', ...
