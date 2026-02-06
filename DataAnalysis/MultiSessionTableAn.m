@@ -19,7 +19,8 @@ T.ResRate = res_rate;
 animals = unique(T.AnimalID);
 nAnimals = length(animals);
 % sl: session list
-[sl, ~] = unique(T(:, {'AnimalID', 'DateTime'}), 'rows');
+[sl, idx] = unique(T(:, {'AnimalID', 'DateTime'}), 'rows');
+sl.Protocol = T.Protocol(idx);
 % remove NaT DateTime
 validRows = ~isnat(sl.DateTime);
 sl = sl(validRows, :);
