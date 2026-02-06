@@ -25,6 +25,7 @@ nAnimals = length(animals);
 % sl: session list
 [sl, idx] = unique(T(:, {'AnimalID', 'DateTime'}), 'rows');
 sl.Protocol = T.Protocol(idx);
+
 % remove NaT DateTime
 validRows = ~isnat(sl.DateTime);
 sl = sl(validRows, :);
@@ -379,32 +380,6 @@ hold off;
 
 sgtitle('Easiest Stimuli Response Rate Progression (by DateTime)', 'FontSize', 14, 'FontWeight', 'bold');
 
-%% Stimuli and protocol used Version1(Not Nice)
-colors = lines(nAnimals);
-figure('Position', [100, 100, 800, 500]);
-hold on;
-
-for i = 1:nAnimals
-    animalMask = strcmp(T.AnimalID, animals{i});
-    T_animal = T(animalMask, :);
-    T_animal = sortrows(T_animal, 'NumSession');
-    
-    % Calculation
-    x = T_animal.NumSession;
-    y = T_animal.VibAmp + T_animal.VibFreq / 100;
-    
-    plot(x, y, 'o', 'Color', colors(i, :), 'LineWidth', 1.5, ...
-         'MarkerSize', 6, 'MarkerFaceColor', colors(i, :), ...
-         'DisplayName', animals{i});
-end
-
-hold off;
-xlabel('NumSession');
-ylabel('VibAmp + VibFreq/100');
-title('Vibration Parameters Across Sessions');
-legend('show', 'Location', 'best');
-grid on;
-
 %% Stimuli and protocol used Version2
 vibFreqs = unique(T.VibFreq);
 nFreqs = length(vibFreqs);
@@ -612,4 +587,126 @@ subplot(rows, cols, 1);
 legend('show', 'Location', 'best');
 
 sgtitle('VibAmp by Date');
-%%  Latency analysis
+%%  "easiest stimuli“(all Freq) Latency plotting
+T_sorted = sortrows(T, {'AnimalID', 'NumSession', 'VibFreq', 'VibAmp'}, {'ascend', 'ascend', 'ascend', 'descend'});
+
+% remove catch trials
+notCatchTrialIdx = T_sorted.VibFreq ~= 0;
+T_sorted = T_sorted(notCatchTrialIdx, :);
+
+% find max amp for each freq
+notCatchTrial_T = T_sorted ;
+summaryLatency = table();
+currentCombo = '';
+
+for i = 1:height(T_sorted)
+    % 创建当前行的组合标识符
+    comboStr = sprintf('%s_%d_%g', ...
+        T_sorted.AnimalID{i}, ...
+        T_sorted.NumSession(i), ...
+        T_sorted.VibFreq(i));
+    
+    % 如果是新组合，则保留这行（因为按VibAmp降序排列，第一行就是最大值）
+    if ~strcmp(comboStr, currentCombo)
+        currentCombo = comboStr;
+        
+        % 提取需要的数据
+        newRow = T_sorted(i, {'AnimalID', 'NumSession', 'VibFreq', 'VibAmp', 'RT_Median'});
+        newRow.Properties.VariableNames{'VibAmp'} = 'VibAmp_Max';
+        
+        summaryLatency = [summaryLatency; newRow];
+    end
+end
+% 获取所有唯一值
+animals = unique(summaryLatency.AnimalID);
+vibFreqs = unique(summaryLatency.VibFreq);
+nAnimals = length(animals);
+nFreqs = length(vibFreqs);
+
+% 创建颜色映射
+if nFreqs <= 8
+    colors = lines(nFreqs);  % lines颜色区分度好
+else
+    colors = turbo(nFreqs);  % 频率多时用渐变色
+end
+
+% 创建图形
+figure('Position', [100, 100, 1400, 800]);
+
+% 计算子图布局
+rows = ceil(sqrt(nAnimals));
+cols = ceil(nAnimals / rows);
+
+for i = 1:nAnimals
+    subplot(rows, cols, i);
+    hold on;
+    
+    currentAnimal = animals{i};
+    
+    % 筛选当前动物的数据
+    animalMask = strcmp(summaryLatency.AnimalID, currentAnimal);
+    animalData = summaryLatency(animalMask, :);
+    
+    % 确保按NumSession排序
+    animalData = sortrows(animalData, 'NumSession');
+    
+    % 绘制每个频率的数据
+    legendHandles = [];
+    legendLabels = {};
+    
+    for f = 1:nFreqs
+        currentFreq = vibFreqs(f);
+        freqMask = animalData.VibFreq == currentFreq;
+        
+        if any(freqMask)
+            % 提取该频率的数据
+            freqData = animalData(freqMask, :);
+            freqData = sortrows(freqData, 'NumSession');
+            
+            x = freqData.NumSession;
+            y = freqData.RT_Median;
+            amp = freqData.VibAmp_Max;
+            
+            % 绘制线和点
+            h = plot(x, y, 'o-', ...
+                     'Color', colors(f, :), ...
+                     'MarkerSize', 4, ...
+                     'MarkerFaceColor', colors(f, :), ...
+                     'LineWidth', 1.5);
+            
+            % 可以在点上添加振幅值标签
+            % for j = 1:length(x)
+            %     text(x(j), y(j), sprintf('%.1f', amp(j)), ...
+            %          'FontSize', 7, 'HorizontalAlignment', 'center', ...
+            %          'VerticalAlignment', 'bottom');
+            %end
+            
+            % 保存图例句柄
+            if f <= 6  % 只显示前6个频率的图例
+                legendHandles(end+1) = h;
+                legendLabels{end+1} = sprintf('%g Hz', currentFreq);
+            end
+        end
+    end
+    
+    hold off;
+    
+    % 添加标签
+    title(sprintf('Animal: %s', currentAnimal), 'FontSize', 11, 'FontWeight', 'bold');
+    xlabel('Session Number', 'FontSize', 9);
+    ylabel('Response Latency Median', 'FontSize', 9);
+    grid on;
+    
+    ylim([0,0.5])
+    
+    % 只在第一个子图显示图例
+    if i == 1 && ~isempty(legendHandles)
+        legend(legendHandles, legendLabels, ...
+               'Location', 'best', ...
+               'NumColumns', min(3, ceil(nFreqs/3)), ...
+               'FontSize', 8);
+    end
+end
+
+sgtitle('Response Latency Median for Maximum Amplitude at Each Frequency', ...
+        'FontSize', 14, 'FontWeight', 'bold');
