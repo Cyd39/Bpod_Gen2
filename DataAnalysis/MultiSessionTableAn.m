@@ -666,14 +666,14 @@ for i = 1:nAnimals
             y = freqData.RT_Median;
             amp = freqData.VibAmp_Max;
             
-            % 绘制线和点
+            % plotting
             h = plot(x, y, 'o-', ...
                      'Color', colors(f, :), ...
                      'MarkerSize', 4, ...
                      'MarkerFaceColor', colors(f, :), ...
                      'LineWidth', 1.5);
             
-            % 可以在点上添加振幅值标签
+            % add amp labels over scatters 
             % for j = 1:length(x)
             %     text(x(j), y(j), sprintf('%.1f', amp(j)), ...
             %          'FontSize', 7, 'HorizontalAlignment', 'center', ...
@@ -690,12 +690,12 @@ for i = 1:nAnimals
     
     hold off;
     
-    title(sprintf('Animal: %s', currentAnimal), 'FontSize', 11, 'FontWeight', 'bold');
+    title(sprintf(currentAnimal), 'FontSize', 11, 'FontWeight', 'bold');
     xlabel('Session Number', 'FontSize', 9);
     ylabel('Response Latency Median', 'FontSize', 9);
     grid on;
     
-    ylim([0,0.5])
+    % ylim([0,0.5]) % Comment to zoom out, uncomment to zoom in
     
     % only show legend in the first subplot
     if i == 1 && ~isempty(legendHandles)
@@ -706,5 +706,5 @@ for i = 1:nAnimals
     end
 end
 
-sgtitle('Response Latency Median for Maximum Amplitude at Each Frequency', ...
+sgtitle('Median Response Latency for Maximum Amplitude at Each Frequency', ...
         'FontSize', 14, 'FontWeight', 'bold');
