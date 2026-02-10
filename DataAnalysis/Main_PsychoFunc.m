@@ -294,7 +294,7 @@ for freqIdx = 1:nFreqs
     
     % Format subplot
     xlabel('Vibration Amplitude');
-    ylabel('Response Rate');
+    ylabel('Left Rate');
     title(sprintf('%.2f Hz', freq));
     legend('Location', 'northwest', 'FontSize', 8);
     grid on;
@@ -331,3 +331,152 @@ fprintf('Left rate PNG saved to: %s\n', left_rate_png_path);
 
 fprintf('\nAll figures plotted and saved successfully!\n');
 fprintf('========================================\n');
+
+%% Plot left rate seperately by mouse(by frequency within each subplot) 
+r = responseTable;
+highResRate = 0.75; % standard of "high response rate"
+
+mice = unique(r.MouseID);
+nMice = length(mice);
+
+% keep only one line for catch trial for each mouse
+% and make VibFreq to be 0 again for catch trials
+r.to_keep = true(height(r), 1);
+zero_rows = r.VibAmp == 0;
+for id = mice'
+    id_rows = find(strcmp(r.MouseID,id) & zero_rows);
+    if numel(id_rows) > 1
+        r.to_keep(id_rows(2:end)) = false;
+    end
+end
+r = r(r.to_keep, :);
+r.to_keep = [];  
+idx_catch = r.VibAmp ==0;
+r.VibFreq(idx_catch) = 0;
+
+% add response rate and left rate column
+r.ResRate = r.Response ./r.NTrials;
+r.LeftRate = r.LeftRes ./r.Response;
+
+% calculate subplot rows and columns
+nCols = ceil(sqrt(nMice));
+nRows = ceil(nMice / nCols);
+
+uniqueFreqs = sort(unique(r.VibFreq));
+
+% Create figure
+figure('Position', [200, 200, 800, 600]);
+freqColors = lines(length(uniqueFreqs));
+
+for m = 1:nMice
+    subplot(nCols,nRows,m)
+    hold on;
+    mouseMask = strcmp(r.MouseID, mice{m});
+    mouseData = r(mouseMask, :);
+    x_positions = zeros(height(mouseData), 1);
+    group_labels = cell(height(mouseData), 1);
+    
+    for f = 1:length(uniqueFreqs)
+        freq = uniqueFreqs(f);
+        freqMask = mouseData.VibFreq == freq;
+        
+        if any(freqMask)
+            n_points = sum(freqMask);
+            x_positions(freqMask) = f + linspace(-0.2, 0.2, n_points)';
+        end
+    end
+    
+    for f = 1:length(uniqueFreqs)
+        freq = uniqueFreqs(f);
+        freqMask = mouseData.VibFreq == freq;
+        if any(freqMask)
+                scatter(x_positions(freqMask), mouseData.LeftRate(freqMask), 120,...
+                    freqColors(f,:), 'filled');
+        end
+    end
+    
+    title(sprintf('Mouse: %s', mice{m}));
+    ylabel('Left Rate');
+    ylim([0, 1]);
+    grid off;
+    
+    % 设置 x 轴：每个频率一个刻度
+    xticks(1:length(uniqueFreqs));
+    tickLabels = cell(length(uniqueFreqs), 1);
+    for f = 1:length(uniqueFreqs)
+        if uniqueFreqs(f) == 0
+            tickLabels{f} = '';
+        else
+            tickLabels{f} = num2str(uniqueFreqs(f));
+        end
+    end
+    xticklabels(tickLabels);
+    xlabel('Vibration Frequency (Hz)');
+    
+    % show amplitude
+    for i = 1:height(mouseData)
+        if mouseData.VibAmp(i) ~= 0
+            text(x_positions(i)-0.07, mouseData.LeftRate(i)+0.02, ...
+                 sprintf('%.2f', mouseData.VibAmp(i)), ... % sprintf('%.2f μm', mouseData.VibAmp(i) * 93.1), ... % displacement
+                 'FontSize', 12, 'VerticalAlignment', 'bottom',...
+                 'HorizontalAlignment', 'center');
+                
+        else
+            text(x_positions(i)-0.2, mouseData.LeftRate(i)+0.02, ...
+                 'catch trial', ...
+                 'FontSize', 12, 'VerticalAlignment', 'bottom');
+        end
+    end
+
+end
+
+sgtitle('Left Rate');
+
+saveFigAsPNG("LeftRate");
+%% Helper: Save Figure As PNG
+function saveFigAsPNG(prefix)
+% SAVE FIGURE AS PNG
+% Save current MATLAB figure as PNG format with timestamp in filename
+% 
+% INPUTS:
+%   prefix    - Optional prefix for filename (optional)
+%
+% OUTPUT:
+%   Saves figure as PNG file with format: YYMMDD_HHMMSS.png
+%   Example: 240123_143022.png
+
+    figHandle = gcf;  % Use current figure
+    savePath = "G:\Data\ProcessedData\Yudi\OperantConditioning";   % Default save path
+    
+    if nargin < 1
+        prefix = '';
+    end
+    
+    % Generate timestamp for filename using datetime
+    % Format: YYMMDD_HHMMSS
+    currentTime = datetime('now', 'Format', 'yyMMdd_HHmmss');
+    timestampStr = char(currentTime);  % Convert datetime to char array
+    
+    % Build complete filename
+    if isempty(prefix)
+        filename = sprintf('%s.png', timestampStr);
+    else
+        filename = sprintf('%s_%s.png', prefix, timestampStr);
+    end
+    
+    fullPath = fullfile(savePath, filename);
+    
+    % Ensure save directory exists
+    if ~exist(savePath, 'dir')
+        mkdir(savePath);
+    end
+    
+    % Set figure export parameters
+    set(figHandle, 'PaperPositionMode', 'auto');  % Maintain screen display size
+    
+    % Save as PNG format
+    print(figHandle, fullPath, '-dpng', '-r300');  % 300 DPI resolution
+    
+    % Display confirmation message
+    fprintf('Figure saved as: %s\n', fullPath);
+end

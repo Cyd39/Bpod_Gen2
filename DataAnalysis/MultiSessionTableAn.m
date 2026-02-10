@@ -838,11 +838,6 @@ function saveFigAsPNG(prefix)
         prefix = '';
     end
     
-    % Convert savePath to string if needed
-    if ischar(savePath)
-        savePath = string(savePath);
-    end
-    
     % Generate timestamp for filename using datetime
     % Format: YYMMDD_HHMMSS
     currentTime = datetime('now', 'Format', 'yyMMdd_HHmmss');
