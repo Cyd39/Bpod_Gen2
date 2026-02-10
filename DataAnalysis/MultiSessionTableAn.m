@@ -119,7 +119,7 @@ for i = 1:nAnimals
     T.NumSession(animalMask) = idx;
 end
 %% Plotting
-% false alarm rate
+% false alarm rate [not used]
 figure('Position', [100, 100, 1300, 600]);
 % colors for each animal
 animalColors  = lines(nAnimals); 
@@ -167,299 +167,303 @@ legend('Location', 'best', 'FontSize', 10);
 hold off;
 
 sgtitle('False Alarm Rate Progression', 'FontSize', 14);
-%% overall response rate
-figure('Position', [100, 100, 1500, 600]);
-% colors for each animal
-animalColors  = lines(nAnimals); 
-
-subplot(2, 1, 1);
-hold on;
-
-subplot(2, 1, 2);
-hold on;
-
-for i = 1:nAnimals
-    if i == 1 || i == 3 
-        subplot(2,1,1);
-    else
-        subplot(2,1,2);
+%% overall response rate [not used]
+% figure('Position', [100, 100, 1500, 600]);
+% % colors for each animal
+% animalColors  = lines(nAnimals); 
+% 
+% subplot(2, 1, 1);
+% hold on;
+% 
+% subplot(2, 1, 2);
+% hold on;
+% 
+% for i = 1:nAnimals
+%     if i == 1 || i == 3 
+%         subplot(2,1,1);
+%     else
+%         subplot(2,1,2);
+%     end
+%     mask = strcmp(sl.AnimalID, animals{i});
+%     x = sl.NumSession(mask);
+%     y = sl.ResponseRate(mask);
+% 
+%     % sort by NumSession
+%     [x_sorted, sort_idx] = sort(x);
+%     y_sorted = y(sort_idx);
+% 
+%     plot(x_sorted, y_sorted, 'o-', ...
+%          'Color', animalColors(i, :), ...
+%          'MarkerSize', 3, ...
+%          'MarkerFaceColor', animalColors(i, :), ...
+%          'LineWidth', 2, ...
+%          'DisplayName', char(animals{i}));
+% end
+% 
+% subplot(2, 1, 1);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% 
+% subplot(2, 1, 2);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% 
+% hold off;
+% sgtitle('Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
+%% "easy" stimuli response rate [not used]
+% figure('Position', [100, 100, 1500, 800]);
+% 
+% % colors for each animal
+% animalColors  = lines(nAnimals);  
+% 
+% subplot(2, 1, 1);
+% hold on;
+% 
+% subplot(2, 1, 2);
+% hold on;
+% for i = 1:nAnimals
+%     if i == 1 || i == 3 
+%         subplot(2,1,1);
+%     else
+%         subplot(2,1,2);
+%     end
+% 
+%     mask = strcmp(sl.AnimalID, animals{i});
+%     x = sl.NumSession(mask);
+%     y = sl.ResponseRateEasy(mask);
+% 
+%     % sort by NumSession
+%     [x_sorted, sort_idx] = sort(x);
+%     y_sorted = y(sort_idx);
+% 
+%     plot(x_sorted, y_sorted, 'o-', ...
+%          'Color', animalColors(i, :), ...
+%          'MarkerSize', 3, ...
+%          'MarkerFaceColor', animalColors(i, :), ...
+%          'LineWidth', 2, ...
+%          'DisplayName', char(animals{i}));
+% end
+% 
+% subplot(2, 1, 1);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% 
+% subplot(2, 1, 2);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% sgtitle('Easiest Stimuli(All Freq) Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
+%% "easiest stimuli response rate" [not used]
+% figure('Position', [100, 100, 1500, 800]);
+% 
+% % colors for each animal
+% animalColors  = lines(nAnimals);  
+% 
+% subplot(2, 1, 1);
+% hold on;
+% 
+% subplot(2, 1, 2);
+% hold on;
+% for i = 1:nAnimals
+%     if i == 1 || i == 3 
+%         subplot(2,1,1);
+%     else
+%         subplot(2,1,2);
+%     end
+% 
+%     mask = strcmp(sl.AnimalID, animals{i});
+%     x = sl.NumSession(mask);
+%     y = sl.ResponseRateEasiest(mask);
+% 
+%     % sort by NumSession
+%     [x_sorted, sort_idx] = sort(x);
+%     y_sorted = y(sort_idx);
+% 
+%     plot(x_sorted, y_sorted, 'o-', ...
+%          'Color', animalColors(i, :), ...
+%          'MarkerSize', 3, ...
+%          'MarkerFaceColor', animalColors(i, :), ...
+%          'LineWidth', 2, ...
+%          'DisplayName', char(animals{i}));
+% end
+% 
+% subplot(2, 1, 1);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% 
+% subplot(2, 1, 2);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% sgtitle('Easiest Stimulus(Hightest Freq) Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
+%% Response Rate and False Alarm Rate by Session Number and Date
+% Response rate is for the easiest stimulus(highest amp for highest freq)
+op = {'DateTime', 'SessionNumber'}; % options for plotting
+for o = 1:length(op)
+    plotBy = op{o}; % 'DateTime'; 'SessionNumber'
+    figure('Position', [100, 100, 1300, 800]);
+    % colors for each animal
+    animalColors  = lines(nAnimals); 
+    
+    subplot(2, 1, 1);
+    hold on;
+    
+    subplot(2, 1, 2);
+    hold on;
+    
+    for i = 1:nAnimals
+        if i == 1 || i == 3 
+            subplot(2,1,1);
+        else
+            subplot(2,1,2);
+        end
+        mask = strcmp(sl.AnimalID, animals{i});
+    
+        % ResponseRateEasiest
+        switch plotBy
+            case 'DateTime'
+                x = sl.DateTime(mask);
+            case 'SessionNumber'
+                x = sl.NumSession(mask);
+            otherwise
+                x = sl.NumSession(mask);
+        end
+        y = sl.ResponseRateEasiest(mask);
+        
+        % sort by NumSession
+        [x_sorted, sort_idx] = sort(x);
+        y_sorted = y(sort_idx);
+        
+        plot(x_sorted, y_sorted, 'o-', ...
+             'Color',animalColors(i, :),...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', animalColors(i, :), ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(RR)']);
+    
+        % False Alarm
+        y = sl.FalseAlarmRate(mask);
+        
+        % sort by NumSession
+        y_sorted = y(sort_idx);
+        
+        plot(x_sorted, y_sorted, 'o:', ...
+             'Color', animalColors(i, :), ...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', 'none', ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(FA)']);
     end
-    mask = strcmp(sl.AnimalID, animals{i});
-    x = sl.NumSession(mask);
-    y = sl.ResponseRate(mask);
     
-    % sort by NumSession
-    [x_sorted, sort_idx] = sort(x);
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o-', ...
-         'Color', animalColors(i, :), ...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', animalColors(i, :), ...
-         'LineWidth', 2, ...
-         'DisplayName', char(animals{i}));
-end
-
-subplot(2, 1, 1);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-
-subplot(2, 1, 2);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-
-hold off;
-sgtitle('Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
-%% "easy" stimuli response rate
-figure('Position', [100, 100, 1500, 800]);
-
-% colors for each animal
-animalColors  = lines(nAnimals);  
-
-subplot(2, 1, 1);
-hold on;
-
-subplot(2, 1, 2);
-hold on;
-for i = 1:nAnimals
-    if i == 1 || i == 3 
-        subplot(2,1,1);
-    else
-        subplot(2,1,2);
-    end
-
-    mask = strcmp(sl.AnimalID, animals{i});
-    x = sl.NumSession(mask);
-    y = sl.ResponseRateEasy(mask);
-    
-    % sort by NumSession
-    [x_sorted, sort_idx] = sort(x);
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o-', ...
-         'Color', animalColors(i, :), ...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', animalColors(i, :), ...
-         'LineWidth', 2, ...
-         'DisplayName', char(animals{i}));
-end
-
-subplot(2, 1, 1);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-
-subplot(2, 1, 2);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-sgtitle('Easiest Stimuli(All Freq) Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
-%% "easiest stimuli response rate"
-figure('Position', [100, 100, 1500, 800]);
-
-% colors for each animal
-animalColors  = lines(nAnimals);  
-
-subplot(2, 1, 1);
-hold on;
-
-subplot(2, 1, 2);
-hold on;
-for i = 1:nAnimals
-    if i == 1 || i == 3 
-        subplot(2,1,1);
-    else
-        subplot(2,1,2);
-    end
-
-    mask = strcmp(sl.AnimalID, animals{i});
-    x = sl.NumSession(mask);
-    y = sl.ResponseRateEasiest(mask);
-    
-    % sort by NumSession
-    [x_sorted, sort_idx] = sort(x);
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o-', ...
-         'Color', animalColors(i, :), ...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', animalColors(i, :), ...
-         'LineWidth', 2, ...
-         'DisplayName', char(animals{i}));
-end
-
-subplot(2, 1, 1);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-
-subplot(2, 1, 2);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-sgtitle('Easiest Stimulus(Hightest Freq) Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
-
-%% Response Rate and False Alarm Rate by Session Number
-
-plotBy = 'DateTime'; % 'SessionNumber'
-figure('Position', [100, 100, 1300, 800]);
-% colors for each animal
-animalColors  = lines(nAnimals); 
-
-subplot(2, 1, 1);
-hold on;
-
-subplot(2, 1, 2);
-hold on;
-
-for i = 1:nAnimals
-    if i == 1 || i == 3 
-        subplot(2,1,1);
-    else
-        subplot(2,1,2);
-    end
-    mask = strcmp(sl.AnimalID, animals{i});
-
-    % ResponseRateEasiest
+    % xlabel
     switch plotBy
         case 'DateTime'
-            x = sl.DateTime(mask);
+            xLabel = "Date";
         case 'SessionNumber'
-            x = sl.NumSession(mask);
+            xLabel = "Session Number";    
         otherwise
-            x = sl.NumSession(mask);
+            xLabel = "Session Number";
     end
-    y = sl.ResponseRateEasiest(mask);
-    
-    % sort by NumSession
-    [x_sorted, sort_idx] = sort(x);
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o-', ...
-         'Color',animalColors(i, :),...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', animalColors(i, :), ...
-         'LineWidth', 2, ...
-         'DisplayName', [char(animals{i}),'(RR)']);
 
-    % False Alarm
-    y = sl.FalseAlarmRate(mask);
+    for i = 1:2
+        subplot(2, 1, i);
+        xlabel(xLabel, 'FontSize', 14);
+        ylabel('Response or False Alarm Rate', 'FontSize', 14);
+        grid on;
+        legend('Location', 'eastoutside', 'FontSize', 10);
+        if strcmp(plotBy,'DateTime')
+            xticks(x_sorted(1) + caldays(0:7:360));
+            xtickformat('MMM-dd')
+        end
+        hold off;
+    end
     
-    % sort by NumSession
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o:', ...
-         'Color', animalColors(i, :), ...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', 'none', ...
-         'LineWidth', 2, ...
-         'DisplayName', [char(animals{i}),'(FA)']);
+    sgtitle('Response & False Alarm Rate Progression', 'FontSize', 14);
+    saveFigAsPNG(['Res&FalseAlarmRate_by_',plotBy]);
 end
-
-subplot(2, 1, 1);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response or False Alarm Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'eastoutside', 'FontSize', 10);
-if strcmp(plotBy,'DateTime')
-    xticks(x_sorted(1) + caldays(0:7:360));
-    xtickformat('MMM-dd')
-end
-hold off;
-
-subplot(2, 1, 2);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('Response or False Alarm Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'eastoutside', 'FontSize', 10);
-if strcmp(plotBy,'DateTime')
-    xticks(x_sorted(1) + caldays(0:7:360));
-    xtickformat('MMM-dd')
-end
-hold off;
-
-sgtitle('False Alarm Rate Progression', 'FontSize', 14);
 %% Plot by DateTime
-figure('Position', [100, 100, 1500, 800]);
-
-animalColors = lines(nAnimals);  
-
-subplot(2, 1, 1);
-ax1 = gca;
-hold(ax1, 'on');
-
-subplot(2, 1, 2);
-ax2 = gca;
-hold(ax2, 'on');
-
-allDatetimes = [];
-
-for i = 1:nAnimals
-    if i == 1 || i == 3 
-        axes(ax1);
-        currentAx = ax1;
-    else
-        axes(ax2);
-        currentAx = ax2;
-    end
-
-    mask = strcmp(sl.AnimalID, animals{i});
-    
-    x = sl.DateTime(mask);
-    y = sl.ResponseRateEasy(mask);
-    
-    % 收集所有DateTime
-    allDatetimes = [allDatetimes; x];
-    
-    [x_sorted, sort_idx] = sort(x);
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o-', ...
-         'Color', animalColors(i, :), ...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', animalColors(i, :), ...
-         'LineWidth', 2, ...
-         'DisplayName', char(animals{i}));
-end
-
-% 设置子图1
-axes(ax1);
-xlabel('Date & Time', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-
-% 优化日期显示
-datetick('x', 'mm/dd', 'keepticks');
-xlim([min(allDatetimes)-hours(12), max(allDatetimes)+hours(12)]);
-hold off;
-
-% 设置子图2
-axes(ax2);
-xlabel('Date & Time', 'FontSize', 14);
-ylabel('Response Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-
-% 优化日期显示
-datetick('x', 'mm/dd', 'keepticks');
-xlim([min(allDatetimes)-hours(12), max(allDatetimes)+hours(12)]);
-hold off;
-
-sgtitle('Easiest Stimuli Response Rate Progression (by DateTime)', 'FontSize', 14, 'FontWeight', 'bold');
+% figure('Position', [100, 100, 1500, 800]);
+% 
+% animalColors = lines(nAnimals);  
+% 
+% subplot(2, 1, 1);
+% ax1 = gca;
+% hold(ax1, 'on');
+% 
+% subplot(2, 1, 2);
+% ax2 = gca;
+% hold(ax2, 'on');
+% 
+% allDatetimes = [];
+% 
+% for i = 1:nAnimals
+%     if i == 1 || i == 3 
+%         axes(ax1);
+%         currentAx = ax1;
+%     else
+%         axes(ax2);
+%         currentAx = ax2;
+%     end
+% 
+%     mask = strcmp(sl.AnimalID, animals{i});
+% 
+%     x = sl.DateTime(mask);
+%     y = sl.ResponseRateEasy(mask);
+% 
+%     % collect all DateTime
+%     allDatetimes = [allDatetimes; x];
+% 
+%     [x_sorted, sort_idx] = sort(x);
+%     y_sorted = y(sort_idx);
+% 
+%     plot(x_sorted, y_sorted, 'o-', ...
+%          'Color', animalColors(i, :), ...
+%          'MarkerSize', 3, ...
+%          'MarkerFaceColor', animalColors(i, :), ...
+%          'LineWidth', 2, ...
+%          'DisplayName', char(animals{i}));
+% end
+% 
+% % settings for subplot 1
+% axes(ax1);
+% xlabel('Date & Time', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% 
+% % refine date demonstration
+% datetick('x', 'mm/dd', 'keepticks');
+% xlim([min(allDatetimes)-hours(12), max(allDatetimes)+hours(12)]);
+% hold off;
+% 
+% % settings for subplot 2
+% axes(ax2);
+% xlabel('Date & Time', 'FontSize', 14);
+% ylabel('Response Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% 
+% % refine date demonstration
+% datetick('x', 'mm/dd', 'keepticks');
+% xlim([min(allDatetimes)-hours(12), max(allDatetimes)+hours(12)]);
+% hold off;
+% 
+% sgtitle('Easiest Stimuli Response Rate Progression (by DateTime)', 'FontSize', 14, 'FontWeight', 'bold');
 
 %% Stimuli and protocol used Version2
 vibFreqs = unique(T.VibFreq);
@@ -559,11 +563,17 @@ for i = 1:nAnimals
     grid on;
     
 end
+
+sgtitle('VibAmp by Session');
+% save without legend
+saveFigAsPNG('Stimuli_BySession_NoLegend');
+
 % show legend only once
 subplot(rows, cols, 1);
 legend('show', 'Location', 'best');
 
-sgtitle('VibAmp by Session');
+% save with legend
+saveFigAsPNG('Stimuli_BySession_WithLegend');
 
 %Plot By DateTime
 vibFreqs = unique(T.VibFreq);
@@ -663,11 +673,18 @@ for i = 1:nAnimals
     grid on;
     
 end
+
+sgtitle('VibAmp by Date');
+
+% save without legend
+saveFigAsPNG('Stimuli_ByDay_NoLegend');
+
 % show legend only once
 subplot(rows, cols, 1);
 legend('show', 'Location', 'best');
 
-sgtitle('VibAmp by Date');
+% save with legend
+saveFigAsPNG('Stimuli_ByDay_WithLegend');
 %%  "easiest stimuli“(all Freq) Latency plotting
 T_sorted = sortrows(T, {'AnimalID', 'NumSession', 'VibFreq', 'VibAmp'}, {'ascend', 'ascend', 'ascend', 'descend'});
 
@@ -776,7 +793,7 @@ for i = 1:nAnimals
     ylabel('Response Latency Median', 'FontSize', 9);
     grid on;
     
-    % ylim([0,0.5]) % Comment to zoom out, uncomment to zoom in
+    
     
     % only show legend in the first subplot
     if i == 1 && ~isempty(legendHandles)
@@ -789,3 +806,68 @@ end
 
 sgtitle('Median Response Latency for Maximum Amplitude at Each Frequency', ...
         'FontSize', 14, 'FontWeight', 'bold');
+
+% save zoom out
+saveFigAsPNG("ResLatency_ZoomOut");
+
+for i = 1:nAnimals
+    subplot(rows, cols, i);
+    ylim([0,0.5]) % Comment to zoom out, uncomment to zoom in
+end
+
+% save zoom in
+saveFigAsPNG("ResLatency_ZoomIn");
+
+
+%% Helper: Save Figure As PNG
+function saveFigAsPNG(prefix)
+% SAVE FIGURE AS PNG
+% Save current MATLAB figure as PNG format with timestamp in filename
+% 
+% INPUTS:
+%   prefix    - Optional prefix for filename (optional)
+%
+% OUTPUT:
+%   Saves figure as PNG file with format: YYMMDD_HHMMSS.png
+%   Example: 240123_143022.png
+
+    figHandle = gcf;  % Use current figure
+    savePath = "G:\Data\ProcessedData\Yudi\OperantConditioning";   % Default save path
+    
+    if nargin < 1
+        prefix = '';
+    end
+    
+    % Convert savePath to string if needed
+    if ischar(savePath)
+        savePath = string(savePath);
+    end
+    
+    % Generate timestamp for filename using datetime
+    % Format: YYMMDD_HHMMSS
+    currentTime = datetime('now', 'Format', 'yyMMdd_HHmmss');
+    timestampStr = char(currentTime);  % Convert datetime to char array
+    
+    % Build complete filename
+    if isempty(prefix)
+        filename = sprintf('%s.png', timestampStr);
+    else
+        filename = sprintf('%s_%s.png', prefix, timestampStr);
+    end
+    
+    fullPath = fullfile(savePath, filename);
+    
+    % Ensure save directory exists
+    if ~exist(savePath, 'dir')
+        mkdir(savePath);
+    end
+    
+    % Set figure export parameters
+    set(figHandle, 'PaperPositionMode', 'auto');  % Maintain screen display size
+    
+    % Save as PNG format
+    print(figHandle, fullPath, '-dpng', '-r300');  % 300 DPI resolution
+    
+    % Display confirmation message
+    fprintf('Figure saved as: %s\n', fullPath);
+end
