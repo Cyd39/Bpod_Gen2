@@ -119,54 +119,54 @@ for i = 1:nAnimals
     T.NumSession(animalMask) = idx;
 end
 %% Plotting
-% false alarm rate [not used]
-figure('Position', [100, 100, 1300, 600]);
-% colors for each animal
-animalColors  = lines(nAnimals); 
-
-subplot(2, 1, 1);
-hold on;
-
-subplot(2, 1, 2);
-hold on;
-
-for i = 1:nAnimals
-    if i == 1 || i == 3 
-        subplot(2,1,1);
-    else
-        subplot(2,1,2);
-    end
-    mask = strcmp(sl.AnimalID, animals{i});
-    x = sl.NumSession(mask);
-    y = sl.FalseAlarmRate(mask);
-    
-    % sort by NumSession
-    [x_sorted, sort_idx] = sort(x);
-    y_sorted = y(sort_idx);
-    
-    plot(x_sorted, y_sorted, 'o-', ...
-         'Color',animalColors(i, :),...
-         'MarkerSize', 3, ...
-         'MarkerFaceColor', animalColors(i, :), ...
-         'LineWidth', 2, ...
-         'DisplayName', char(animals{i}));
-end
-
-subplot(2, 1, 1);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('False Alarm Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-
-subplot(2, 1, 2);
-xlabel('Session Number', 'FontSize', 14);
-ylabel('False Alarm Rate', 'FontSize', 14);
-grid on;
-legend('Location', 'best', 'FontSize', 10);
-hold off;
-
-sgtitle('False Alarm Rate Progression', 'FontSize', 14);
+% % false alarm rate [not used]
+% figure('Position', [100, 100, 1300, 600]);
+% % colors for each animal
+% animalColors  = lines(nAnimals); 
+% 
+% subplot(2, 1, 1);
+% hold on;
+% 
+% subplot(2, 1, 2);
+% hold on;
+% 
+% for i = 1:nAnimals
+%     if i == 1 || i == 3 
+%         subplot(2,1,1);
+%     else
+%         subplot(2,1,2);
+%     end
+%     mask = strcmp(sl.AnimalID, animals{i});
+%     x = sl.NumSession(mask);
+%     y = sl.FalseAlarmRate(mask);
+% 
+%     % sort by NumSession
+%     [x_sorted, sort_idx] = sort(x);
+%     y_sorted = y(sort_idx);
+% 
+%     plot(x_sorted, y_sorted, 'o-', ...
+%          'Color',animalColors(i, :),...
+%          'MarkerSize', 3, ...
+%          'MarkerFaceColor', animalColors(i, :), ...
+%          'LineWidth', 2, ...
+%          'DisplayName', char(animals{i}));
+% end
+% 
+% subplot(2, 1, 1);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('False Alarm Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% 
+% subplot(2, 1, 2);
+% xlabel('Session Number', 'FontSize', 14);
+% ylabel('False Alarm Rate', 'FontSize', 14);
+% grid on;
+% legend('Location', 'best', 'FontSize', 10);
+% hold off;
+% 
+% sgtitle('False Alarm Rate Progression', 'FontSize', 14);
 %% overall response rate [not used]
 % figure('Position', [100, 100, 1500, 600]);
 % % colors for each animal
