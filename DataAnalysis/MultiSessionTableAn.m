@@ -311,6 +311,87 @@ grid on;
 legend('Location', 'best', 'FontSize', 10);
 hold off;
 sgtitle('Easiest Stimulus(Hightest Freq) Response Rate Progression', 'FontSize', 14, 'FontWeight', 'bold');
+
+%% Response Rate and False Alarm Rate by Session Number
+
+plotBy = 'DateTime'; % 'SessionNumber'
+figure('Position', [100, 100, 1300, 800]);
+% colors for each animal
+animalColors  = lines(nAnimals); 
+
+subplot(2, 1, 1);
+hold on;
+
+subplot(2, 1, 2);
+hold on;
+
+for i = 1:nAnimals
+    if i == 1 || i == 3 
+        subplot(2,1,1);
+    else
+        subplot(2,1,2);
+    end
+    mask = strcmp(sl.AnimalID, animals{i});
+
+    % ResponseRateEasiest
+    switch plotBy
+        case 'DateTime'
+            x = sl.DateTime(mask);
+        case 'SessionNumber'
+            x = sl.NumSession(mask);
+        otherwise
+            x = sl.NumSession(mask);
+    end
+    y = sl.ResponseRateEasiest(mask);
+    
+    % sort by NumSession
+    [x_sorted, sort_idx] = sort(x);
+    y_sorted = y(sort_idx);
+    
+    plot(x_sorted, y_sorted, 'o-', ...
+         'Color',animalColors(i, :),...
+         'MarkerSize', 3, ...
+         'MarkerFaceColor', animalColors(i, :), ...
+         'LineWidth', 2, ...
+         'DisplayName', [char(animals{i}),'(RR)']);
+
+    % False Alarm
+    y = sl.FalseAlarmRate(mask);
+    
+    % sort by NumSession
+    y_sorted = y(sort_idx);
+    
+    plot(x_sorted, y_sorted, 'o:', ...
+         'Color', animalColors(i, :), ...
+         'MarkerSize', 3, ...
+         'MarkerFaceColor', 'none', ...
+         'LineWidth', 2, ...
+         'DisplayName', [char(animals{i}),'(FA)']);
+end
+
+subplot(2, 1, 1);
+xlabel('Session Number', 'FontSize', 14);
+ylabel('Response or False Alarm Rate', 'FontSize', 14);
+grid on;
+legend('Location', 'eastoutside', 'FontSize', 10);
+if strcmp(plotBy,'DateTime')
+    xticks(x_sorted(1) + caldays(0:7:360));
+    xtickformat('MMM-dd')
+end
+hold off;
+
+subplot(2, 1, 2);
+xlabel('Session Number', 'FontSize', 14);
+ylabel('Response or False Alarm Rate', 'FontSize', 14);
+grid on;
+legend('Location', 'eastoutside', 'FontSize', 10);
+if strcmp(plotBy,'DateTime')
+    xticks(x_sorted(1) + caldays(0:7:360));
+    xtickformat('MMM-dd')
+end
+hold off;
+
+sgtitle('False Alarm Rate Progression', 'FontSize', 14);
 %% Plot by DateTime
 figure('Position', [100, 100, 1500, 800]);
 
