@@ -334,7 +334,10 @@ fprintf('========================================\n');
 
 %% Plot left rate seperately by mouse(by frequency within each subplot) 
 r = responseTable;
-highResRate = 0.75; % standard of "high response rate"
+highResRate = 0.75; % standard of "high response rate"，not used
+boundaryFreq = 250; % Hz
+amp_to_dis = 50.5; % amp: 0-1 displacement = amp_to_dis * amp
+r.Displacement = r.VibAmp * amp_to_dis;
 
 mice = unique(r.MouseID);
 nMice = length(mice);
@@ -407,18 +410,20 @@ for m = 1:nMice
         if uniqueFreqs(f) == 0
             tickLabels{f} = '';
         else
-            tickLabels{f} = num2str(uniqueFreqs(f));
+            tickLabels{f} = [num2str(uniqueFreqs(f)),'Hz'];
         end
     end
     xticklabels(tickLabels);
-    xlabel('Vibration Frequency (Hz)');
+    xlabel('Vibration Frequency');
+    % Hide tick marks
+    set(gca, 'TickLength', [0 0]);
     
     % show amplitude
     for i = 1:height(mouseData)
         if mouseData.VibAmp(i) ~= 0
-            text(x_positions(i)-0.07, mouseData.LeftRate(i)+0.02, ...
-                 sprintf('%.2f', mouseData.VibAmp(i)), ... % sprintf('%.2f μm', mouseData.VibAmp(i) * 93.1), ... % displacement
-                 'FontSize', 12, 'VerticalAlignment', 'bottom',...
+            text(x_positions(i), mouseData.LeftRate(i)+0.02, ...
+                 sprintf('%.2f μm', mouseData.Displacement(i)), ... % displacement %sprintf('%.2f', mouseData.VibAmp(i)), ... 
+                 'FontSize', 8, 'VerticalAlignment', 'bottom',...
                  'HorizontalAlignment', 'center');
                 
         else
@@ -427,7 +432,13 @@ for m = 1:nMice
                  'FontSize', 12, 'VerticalAlignment', 'bottom');
         end
     end
-
+    
+    % show line at boundary freq
+    xBoundaryFreq = length(uniqueFreqs)/2 + 1;
+    xline(xBoundaryFreq,'--','LineWidth',3, Color=[0.3 0.3 0.3])
+    if m == 1
+        legend('catch trial','100Hz','200Hz','300Hz','400Hz','boundary = 250Hz',Location='northwest')
+    end
 end
 
 sgtitle('Left Rate');

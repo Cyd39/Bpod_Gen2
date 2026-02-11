@@ -5,6 +5,8 @@ clearvars
 %% Data proccessiong
 T = resultsTable;
 bf = 250; % boundary frequency
+amp_to_dis = 50.5; % amp: 0-1 displacement = amp_to_dis * amp
+T.Displacement = T.VibAmp * amp_to_dis;
 
 % convert date string to datetime
 T.DateTime = datetime(resultsTable.Time, ...
