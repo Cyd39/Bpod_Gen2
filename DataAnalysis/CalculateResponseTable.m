@@ -1,4 +1,4 @@
-function [responseTable, fileList] = CalculateResponseTable()
+function [responseTable, fileList] = CalculateResponseTable(fileList)
     % Calculate response rate for each stimuli(including catch trials)
     % Output:
     %   responseTable - Table with stimuli and corresponding response rates
@@ -6,79 +6,82 @@ function [responseTable, fileList] = CalculateResponseTable()
     % Hit rate is calculated as: (Number of trials with Reward=1) / (Total trials for that stimuli)
 
     %% load data from multiple files (can be from different directories)
-    
-    % Set default path
-    defaultPath = "G:\Data\OperantConditioning\Yudi";
-    if ~exist(defaultPath, 'dir')
-        defaultPath = pwd;
-    end
-    
-    % Initialize file list
-    selectedFiles = {};
-    currentPath = defaultPath;
-    
-    % Loop to select multiple files from different directories
-    fprintf('=== File Selection ===\n');
-    fprintf('You can select multiple files at once (hold Ctrl/Cmd to select multiple)\n');
-
-    fileCount = 0;
-    while true
-        % Select files (supports multiple selection)
-        [filename, filepath, ~] = uigetfile('*.mat', ...
-            sprintf('Select file(s) (Cancel to finish) - Currently %d file(s) selected', fileCount), ...
-            currentPath, ...
-            'MultiSelect', 'on');
+    % Or reload data from a saved file list from previous analysis
+    if nargin ~= 0
+        selectedFiles = table2cell(fileList(:, 'FilePath'));
+    else
+        % Set default path
+        defaultPath = "G:\Data\OperantConditioning\Yudi";
+        if ~exist(defaultPath, 'dir')
+            defaultPath = pwd;
+        end
         
-        % Check if user canceled
-        if isequal(filename, 0) || isequal(filepath, 0)
-            if fileCount == 0
-                fprintf('No files selected. Exiting...\n');
-                responseTable = table();
-                fileList = table();
-                return;
+        % Initialize file list
+        selectedFiles = {};
+        currentPath = defaultPath;
+        
+        % Loop to select multiple files from different directories
+        fprintf('=== File Selection ===\n');
+        fprintf('You can select multiple files at once (hold Ctrl/Cmd to select multiple)\n');
+    
+        fileCount = 0;
+        while true
+            % Select files (supports multiple selection)
+            [filename, filepath, ~] = uigetfile('*.mat', ...
+                sprintf('Select file(s) (Cancel to finish) - Currently %d file(s) selected', fileCount), ...
+                currentPath, ...
+                'MultiSelect', 'on');
+            
+            % Check if user canceled
+            if isequal(filename, 0) || isequal(filepath, 0)
+                if fileCount == 0
+                    fprintf('No files selected. Exiting...\n');
+                    responseTable = table();
+                    fileList = table();
+                    return;
+                else
+                    fprintf('\nFinished selecting files. Total: %d file(s)\n\n', fileCount);
+                    break;
+                end
+            end
+            
+            % Handle both single file (string) and multiple files (cell array)
+            if ischar(filename)
+                % Single file selected - convert to cell array for uniform processing
+                filenames = {filename};
             else
+                % Multiple files selected - filename is already a cell array
+                filenames = filename;
+            end
+            
+            % Add all selected files to list
+            for i = 1:length(filenames)
+                fileCount = fileCount + 1;
+                fullPath = fullfile(filepath, filenames{i});
+                selectedFiles{fileCount} = fullPath;
+                fprintf('File %d: %s\n', fileCount, fullPath);
+            end
+            currentPath = filepath; % Remember last directory for next selection
+            
+            % Ask if user wants to select more files
+            if isscalar(filenames)
+                msg = sprintf('File %d selected:\n%s\n\nDo you want to select more files?', ...
+                    fileCount, fullPath);
+            else
+                msg = sprintf('%d files selected (total: %d)\n\nDo you want to select more files?', ...
+                    length(filenames), fileCount);
+            end
+            
+            choice = questdlg(msg, ...
+                'File Selection', ...
+                'Yes', 'No', 'Yes');
+            
+            if strcmp(choice, 'No')
                 fprintf('\nFinished selecting files. Total: %d file(s)\n\n', fileCount);
                 break;
             end
         end
-        
-        % Handle both single file (string) and multiple files (cell array)
-        if ischar(filename)
-            % Single file selected - convert to cell array for uniform processing
-            filenames = {filename};
-        else
-            % Multiple files selected - filename is already a cell array
-            filenames = filename;
-        end
-        
-        % Add all selected files to list
-        for i = 1:length(filenames)
-            fileCount = fileCount + 1;
-            fullPath = fullfile(filepath, filenames{i});
-            selectedFiles{fileCount} = fullPath;
-            fprintf('File %d: %s\n', fileCount, fullPath);
-        end
-        currentPath = filepath; % Remember last directory for next selection
-        
-        % Ask if user wants to select more files
-        if isscalar(filenames)
-            msg = sprintf('File %d selected:\n%s\n\nDo you want to select more files?', ...
-                fileCount, fullPath);
-        else
-            msg = sprintf('%d files selected (total: %d)\n\nDo you want to select more files?', ...
-                length(filenames), fileCount);
-        end
-        
-        choice = questdlg(msg, ...
-            'File Selection', ...
-            'Yes', 'No', 'Yes');
-        
-        if strcmp(choice, 'No')
-            fprintf('\nFinished selecting files. Total: %d file(s)\n\n', fileCount);
-            break;
-        end
     end
-    
     %% Load SessionData from all selected files
     fprintf('=== Loading Data ===\n');
     allSessionData = {};

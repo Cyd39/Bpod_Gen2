@@ -8,8 +8,14 @@
 %   - psychometric_function_<timestamp>.fig: Figure of psychometric functions
 
 %% Calculate response table from multiple files
-[responseTable, fileList] = CalculateResponseTable();
+if exist('fileList', 'var')
+    [responseTable, fileList] = CalculateResponseTable(fileList);
+else
+    [responseTable, fileList] = CalculateResponseTable();
+end
 
+amp_to_dis = 50.5; % amp: 0-1 displacement = amp_to_dis * amp
+responseTable.Displacement = responseTable.VibAmp * amp_to_dis;
 if isempty(responseTable)
     warning('No data to plot.');
     return;
@@ -164,6 +170,7 @@ for freqIdx = 1:nFreqs
         % Calculate response rate
         responseRate = mouseFreqData.Response ./ mouseFreqData.NTrials;
         vibAmps = mouseFreqData.VibAmp;
+        displacement = mouseFreqData.Displacement;
         
         % Remove invalid data (keep VibAmp = 0 for plotting)
         validIdx = ~isnan(responseRate) & ~isnan(vibAmps);
@@ -172,13 +179,17 @@ for freqIdx = 1:nFreqs
         end
         responseRate = responseRate(validIdx);
         vibAmps = vibAmps(validIdx);
+        displacement = displacement(validIdx);
         
         % Sort data for plotting
         [vibAmps,ampIdx] = sort(vibAmps);
+        [displacement,ampIdx] = sort(displacement);
         responseRate = responseRate(ampIdx);
         
         % Plot data points (scatter)
-        plot(vibAmps, responseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
+        % plot(vibAmps, responseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
+        %     'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5, 'LineStyle', 'none');
+        plot(displacement, responseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
             'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5, 'LineStyle', 'none');
         
         % Plot fitted curve or connecting line
@@ -195,32 +206,36 @@ for freqIdx = 1:nFreqs
                 end
                 % Generate smooth curve from 0 to max amplitude
                 maxAmp = max(vibAmps);
+                maxDisplace = max(displacement);
                 if maxAmp > 0
                     ampRange = linspace(0, maxAmp, 100);
+                    displaceRange = linspace(0, maxDisplace, 100);
                     params = [mouseFit.GuessRate(1), mouseFit.LapseRate(1), mouseFit.Slope(1), mouseFit.Threshold(1)];
                     fittedCurve = psychometric_model(params, ampRange);
                     
-                    plot(ampRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
+                    % plot(ampRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
+                    %     'LineWidth', 2, 'LineStyle', '-', 'HandleVisibility', 'off');
+                    plot(displaceRange, fittedCurve, 'Color', colors(mouseIdx, :), ...
                         'LineWidth', 2, 'LineStyle', '-', 'HandleVisibility', 'off');
                 else
                     % Only catch trials (VibAmp = 0), plot connecting line instead
-                    plot(vibAmps, responseRate, 'Color', colors(mouseIdx, :), ...
+                    plot(displaceRange, responseRate, 'Color', colors(mouseIdx, :), ...
                         'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
                 end
             else
                 % No fit available, plot connecting line
-                plot(vibAmps, responseRate, 'Color', colors(mouseIdx, :), ...
+                plot(displacement, responseRate, 'Color', colors(mouseIdx, :), ...
                     'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
             end
         else
             % No fit_params available, plot connecting line
-            plot(vibAmps, responseRate, 'Color', colors(mouseIdx, :), ...
+            plot(displacement, responseRate, 'Color', colors(mouseIdx, :), ...
                 'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
         end
     end
     
     % Format subplot
-    xlabel('Vibration Amplitude');
+    xlabel('Vibration Amplitude(μm)');
     ylabel('Response Rate');
     title(sprintf('%.2f Hz', freq));
     legend('Location', 'northwest', 'FontSize', 8);
@@ -270,6 +285,7 @@ for freqIdx = 1:nFreqs
         % Calculate left response rate
         leftResponseRate = mouseFreqData.LeftRes ./ mouseFreqData.Response;
         vibAmps = mouseFreqData.VibAmp;
+        displacement = mouseFreqData.Displacement;
         
         % Remove invalid data (keep VibAmp = 0 for plotting)
         validIdx = ~isnan(leftResponseRate) & ~isnan(vibAmps);
@@ -278,17 +294,18 @@ for freqIdx = 1:nFreqs
         end
         leftResponseRate = leftResponseRate(validIdx);
         vibAmps = vibAmps(validIdx);
+        displacement = displacement(validIdx);
         
         % Sort data for plotting
         [vibAmps,ampIdx] = sort(vibAmps);
         leftResponseRate = leftResponseRate(ampIdx);
         
         % Plot data points (scatter)
-        plot(vibAmps, leftResponseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
+        plot(displacement, leftResponseRate, 'MarkerFaceColor', colors(mouseIdx, :),  'Marker','o','MarkerSize', 10, ...
             'DisplayName', mouseID, 'MarkerEdgeColor', 'k', 'LineWidth', 0.5, 'LineStyle', 'none');
         
         % Plot connecting line (no fit for left rate)
-        plot(vibAmps, leftResponseRate, 'Color', colors(mouseIdx, :), ...
+        plot(displacement, leftResponseRate, 'Color', colors(mouseIdx, :), ...
             'LineWidth', 1.5, 'LineStyle', '--', 'HandleVisibility', 'off');
     end
     
@@ -336,8 +353,6 @@ fprintf('========================================\n');
 r = responseTable;
 highResRate = 0.75; % standard of "high response rate"，not used
 boundaryFreq = 250; % Hz
-amp_to_dis = 50.5; % amp: 0-1 displacement = amp_to_dis * amp
-r.Displacement = r.VibAmp * amp_to_dis;
 
 mice = unique(r.MouseID);
 nMice = length(mice);
@@ -443,7 +458,7 @@ end
 
 sgtitle('Left Rate');
 
-saveFigAsPNG("LeftRate");
+%saveFigAsPNG("LeftRate");
 %% Helper: Save Figure As PNG
 function saveFigAsPNG(prefix)
 % SAVE FIGURE AS PNG
