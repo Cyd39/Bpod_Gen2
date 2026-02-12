@@ -946,8 +946,8 @@ nAnimals = length(animals);
 nFreqs = length(vibFreqs);
 
 % colors
-if nFreqs <= 8
-    colors = lines(nFreqs);  
+if nFreqs <= 7
+    colors = lines(nFreqs+1);  
 else
     colors = turbo(nFreqs);  
 end
@@ -990,9 +990,9 @@ for i = 1:nAnimals
             
             % plotting
             h = plot(x, y, 'o-', ...
-                     'Color', colors(f, :), ...
+                     'Color', colors(f+1, :), ...
                      'MarkerSize', 4, ...
-                     'MarkerFaceColor', colors(f, :), ...
+                     'MarkerFaceColor', colors(f+1, :), ...
                      'LineWidth', 1.5);
             
             % add amp labels over scatters 
@@ -1014,10 +1014,8 @@ for i = 1:nAnimals
     
     title(sprintf(currentAnimal), 'FontSize', 11, 'FontWeight', 'bold');
     xlabel('Session Number', 'FontSize', 9);
-    ylabel('Response Latency Median', 'FontSize', 9);
-    grid on;
-    
-    
+    ylabel('Response Latency Median(s)', 'FontSize', 9);
+    grid on；    
     
     % only show legend in the first subplot
     if i == 1 && ~isempty(legendHandles)
@@ -1030,6 +1028,7 @@ end
 
 sgtitle('Median Response Latency for Maximum Amplitude at Each Frequency', ...
         'FontSize', 14, 'FontWeight', 'bold');
+
 
 % save zoom out
 saveFigAsPNG("ResLatency_ZoomOut");
