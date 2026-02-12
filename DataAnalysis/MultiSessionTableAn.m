@@ -467,7 +467,7 @@ end
 % 
 % sgtitle('Easiest Stimuli Response Rate Progression (by DateTime)', 'FontSize', 14, 'FontWeight', 'bold');
 
-%% Stimuli and protocol used Version2
+%% Stimuli and protocol used by Amp value
 vibFreqs = unique(T.VibFreq);
 nFreqs = length(vibFreqs);
 
@@ -568,14 +568,14 @@ end
 
 sgtitle('VibAmp by Session');
 % save without legend
-saveFigAsPNG('Stimuli_BySession_NoLegend');
+saveFigAsPNG('Stimuli_Amp_BySession_NoLegend');
 
 % show legend only once
 subplot(rows, cols, 1);
 legend('show', 'Location', 'best');
 
 % save with legend
-saveFigAsPNG('Stimuli_BySession_WithLegend');
+saveFigAsPNG('Stimuli_Amp_BySession_WithLegend');
 
 %Plot By DateTime
 vibFreqs = unique(T.VibFreq);
@@ -670,7 +670,7 @@ for i = 1:nAnimals
     
     hold off;
     title(sprintf('Animal: %s', animals{i}));
-    xlabel('Date & Time');
+    xlabel('Date');
     ylabel('VibAmp');
     grid on;
     
@@ -679,14 +679,236 @@ end
 sgtitle('VibAmp by Date');
 
 % save without legend
-saveFigAsPNG('Stimuli_ByDay_NoLegend');
+saveFigAsPNG('Stimuli_Amp_ByDay_NoLegend');
 
 % show legend only once
 subplot(rows, cols, 1);
 legend('show', 'Location', 'best');
 
 % save with legend
-saveFigAsPNG('Stimuli_ByDay_WithLegend');
+saveFigAsPNG('Stimuli_Amp_ByDay_WithLegend');
+
+%% Stimuli and protocol used by displacement value
+vibFreqs = unique(T.VibFreq);
+nFreqs = length(vibFreqs);
+
+
+colors = lines(nFreqs);  % colormap: lines, parula, hsv, jet, turbo etc.
+figure('Position', [100, 100, 1400, 800]);
+rows = ceil(sqrt(nAnimals));
+cols = ceil(nAnimals / rows);
+protocolChanges = {};  
+changeHandles = [];  
+scatterSize = 8;
+
+for i = 1:nAnimals
+    subplot(rows, cols, i);
+    hold on;
+    
+    animalMask = strcmp(T.AnimalID, animals{i});
+    T_animal = T(animalMask, :);
+    T_animal = sortrows(T_animal, 'NumSession');
+    
+    [uniqueSessions, ~, idx] = unique(T_animal.NumSession);
+    sessionProtocols = cell(length(uniqueSessions), 1);
+    
+    for s = 1:length(uniqueSessions)
+        sessionMask = T_animal.NumSession == uniqueSessions(s);
+        % first session of a protocol
+        firstIdx = find(sessionMask, 1);
+        sessionProtocols{s} = T_animal.Protocol{firstIdx};
+    end
+    
+    % build legend only in the first subplot
+    if i == 1
+        for s = 2:length(sessionProtocols)
+            if ~strcmp(sessionProtocols{s}, sessionProtocols{s-1})
+                % plot line and save the handle
+                h = xline(uniqueSessions(s) - 0.5, '--', ...
+                         'Color', [0.3 0.3 0.3], ...
+                         'LineWidth', 1.5);
+                
+                % description of changing protocol
+                changeDesc = sprintf('%s → %s', ...
+                    sessionProtocols{s-1}, sessionProtocols{s});
+                
+                % add to list
+                protocolChanges{end+1} = changeDesc;
+                changeHandles(end+1) = h;
+                
+                % name for legend
+                set(h, 'DisplayName', changeDesc);
+            end
+        end
+    else
+        % no legend for other animals
+        for s = 2:length(sessionProtocols)
+            if ~strcmp(sessionProtocols{s}, sessionProtocols{s-1})
+                xline(uniqueSessions(s) - 0.5, '--', ...
+                     'Color', [0.3 0.3 0.3], ...
+                     'LineWidth', 1.5, ...
+                     'HandleVisibility', 'off');  
+            end
+        end
+    end
+    
+    % plot for each Freq
+    for f = 1:nFreqs
+        freqMask = T_animal.VibFreq == vibFreqs(f);
+        if any(freqMask)
+            x = T_animal.NumSession(freqMask);
+            y = T_animal.Displacement(freqMask);
+
+            x_jitter = x + 0.3 * (rand(size(x)) - 0.5);
+            
+            % plot raster
+            % build legend only in the first subplot
+            if i == 1
+                scatter(x_jitter, y, scatterSize, 'filled', ...
+                       'MarkerFaceColor', colors(f, :), ...
+                       'MarkerEdgeColor', colors(f, :), ...
+                       'MarkerFaceAlpha', 0.7, ...
+                       'DisplayName', sprintf('Freq=%g', vibFreqs(f)));
+            else
+                scatter(x_jitter, y, scatterSize, 'filled', ...
+                       'MarkerFaceColor', colors(f, :), ...
+                       'MarkerEdgeColor', colors(f, :), ...
+                       'MarkerFaceAlpha', 0.7, ...
+                       'HandleVisibility', 'off');
+            end
+        end
+    end
+    
+    hold off;
+    title(sprintf('Animal: %s', animals{i}));
+    xlabel('NumSession');
+    ylabel('Displacement(μm)');
+    grid on;
+    
+end
+
+sgtitle('Stimuli by Session');
+% save without legend
+saveFigAsPNG('Stimuli_Displace_BySession_NoLegend');
+
+% show legend only once
+subplot(rows, cols, 1);
+legend('show', 'Location', 'best');
+
+% save with legend
+saveFigAsPNG('Stimuli_Displace_BySession_WithLegend');
+
+%Plot By DateTime
+vibFreqs = unique(T.VibFreq);
+nFreqs = length(vibFreqs);
+
+
+colors = lines(nFreqs);  % colormap: lines, parula, hsv, jet, turbo etc.
+figure('Position', [100, 100, 1400, 800]);
+rows = ceil(sqrt(nAnimals));
+cols = ceil(nAnimals / rows);
+protocolChanges = {};  
+changeHandles = [];  
+scatterSize = 10;
+
+for i = 1:nAnimals
+    subplot(rows, cols, i);
+    hold on;
+    
+    animalMask = strcmp(T.AnimalID, animals{i});
+    T_animal = T(animalMask, :);
+    T_animal = sortrows(T_animal, 'DateTime');
+    
+    [uniqueSessions, ~, idx] = unique(T_animal.DateTime);
+    sessionProtocols = cell(length(uniqueSessions), 1);
+    
+    for s = 1:length(uniqueSessions)
+        sessionMask = T_animal.DateTime == uniqueSessions(s);
+        % first session of a protocol
+        firstIdx = find(sessionMask, 1);
+        sessionProtocols{s} = T_animal.Protocol{firstIdx};
+    end
+    
+    % build legend only in the first subplot
+    if i == 1
+        for s = 2:length(sessionProtocols)
+            if ~strcmp(sessionProtocols{s}, sessionProtocols{s-1})
+                % plot line and save the handle
+                h = xline(uniqueSessions(s) - 0.5, '--', ...
+                         'Color', [0.3 0.3 0.3], ...
+                         'LineWidth', 1.5);
+                
+                % description of changing protocol
+                changeDesc = sprintf('%s → %s', ...
+                    sessionProtocols{s-1}, sessionProtocols{s});
+                
+                % add to list
+                protocolChanges{end+1} = changeDesc;
+                changeHandles(end+1) = h;
+                
+                % name for legend
+                set(h, 'DisplayName', changeDesc);
+            end
+        end
+    else
+        % no legend for other animals
+        for s = 2:length(sessionProtocols)
+            if ~strcmp(sessionProtocols{s}, sessionProtocols{s-1})
+                xline(uniqueSessions(s) - 0.5, '--', ...
+                     'Color', [0.3 0.3 0.3], ...
+                     'LineWidth', 1.5, ...
+                     'HandleVisibility', 'off');  
+            end
+        end
+    end
+    
+    % plot for each Freq
+    for f = 1:nFreqs
+        freqMask = T_animal.VibFreq == vibFreqs(f);
+        if any(freqMask)
+            x = T_animal.DateTime(freqMask);
+            y = T_animal.Displacement(freqMask);
+
+            x_jitter = x + 0.3 * (rand(size(x)) - 0.5);
+            
+            % plot raster
+            % build legend only in the first subplot
+            if i == 1
+                scatter(x_jitter, y, scatterSize, 'filled', ...
+                       'MarkerFaceColor', colors(f, :), ...
+                       'MarkerEdgeColor', colors(f, :), ...
+                       'MarkerFaceAlpha', 0.7, ...
+                       'DisplayName', sprintf('Freq=%g', vibFreqs(f)));
+            else
+                scatter(x_jitter, y, scatterSize, 'filled', ...
+                       'MarkerFaceColor', colors(f, :), ...
+                       'MarkerEdgeColor', colors(f, :), ...
+                       'MarkerFaceAlpha', 0.7, ...
+                       'HandleVisibility', 'off');
+            end
+        end
+    end
+    
+    hold off;
+    title(sprintf('Animal: %s', animals{i}));
+    xlabel('Date');
+    ylabel('Displacement(μm)');
+    grid on;
+    
+end
+
+sgtitle('Stimuli by Date');
+
+% save without legend
+saveFigAsPNG('Stimuli_Displace_ByDay_NoLegend');
+
+% show legend only once
+subplot(rows, cols, 1);
+legend('show', 'Location', 'best');
+
+% save with legend
+saveFigAsPNG('Stimuli_Displace_ByDay_WithLegend');
+
 %%  "easiest stimuli“(all Freq) Latency plotting
 T_sorted = sortrows(T, {'AnimalID', 'NumSession', 'VibFreq', 'VibAmp'}, {'ascend', 'ascend', 'ascend', 'descend'});
 
