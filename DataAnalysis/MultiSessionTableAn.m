@@ -43,6 +43,9 @@ resRateEasiest = NaN(nSessions, 1);
 sessionHitRate = NaN(nSessions, 1);
 sessionLeftHitRate = NaN(nSessions, 1);
 sessionRightHitRate = NaN(nSessions, 1);
+leftRateLow = NaN(nSessions, 1);
+leftRateHigh = NaN(nSessions, 1);
+
 
 for i = 1:nSessions
     animal = sl.AnimalID(i);
@@ -98,11 +101,47 @@ for i = 1:nSessions
     if easyTrials ~= 0
         resRateEasy(i) = easyTrialsRes /easyTrials;
     end
+    easyHighTrials = 0;
+    easyLowTrials = 0;
+
+    rowIdx = find(T.DateTime == time & ...
+              strcmp(T.AnimalID, animal) & ...
+              T.VibFreq ~= 0);
+
+    freqs = unique(T.VibFreq(rowIdx));
+
+    easyHighFreq = max(freqs(freqs > bf));
+    if easyHighFreq
+        idxHigh = T.DateTime == time & ...
+                  strcmp(T.AnimalID, animal) & ...
+                  T.VibFreq == easyHighFreq;
+        easyHighFreqAmp = max(T.VibAmp(idxHigh));
+        
+        [~, maxAmpRowHigh] = max(T.VibAmp(idxHigh));
+        tempHigh = T(idxHigh, :);
+        easyHighRow = tempHigh(maxAmpRowHigh, :);
+        leftRateHigh(i) = easyHighRow.LeftRes / easyHighRow.N_ValidRT;
+    end
+
+    easyLowFreq = min(freqs(freqs < bf));
+    if easyLowFreq
+        idxLow = T.DateTime == time & ...
+                 strcmp(T.AnimalID, animal) & ...
+                 T.VibFreq == easyLowFreq;
+        easyLowFreqAmp = max(T.VibAmp(idxLow));
+        
+        [~, maxAmpRowLow] = max(T.VibAmp(idxLow));
+        tempLow = T(idxLow, :);
+        easyLowRow = tempLow(maxAmpRowLow, :);
+        leftRateLow(i) = easyLowRow.LeftRes / easyLowRow.N_ValidRT;
+    end
 end
 sl.FalseAlarmRate = falseAlarm;
 sl.ResponseRate = resRate;
 sl.ResponseRateEasy = resRateEasy;
 sl.ResponseRateEasiest = resRateEasiest;
+sl.LeftRateLow = leftRateLow;
+sl.LeftRateHigh = leftRateHigh;
 
 % sorting and index sessions by time for each mouse 
 sl = sortrows(sl,{'AnimalID','DateTime'});
@@ -397,6 +436,99 @@ for o = 1:length(op)
     
     sgtitle('Response & False Alarm Rate Progression', 'FontSize', 14);
     saveFigAsPNG(['Res&FalseAlarmRate_by_',plotBy]);
+end
+%% Left Rate and by Session Number and Date
+% Left Rates are of the easiest stimulus on both sides
+op = {'DateTime', 'SessionNumber'}; % options for plotting
+for o = 1:length(op)
+    plotBy = op{o}; % 'DateTime'; 'SessionNumber'
+    figure('Position', [100, 100, 1300, 800]);
+    % colors for each animal
+    animalColors  = lines(nAnimals); 
+    
+    subplot(2, 1, 1);
+    hold on;
+    
+    subplot(2, 1, 2);
+    hold on;
+    
+    for i = 1:nAnimals
+        if i == 1 || i == 3 
+            subplot(2,1,1);
+        else
+            subplot(2,1,2);
+        end
+        mask = strcmp(sl.AnimalID, animals{i});
+    
+        % LeftRateHighFreq
+        switch plotBy
+            case 'DateTime'
+                x = sl.DateTime(mask);
+            case 'SessionNumber'
+                x = sl.NumSession(mask);
+            otherwise
+                x = sl.NumSession(mask);
+        end
+
+        y_high = sl.LeftRateHigh(mask);
+        valid_high = ~isnan(y_high);
+        
+        x_valid_high = x(valid_high);
+        y_valid_high = y_high(valid_high);
+        
+        [x_sorted_high, sort_idx_high] = sort(x_valid_high);
+        y_sorted_high = y_valid_high(sort_idx_high);
+
+        plot(x_sorted_high, y_sorted_high, 'o-', ...
+             'Color',animalColors(i, :),...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', animalColors(i, :), ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(HighFreq)']);
+
+        % LeftRateLowFreq
+        y_low = sl.LeftRateLow(mask);
+        valid_low = ~isnan(y_low);
+        
+        x_valid_low = x(valid_low);
+        y_valid_low = y_low(valid_low);
+        
+        [x_sorted_low, sort_idx_low] = sort(x_valid_low);
+        y_sorted_low = y_valid_low(sort_idx_low);
+        
+        plot(x_sorted_low, y_sorted_low, 'o:', ...
+             'Color', animalColors(i, :), ...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', 'none', ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(LowFreq)']);
+    end
+    
+    % xlabel
+    switch plotBy
+        case 'DateTime'
+            xLabel = "Date";
+        case 'SessionNumber'
+            xLabel = "Session Number";    
+        otherwise
+            xLabel = "Session Number";
+    end
+
+    for i = 1:2
+        subplot(2, 1, i);
+        xlabel(xLabel, 'FontSize', 14);
+        ylabel('Left Rate', 'FontSize', 14);
+        grid on;
+        legend('Location', 'eastoutside', 'FontSize', 10);
+        if strcmp(plotBy,'DateTime')
+            xticks(x_sorted(1) + caldays(0:7:360));
+            xtickformat('MMM-dd')
+        end
+        hold off;
+    end
+    
+    sgtitle('Left Rate Progression', 'FontSize', 14);
+    saveFigAsPNG(['LeftRate_by_',plotBy]);
 end
 %% Plot by DateTime
 % figure('Position', [100, 100, 1500, 800]);
