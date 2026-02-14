@@ -914,7 +914,7 @@ for i = 1:nAnimals
     hold off;
     title(sprintf('Animal: %s', animals{i}));
     xlabel('NumSession');
-    ylabel('Displacement(μm)');
+    ylabel('Amplitude(μm)');
     grid on;
     
 end
@@ -1024,7 +1024,7 @@ for i = 1:nAnimals
     hold off;
     title(sprintf('Animal: %s', animals{i}));
     xlabel('Date');
-    ylabel('Displacement(μm)');
+    ylabel('Amplitude(μm)');
     grid on;
     
 end
