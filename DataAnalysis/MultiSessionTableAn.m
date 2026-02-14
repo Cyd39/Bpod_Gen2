@@ -521,7 +521,7 @@ for o = 1:length(op)
         grid on;
         legend('Location', 'eastoutside', 'FontSize', 10);
         if strcmp(plotBy,'DateTime')
-            xticks(x_sorted(1) + caldays(0:7:360));
+            xticks(min(x_sorted_high(1),x_sorted_low(1)) + caldays(0:7:360));
             xtickformat('MMM-dd')
         end
         hold off;
