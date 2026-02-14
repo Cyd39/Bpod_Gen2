@@ -4,7 +4,7 @@ function PlotLickRasterSortedByFreq(SessionData)
     % sorted by frequency values.
    
     figureName = 'Lick Raster - Sorted by Frequency & Amplitude';  
-    
+
     % Data check
     if ~isfield(SessionData, 'RawEvents') || ~isfield(SessionData.RawEvents, 'Trial')
         warning('SessionData.RawEvents.Trial not found');
@@ -56,6 +56,26 @@ function PlotLickRasterSortedByFreq(SessionData)
 
     n_trial = height(Session_tbl);
     PlotLickRasterByFreq(Session_tbl, SessionData, n_trial, figureName, stimInfo);
+
+    % file saving
+    [file, path] = uiputfile('*.png', '保存为 PNG 图片', 'my_plot.png');
+
+    % check if saving get canceled
+    if isequal(file, 0) || isequal(path, 0)
+        disp('用户取消了保存操作');
+        return;
+    end
+
+    fullpath = fullfile(path, file);
+    
+    % ensure the file name ends with .png
+    [~, ~, ext] = fileparts(fullpath);
+    if isempty(ext)
+        fullpath = [fullpath, '.png'];
+    end
+    
+    exportgraphics(gcf, fullpath, 'Resolution', 300);
+    fprintf('图片已保存为：%s\n', fullpath);
 end
 
 function PlotLickRasterByFreq(Session_tbl, SessionData, n_trial, figureName,  stimInfo)
@@ -332,6 +352,8 @@ end
 
 function addStimulusLabelsToAxes(ax, stimInfo)
     % Add divider lines and frequency/amplitude labels for each stimulus combo.
+    
+    amp_to_dis = 50.5; % amp: 0-1 displacement = amp_to_dis * amp
 
     if ~isfield(stimInfo, 'nCombos') || ~isfield(stimInfo, 'comboYRanges') || ~isfield(stimInfo, 'uniqueCombos')
         warning('stimInfo missing required fields, skipping stimulus labels.');
@@ -362,7 +384,7 @@ function addStimulusLabelsToAxes(ax, stimInfo)
         if freq == 0
             labelText = 'Catch trial';  
         else
-            labelText = sprintf('%.0fHz\n%.4f', freq, amp);
+            labelText = sprintf('%.0fHz\n%.2fμm', freq, amp*amp_to_dis);
         end
 
         text(ax, newXLeft + 0.2, midY, labelText, ...
