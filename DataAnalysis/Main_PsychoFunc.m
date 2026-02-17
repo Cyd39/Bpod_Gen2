@@ -418,7 +418,7 @@ for m = 1:nMice
     ylim([0, 1]);
     grid off;
     
-    % 设置 x 轴：每个频率一个刻度
+    % Set the x-axis: one tick per frequency
     xticks(1:length(uniqueFreqs));
     tickLabels = cell(length(uniqueFreqs), 1);
     for f = 1:length(uniqueFreqs)

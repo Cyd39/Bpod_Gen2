@@ -58,11 +58,11 @@ function PlotLickRasterSortedByFreq(SessionData)
     PlotLickRasterByFreq(Session_tbl, SessionData, n_trial, figureName, stimInfo);
 
     % file saving
-    [file, path] = uiputfile('*.png', '保存为 PNG 图片', 'my_plot.png');
+    [file, path] = uiputfile('*.png', 'save as PNG file', 'my_plot.png');
 
     % check if saving get canceled
     if isequal(file, 0) || isequal(path, 0)
-        disp('用户取消了保存操作');
+        disp('saving canceled');
         return;
     end
 
@@ -75,7 +75,7 @@ function PlotLickRasterSortedByFreq(SessionData)
     end
     
     exportgraphics(gcf, fullpath, 'Resolution', 300);
-    fprintf('图片已保存为：%s\n', fullpath);
+    fprintf('Saved as：%s\n', fullpath);
 end
 
 function PlotLickRasterByFreq(Session_tbl, SessionData, n_trial, figureName,  stimInfo)
