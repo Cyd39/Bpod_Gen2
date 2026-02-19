@@ -11,27 +11,42 @@ H.SynthAmplitude = 0; %  mute
 H.SynthWaveform = 'Sine';
 
 %% stimuli parameter table
-amp = 0.1:0.1:0.6;
-freq = 100:100:900;
-vibtype = 'BiSine';
-mmtype = 'SO';
-dur = 1000 ; % ms 1 second of stimulus
-ramp = 10 ; % ms
+% Amplitude values for different frequency ranges
+amp_100hz = [0.2, 0.4, 0.6];
+amp_200hz = [0.02, 0.1, 0.15];
+amp_300hz = [0.02, 0.03, 0.04];
+amp_400_to_1000hz = [0.002, 0.004, 0.008, 0.016, 0.024, 0.03];
 
-[F, A] = meshgrid(freq, amp);
+% Vibration parameters
+vibtype = 'BiSine';  
+mmtype = 'SO'; 
+dur = 1000;     % ms 1 second of stimulus
+ramp = 10;      % ms
 
-% Create table with all combinations
-T = table(A(:), F(:), ...
-          repmat({vibtype}, numel(A), 1), ...
-          repmat({mmtype}, numel(A), 1), ...
-          repmat(dur, numel(A), 1), ...
-          repmat(ramp, numel(A), 1), ...
+freq_groups = {100, 200, 300, 400:100:1000};
+amp_groups = {amp_100hz, amp_200hz, amp_300hz, amp_400_to_1000hz};
+
+freq_all = [];
+amp_all = [];
+
+for i = 1:length(freq_groups)
+    [f_grid, a_grid] = meshgrid(freq_groups{i}, amp_groups{i});
+    freq_all = [freq_all, f_grid(:)'];
+    amp_all = [amp_all, a_grid(:)'];
+end
+
+% Create a table with all combinations
+T = table(amp_all', freq_all', ...
+          repmat({vibtype}, length(freq_all), 1), ...
+          repmat({mmtype}, length(freq_all), 1), ...
+          repmat(dur, length(freq_all), 1), ...
+          repmat(ramp, length(freq_all), 1), ...
           'VariableNames', {'VibAmp', 'VibFreq', 'VibTypeName', 'MMType', 'Duration', 'RampDur'});
 
 % Repeat each row 10 times continuously
 T_repeated = repelem(T, 10, 1);
 
-% Create 4 rows with amp = 0 and freq = 0
+% Create 10 rows with amp = 0 and freq = 0
 zero_rows = table(zeros(10,1), zeros(10,1), ...
                  repmat({vibtype}, 10, 1), ...
                  repmat({mmtype}, 10, 1), ...
@@ -42,7 +57,39 @@ zero_rows = table(zeros(10,1), zeros(10,1), ...
 % Combine the tables
 T = [zero_rows;T_repeated];
 
-disp(T);
+
+% amp = 0.1:0.1:0.6;
+% freq = 100:100:900;
+% vibtype = 'BiSine';
+% mmtype = 'SO';
+% dur = 1000 ; % ms 1 second of stimulus
+% ramp = 10 ; % ms
+% 
+% [F, A] = meshgrid(freq, amp);
+% 
+% % Create table with all combinations
+% T = table(A(:), F(:), ...
+%           repmat({vibtype}, numel(A), 1), ...
+%           repmat({mmtype}, numel(A), 1), ...
+%           repmat(dur, numel(A), 1), ...
+%           repmat(ramp, numel(A), 1), ...
+%           'VariableNames', {'VibAmp', 'VibFreq', 'VibTypeName', 'MMType', 'Duration', 'RampDur'});
+% 
+% % Repeat each row 10 times continuously
+% T_repeated = repelem(T, 10, 1);
+% 
+% % Create 4 rows with amp = 0 and freq = 0
+% zero_rows = table(zeros(10,1), zeros(10,1), ...
+%                  repmat({vibtype}, 10, 1), ...
+%                  repmat({mmtype}, 10, 1), ...
+%                  repmat(dur, 10, 1), ...
+%                  repmat(ramp, 10, 1), ...
+%                  'VariableNames', {'VibAmp', 'VibFreq', 'VibTypeName', 'MMType', 'Duration', 'RampDur'});
+% 
+% % Combine the tables
+% T = [zero_rows;T_repeated];
+
+%disp(T);
 
 %% setup TDT
 DSP = 'RZ6';
