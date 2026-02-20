@@ -13,7 +13,7 @@ settingsName = "Settings_" + timestamp;
 [protocolName, subjectName] = ProtocolNameGui();
 
 % Initialize parameter GUI and get parameters
-StimParams = StimParamGui();
+StimParams = StimParamGui_v2();
 
 % Create protocol settings structure
 ProtocolSettings = struct();
