@@ -1,4 +1,5 @@
 function StimParams = StimParamGui_test()
+    % testing changes made to vibration freq and amp input and saving
     % Create handle structure
     h = struct();
     
@@ -98,7 +99,7 @@ function StimParams = StimParamGui_test()
         'Units', 'normalized', ...
         'Position', [.05 .08 .45 .25],...
         'FontSize', 16);
-    createVibrationControls(vibPanel);
+    vib_param = createVibrationControls(vibPanel);
 
     % Behavior parameters panel (normalized)
     behavePanel = uipanel('Title', 'Behavior Parameters', ...
@@ -468,156 +469,308 @@ function StimParams = StimParamGui_test()
             'FontSize', 14);
     end
 
-    function createVibrationControls(parent)
-        % Vibration controls structure
-        h.Vib = struct();
-        
-        % Waveform Type
-        uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'Waveform', ...
-            'Units', 'normalized', ...
-            'Position', [0.005 0.8 0.22 0.13],...
-            'FontSize', 14);
-        h.Vib.Type = uicontrol('Parent', parent, ...
-            'Style', 'popup', ...
-            'String', {'BiSine', 'UniSine', 'Square'}, ...
-            'Units', 'normalized', ...
-            'Position', [0.25 0.8 0.2 0.13],...
-            'FontSize', 14);
-
-        % Duration, commented out because it is not used for now
-        %uicontrol('Parent', parent, ...
-        %    'Style', 'text', ...
-        %    'String', 'Duration (ms):', ...
-        %    'Units', 'normalized', ...
-        %    'Position', [0.05 0.59 0.4 0.13],...
-        %    'FontSize', 14);
-        %h.Vib.Duration = uicontrol('Parent', parent, ...
-        %    'Style', 'edit', ...
-        %    'String', '500', ...
-        %    'Units', 'normalized', ...
-        %    'Position', [0.5 0.59 0.4 0.13],...
-        %    'FontSize', 14,...
-        %    'Enable', 'off',...
-        %    'Tag', 'SepDurControl');
-
-        % Amplitude
-        % Whether to use the same amplitude for all frequencies or not
-        uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'Same Amp for High/Low Freqs', ...
-            'Units', 'normalized', ...
-            'Position', [0.5 0.78 0.3 0.2],...
-            'FontSize', 13);
-        h.Vib.SameAmplitude = uicontrol('Parent', parent, ...
-            'Style', 'popup', ...
-            'String', {'Yes', 'No'}, ...
-            'Units', 'normalized', ...
-            'Position', [0.81 0.8 0.18 0.13],...
-            'FontSize', 14,...
-            'Callback', @sameAmplitudeChanged);
-        % If the same amplitude for high/low frequencies is selected, the amplitude is the same for all frequencies
-        h.Vib.AmplitudeLabel = uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'Amplitude (0-1):', ...
-            'Units', 'normalized', ...
-            'Position', [0.05 0.55 0.4 0.13],...
-            'FontSize', 14);
-        h.Vib.Amplitude = uicontrol('Parent', parent, ...
-            'Style', 'edit', ...
-            'String', '0.15', ...
-            'Units', 'normalized', ...
-            'Position', [0.5 0.55 0.4 0.13],...
-            'FontSize', 14,...
-            'Enable', 'on');
-        % If amplitudes for high/low frequencies are different, the amplitude is set separately for high and low frequencies
-        h.Vib.HighAmpLabel = uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'High Freq Amp (0-1):', ...
-            'Units', 'normalized', ...
-            'Position', [0.035 0.55 0.43 0.13],...
-            'FontSize', 14,...
-            'Enable', 'off',...
-            'Visible', 'off');
-        h.Vib.HighAmplitude = uicontrol('Parent', parent, ...
-            'Style', 'edit', ...
-            'String', '0.15', ...
-            'Units', 'normalized', ...
-            'Position', [0.5 0.55 0.4 0.13],...
-            'FontSize', 14,...
-            'Enable', 'off',...
-            'Visible', 'off');
-        h.Vib.LowAmpLabel = uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'Low Freq Amp (0-1):', ...
-            'Units', 'normalized', ...
-            'Position', [0.05 0.41 0.4 0.13],...
-            'FontSize', 14,...
-            'Enable', 'off',...
-            'Visible', 'off');   
-        h.Vib.LowAmplitude = uicontrol('Parent', parent, ...
-            'Style', 'edit', ...
-            'String', '0.15', ...
-            'Units', 'normalized', ...
-            'Position', [0.5 0.41 0.4 0.13],...
-            'FontSize', 14,...
-            'Enable', 'off',...
-            'Visible', 'off');    
+    function vib_param = createVibrationControls(parent)
+    % createVibrationControls - Create vibration control UI elements
+    % Input: parent - parent figure/panel handle
     
-        % Callback function for the same amplitude popup
-        function sameAmplitudeChanged(~, ~)
-            sameAmplitude = get(h.Vib.SameAmplitude, 'Value');
-            if sameAmplitude == 1  % Yes - same amplitude
-                % Show single amplitude control
-                set(h.Vib.AmplitudeLabel, 'Enable', 'on', 'Visible', 'on');
-                set(h.Vib.Amplitude, 'Enable', 'on', 'Visible', 'on');
-                % Hide separate amplitude controls
-                set(h.Vib.HighAmpLabel, 'Enable', 'off', 'Visible', 'off');
-                set(h.Vib.HighAmplitude, 'Enable', 'off', 'Visible', 'off');
-                set(h.Vib.LowAmpLabel, 'Enable', 'off', 'Visible', 'off');
-                set(h.Vib.LowAmplitude, 'Enable', 'off', 'Visible', 'off');
-            else  % No - different amplitudes
-                % Hide single amplitude control
-                set(h.Vib.AmplitudeLabel, 'Enable', 'off', 'Visible', 'off');
-                set(h.Vib.Amplitude, 'Enable', 'off', 'Visible', 'off');
-                % Show separate amplitude controls
-                set(h.Vib.HighAmpLabel, 'Enable', 'on', 'Visible', 'on');
-                set(h.Vib.HighAmplitude, 'Enable', 'on', 'Visible', 'on');
-                set(h.Vib.LowAmpLabel, 'Enable', 'on', 'Visible', 'on');
-                set(h.Vib.LowAmplitude, 'Enable', 'on', 'Visible', 'on');
+    % Get parent figure handle
+    fig = ancestor(parent, 'figure');
+    
+    % Initialize data structure in guidata
+    data = struct();
+    data.stim = struct('freq', {}, 'amp', {});
+    guidata(fig, data);
+    data_ready = false; % if data is ready
+
+    % Create UI controls (store handles as local variables, not in h.Vib)
+    
+    % Waveform Type
+    uicontrol('Parent', parent, ...
+        'Style', 'text', ...
+        'String', 'Waveform', ...
+        'Units', 'normalized', ...
+        'Position', [0.005 0.85 0.22 0.11],...
+        'FontSize', 14);
+    
+    Vib_Type = uicontrol('Parent', parent, ...
+        'Style', 'popup', ...
+        'String', {'BiSine', 'UniSine', 'Square'}, ...
+        'Units', 'normalized', ...
+        'Position', [0.25 0.85 0.2 0.11],...
+        'FontSize', 14);
+
+    % Boundary Frequency
+    uicontrol('Parent', parent, ...
+        'Style', 'text', ...
+        'String', 'Boundary Freq (Hz):', ...
+        'Units', 'normalized', ...
+        'Position', [0.5 0.85 0.35 0.11],...
+        'FontSize', 14);
+    
+    Vib_BoundaryFreq = uicontrol('Parent', parent, ...
+        'Style', 'edit', ...
+        'String', '250', ...
+        'Units', 'normalized', ...
+        'Position', [0.85 0.85 0.15 0.11],...
+        'FontSize', 14);
+
+    % Frequency input
+    uicontrol('Parent', parent, ...
+              'Style', 'text', ...
+              'String', 'Freq (Hz):', ...
+              'Units', 'normalized', ...
+              'Position', [0.05 0.65 0.2 0.13], ...
+              'HorizontalAlignment', 'left',...
+              'FontSize', 12);
+    
+    Vib_edit_freq = uicontrol('Parent', parent, ...
+                            'Style', 'edit', ...
+                            'Units', 'normalized', ...
+                            'Position', [0.25 0.65 0.15 0.13], ...
+                            'FontSize', 12,...
+                            'String', '', ...
+                            'Callback', @edit_freq_Callback);
+    
+    % Amplitude input
+    uicontrol('Parent', parent, ...
+              'Style', 'text', ...
+              'String', 'Amp (0-1):', ...
+              'Units', 'normalized', ...
+              'Position', [0.43 0.65 0.18 0.13], ...
+              'FontSize', 12,...
+              'HorizontalAlignment', 'left');
+    
+    Vib_edit_amp = uicontrol('Parent',parent, ...
+                           'Style', 'edit', ...
+                           'Units', 'normalized', ...
+                           'Position', [0.6 0.65 0.18 0.13], ...
+                           'FontSize', 12,...
+                           'String', '', ...
+                           'Callback', @edit_amp_Callback);
+    
+    % Add button
+    Vib_btn_add = uicontrol('Parent', parent, ...
+                          'Style', 'pushbutton', ...
+                          'String', 'Add Stim', ...
+                          'Units', 'normalized', ...
+                          'Position', [0.82 0.65 0.17 0.15], ...
+                          'Callback', @btn_add_Callback, ...
+                          'FontSize', 12,...
+                          'Enable', 'off');
+    
+    % Validation status
+    Vib_txt_status = uicontrol('Parent', parent, ...
+                             'Style', 'text', ...
+                             'String', 'Enter frequency and amplitude', ...
+                             'Units', 'normalized', ...
+                             'Position', [0.68 0.4 0.3 0.2], ...
+                             'FontSize', 10,...
+                             'HorizontalAlignment', 'left', ...
+                             'ForegroundColor', [0.5, 0.5, 0.5]);
+    
+    % Listbox to display added pairs
+    uicontrol('Parent', parent, ...
+              'Style', 'text', ...
+              'String', 'Added Stimulus (sorted by Freq/Amp):', ...
+              'Units', 'normalized', ...
+              'Position', [0.05 0.55 0.5 0.08], ...
+              'FontSize', 10,...
+              'HorizontalAlignment', 'left');
+    
+    Vib_listbox = uicontrol('Parent', parent, ...
+                          'Style', 'listbox', ...
+                          'Units', 'normalized', ...
+                          'Position',  [0.05 0.01 0.6 0.54], ...
+                          'String', {}, ...
+                          'FontSize', 10,...
+                          'Value', 1, ...
+                          'BackgroundColor', [1, 1, 1]);
+    
+    % Delete button
+    Vib_btn_delete = uicontrol('Parent', parent, ...
+                             'Style', 'pushbutton', ...
+                             'String', 'Delete Selected', ...
+                             'Units', 'normalized', ...
+                             'Position', [0.7 0.2 0.25 0.13], ...
+                             'FontSize', 12,...
+                             'Callback', @btn_delete_Callback, ...
+                             'Enable', 'off');
+    
+    % Done button
+    uicontrol('Parent', parent, ...
+                           'Style', 'pushbutton', ...
+                           'String', 'Done', ...
+                           'Units', 'normalized', ...
+                           'Position', [0.7 0.05 0.25 0.13], ...
+                           'FontSize', 12,...
+                           'Callback', @btn_done_Callback);
+    
+    % initial value
+    vib_param = struct('stim', struct('freq', {}, 'amp', {}));
+    vib_param.vibType = 1;
+    vib_param.vibTypeName = {'BiSine', 'UniSine', 'Square'};
+    vib_param.BoundaryFreq = 250;
+
+    % === Nested Callback Functions ===
+    function edit_freq_Callback(~, ~)
+        validate_inputs();
+    end
+
+    function edit_amp_Callback(~, ~)
+        validate_inputs();
+    end
+
+    function validate_inputs()
+        freq_str = get(Vib_edit_freq, 'String');
+        amp_str = get(Vib_edit_amp, 'String');
+
+        status_color = [0.5, 0.5, 0.5];
+        add_enabled = false;
+        
+        if isempty(freq_str) || isempty(amp_str)
+            status_text = 'Please enter both frequency and amplitude';
+        else
+            freq = str2double(freq_str);
+            if isnan(freq) || mod(freq,1)~=0 || freq<=0
+                status_text = 'Frequency must be positive integer';
+                status_color = [1,0,0];
+            else
+                amp = str2double(amp_str);
+                if isnan(amp) || amp<0 || amp>1
+                    status_text = 'Amplitude must be between 0-1';
+                    status_color = [1,0,0];
+                else
+                    status_text = sprintf('Valid: %d Hz, %.4f', freq, amp);
+                    status_color = [0,0.5,0];
+                    add_enabled = true;
+                end
             end
         end
+        
+        set(Vib_txt_status, 'String', status_text, 'ForegroundColor', status_color);
+        set(Vib_btn_add, 'Enable', bool_to_on_off(add_enabled));
+    end
 
+    function btn_add_Callback(~, ~)
+        % Get data from figure's guidata
+        data = guidata(fig);
+        
+        freq = round(str2double(get(Vib_edit_freq, 'String')));
+        amp = str2double(get(Vib_edit_amp, 'String'));
+        
+        % Add new pair
+        new_pair.freq = freq;
+        new_pair.amp = amp;
+        
+        if isempty(data.stim)
+            data.stim = new_pair;
+        else
+            data.stim(end+1) = new_pair;
+            data.stim = sort_pairs(data.stim);
+        end
+        
+        % Save back to guidata
+        guidata(fig, data);
+        
+        % Update UI
+        set(Vib_txt_status, 'String', sprintf('Added: %d Hz, %.4f', freq, amp), ...
+            'ForegroundColor', [0,0.5,0]);
+        set(Vib_edit_freq, 'String', '');
+        set(Vib_edit_amp, 'String', '');
+        
+        update_listbox();
+        set(Vib_btn_delete, 'Enable', 'on');
+        validate_inputs();
+    end
 
+    function btn_delete_Callback(~, ~)
+        data = guidata(fig);
+        
+        selected = get(Vib_listbox, 'Value');
+        
+        if ~isempty(data.stim) && selected <= length(data.stim)
+            freq = data.stim(selected).freq;
+            amp = data.stim(selected).amp;
+            
+            choice = questdlg(sprintf('Delete %d Hz @ %.4f?', freq, amp), ...
+                             'Confirm Delete', 'Yes', 'No', 'No');
+            
+            if strcmp(choice, 'Yes')
+                data.stim(selected) = [];
+                guidata(fig, data);
+                
+                update_listbox();
+                
+                if isempty(data.stim)
+                    set(Vib_btn_delete, 'Enable', 'off');
+                end
+                
+                set(Vib_txt_status, 'String', sprintf('Deleted %d Hz @ %.4f', freq, amp), ...
+                    'ForegroundColor', [0.5,0.5,0.5]);
+            end
+        end
+    end
+    
+    % === result to be passed out to main GUI ===
+    function btn_done_Callback(~, ~)   
+        data = guidata(fig);
 
-        % Frequency
-        uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'Frequency (Hz):', ...
-            'Units', 'normalized', ...
-            'Position', [0.05 0.23 0.4 0.13],...
-            'FontSize', 14);
-        h.Vib.Frequency = uicontrol('Parent', parent, ...
-            'Style', 'edit', ...
-            'String', '100,400', ...
-            'Units', 'normalized', ...
-            'Position', [0.5 0.23 0.4 0.13],...
-            'FontSize', 14);
+        % Display final data
+        if isempty(data.stim)
+            set(Vib_txt_status, 'String', sprintf('Stimulus not set !\n (￣へ￣)'), ...
+                     'fontsize', 12,...
+                    'ForegroundColor', [1, 0, 0]);
+        else
+            set(Vib_txt_status, 'String', sprintf('Stimulus set !\n (◕‿◕✿)'), ...
+                'fontsize', 12,...
+                'ForegroundColor', [0, 0.8, 0]);
+            result = struct();
+            result.vibType = get(Vib_Type, 'Value');
+            result.vibTypeName = get(Vib_Type, 'String');
+            result.BoundaryFreq = str2double(get(Vib_BoundaryFreq, 'String'));
+            result.stim = data.stim;
 
-        % Boundary Frequency
-        uicontrol('Parent', parent, ...
-            'Style', 'text', ...
-            'String', 'Boundary Frequency (Hz):', ...
-            'Units', 'normalized', ...
-            'Position', [0.05 0.05 0.4 0.13],...
-            'FontSize', 14);
-        h.Vib.BoundaryFreq = uicontrol('Parent', parent, ...
-            'Style', 'edit', ...
-            'String', '250', ...
-            'Units', 'normalized', ...
-            'Position', [0.5 0.05 0.4 0.13],...
-            'FontSize', 14);
+            set(parent, 'UserData', result);
+            data_ready = true;
+        end
+    end
+
+    function update_listbox()
+        data = guidata(fig);
+        
+        if isempty(data.stim)
+            set(Vib_listbox, 'String', {'<No stimulus added>'}, 'Value', 1);
+        else
+            display_str = cell(length(data.stim), 1);
+            for i = 1:length(data.stim)
+                display_str{i} = sprintf('Freq: %3d Hz, Amp: %.4f', ...
+                    data.stim(i).freq, data.stim(i).amp);
+            end
+            set(Vib_listbox, 'String', display_str, 'Value', 1);
+        end
+    end
+
+    function sorted = sort_pairs(pairs)
+        [~, idx] = sort([pairs.freq]);
+        sorted = pairs(idx);
+        
+        unique_freqs = unique([sorted.freq]);
+        if length(unique_freqs) < length(sorted)
+            temp = [];
+            for f = unique_freqs
+                mask = [sorted.freq] == f;
+                freq_pairs = sorted(mask);
+                [~, amp_idx] = sort([freq_pairs.amp]);
+                temp = [temp, freq_pairs(amp_idx)];
+            end
+            sorted = temp;
+        end
+    end
+
+    function str = bool_to_on_off(val)
+        if val; str = 'on'; else; str = 'off'; end
+    end
+    
 
     end
 
@@ -853,84 +1006,6 @@ function StimParams = StimParamGui_test()
         % Clear previous error message
         set(h.ErrorMsg, 'String', '');
         
-        % Nested helper function to parse amplitude string with format validation
-        function ampValue = parseAmplitudeString(ampStr)
-            % Parse amplitude string with support for multiple formats:
-            % - Comma separated: "0.2,0.5,0.8"
-            % - Space separated: "[0.2 0.5 0.8]"
-            % - Range with step: "0:0.1:1"
-            % All values must be between 0 and 1
-            
-            try
-                % First try to handle comma-separated numbers
-                if contains(ampStr, ',')
-                    % Split by comma and convert to numbers
-                    parts = strsplit(ampStr, ',');
-                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                    if all(~cellfun(@isnan, parts))
-                        ampValue = cell2mat(parts)';
-                        % Check if all values are within range [0,1]
-                        if any(ampValue < 0) || any(ampValue > 1)
-                            error('Amplitude values must be between 0 and 1');
-                        end
-                        return;
-                    else
-                        error('Invalid number format in comma-separated list');
-                    end
-                else
-                    % Try to evaluate the string as a MATLAB expression
-                    ampValue = eval(ampStr);
-                    % Convert to column vector if it's a row vector
-                    if size(ampValue, 1) == 1
-                        ampValue = ampValue';
-                    end
-                    % Check if all values are within range [0,1]
-                    if any(ampValue < 0) || any(ampValue > 1)
-                        error('Amplitude values must be between 0 and 1');
-                    end
-                    return;
-                end
-            catch
-                % If evaluation fails, try to parse as a range
-                try
-                    % Split the string by ':'
-                    parts = strsplit(ampStr, ':');
-                    % Convert all parts to numbers
-                    parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                    % Check if all parts are valid numbers
-                    if all(~cellfun(@isnan, parts))
-                        switch length(parts)
-                            case 1
-                                % Single value
-                                ampValue = parts{1};
-                            case 2
-                                % Start:End (default step = 1)
-                                ampValue = (parts{1}:parts{2})';
-                            case 3
-                                % Start:Step:End
-                                ampValue = (parts{1}:parts{2}:parts{3})';
-                            otherwise
-                                % Multiple values separated by colons
-                                ampValue = cell2mat(parts)';
-                        end
-                        % Check if all values are within range [0,1]
-                        if any(ampValue < 0) || any(ampValue > 1)
-                            error('Amplitude values must be between 0 and 1');
-                        end
-                        return;
-                    else
-                        error('Invalid number format in range');
-                    end
-                catch
-                    error(sprintf(['Invalid Amplitude format. Please use one of these formats:' newline ...
-                        '- Comma separated: "0.2,0.5,0.8"' newline ...
-                        '- Space separated: "[0.2 0.5 0.8]"' newline ...
-                        '- Range with step: "0:0.1:1"' newline ...
-                        'All values must be between 0 and 1']));
-                end
-            end
-        end
-        
         try
             % Get session type
             sessionType = get(h.SessionType, 'Value');
@@ -1044,110 +1119,17 @@ function StimParams = StimParamGui_test()
             % Only get vibration parameters if not SoundOnly
             if sessionType ~= 2
                 % Vibration parameters
-                vibType = get(h.Vib.Type, 'Value');
-                vibTypeName = get(h.Vib.Type, 'String');
-                StimParams.Vibration.Type = vibType;
-                StimParams.Vibration.TypeName = vibTypeName{vibType};
-                % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
-                
-                % Handle Vibration Amplitude input based on SameAmplitude setting
-                sameAmplitude = get(h.Vib.SameAmplitude, 'Value');
-                StimParams.Vibration.SameAmplitude = sameAmplitude;
-                if sameAmplitude == 1  % Yes - same amplitude for all frequencies
-                    % Use original format: StimParams.Vibration.Amplitude
-                    ampStr = get(h.Vib.Amplitude, 'String');
-                    try
-                        StimParams.Vibration.Amplitude = parseAmplitudeString(ampStr);
-                    catch ME
-                        error(['Amplitude: ' ME.message]);
-                    end
-                else  % No - different amplitudes for high/low frequencies
-                    % Use new format: StimParams.Vibration.HighFreqAmplitude and LowFreqAmplitude
-                    % Parse High Frequency Amplitude
-                    highAmpStr = get(h.Vib.HighAmplitude, 'String');
-                    try
-                        StimParams.Vibration.HighFreqAmplitude = parseAmplitudeString(highAmpStr);
-                    catch ME
-                        % Remove leading newline from error message if present
-                        msg = ME.message;
-                        if startsWith(msg, newline)
-                            msg = msg(length(newline)+1:end);
-                        end
-                        error(['High Frequency Amplitude: ' msg]);
-                    end
-                    
-                    % Parse Low Frequency Amplitude
-                    lowAmpStr = get(h.Vib.LowAmplitude, 'String');
-                    try
-                        StimParams.Vibration.LowFreqAmplitude = parseAmplitudeString(lowAmpStr);
-                    catch ME
-                        % Remove leading newline from error message if present
-                        msg = ME.message;
-                        if startsWith(msg, newline)
-                            msg = msg(length(newline)+1:end);
-                        end
-                        error(['Low Frequency Amplitude: ' msg]);
-                    end
-                end
-
-                % Handle Vibration Frequency input
-                freqStr = get(h.Vib.Frequency, 'String');
-                try
-                    % First try to handle comma-separated numbers
-                    if contains(freqStr, ',')
-                        % Split by comma and convert to numbers
-                        parts = strsplit(freqStr, ',');
-                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                        if all(~cellfun(@isnan, parts))
-                            StimParams.Vibration.Frequency = cell2mat(parts)';
-                        else
-                            error('Invalid number format in comma-separated list');
-                        end
-                    else
-                        % Try to evaluate the string as a MATLAB expression
-                        freqValue = eval(freqStr);
-                        % Convert to column vector if it's a row vector
-                        if size(freqValue, 1) == 1
-                            freqValue = freqValue';
-                        end
-                        StimParams.Vibration.Frequency = freqValue;
-                    end
-                catch
-                    % If evaluation fails, try to parse as a range
-                    try
-                        % Split the string by ':'
-                        parts = strsplit(freqStr, ':');
-                        % Convert all parts to numbers
-                        parts = cellfun(@str2double, parts, 'UniformOutput', false);
-                        % Check if all parts are valid numbers
-                        if all(~cellfun(@isnan, parts))
-                            switch length(parts)
-                                case 1
-                                    % Single value
-                                    StimParams.Vibration.Frequency = parts{1};
-                                case 2
-                                    % Start:End (default step = 1)
-                                    StimParams.Vibration.Frequency = (parts{1}:parts{2})';
-                                case 3
-                                    % Start:Step:End
-                                    StimParams.Vibration.Frequency = (parts{1}:parts{2}:parts{3})';
-                                otherwise
-                                    % Multiple values separated by colons
-                                    StimParams.Vibration.Frequency = cell2mat(parts)';
-                            end
-                        else
-                            error('Invalid number format in range');
-                        end
-                    catch
-                        error(sprintf(['Invalid Frequency format. Please use one of these formats:' newline ...
-                            '- Comma separated: "100,200,300"' newline ...
-                            '- Space separated: "[100 200 300]"' newline ...
-                            '- Range with step: "100:50:300"']));
-                    end
-                end
-
-                % Handle Vibration Boundary Frequency input
-                StimParams.Vibration.BoundaryFreq = str2double(get(h.Vib.BoundaryFreq, 'String'));
+                vib_param = get(vibPanel, 'UserData');
+                 if ~isfield(vib_param, 'stim') || isempty(vib_param.stim)
+                        error('Please set vibration parameters first!');
+                 else
+                    vibType = vib_param.vibType;
+                    StimParams.Vibration.Type = vib_param.vibType;
+                    StimParams.Vibration.TypeName = vib_param.vibTypeName{vibType};
+                    StimParams.Vibration.BoundaryFreq = vib_param.BoundaryFreq;
+                    StimParams.Vibration.Stimulus = vib_param.stim;
+                    % StimParams.Vibration.Duration = str2double(get(h.Vib.Duration, 'String'));
+                 end
             end
 
             % Behavior parameters
