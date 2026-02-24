@@ -111,7 +111,7 @@ clearvars
 %spectogramdata = load([spectogram_file.folder '\' spectogram_file.name], 'f', 't', 'ps_mean', 'ps_all', 'UStim');
 % Select file and get absolute path
 [filename, filepath] = uigetfile('*.*', 'Select a file to load');
-
+mic = '7012';
 if isequal(filename, 0)
     disp('User canceled file selection');
 else
@@ -165,22 +165,22 @@ fHigh = f > 10000;
 
 instPower_raw = reshape(sum(ps_mean(fIdx,:,:)),[nT,nUStim]);
 instPower_raw_dB = 10*log10(instPower_raw);
-instPower_raw_dBSPL = dbv2spl(instPower_raw_dB);
+instPower_raw_dBSPL = dbv2spl(instPower_raw_dB,mic);
 
 instPower_low = reshape(sum(ps_mean(fLow,:,:)),[nT,nUStim]);
 instPower_low_dB = 10*log10(instPower_low);
-instPower_low_dBSPL = dbv2spl(instPower_low_dB);
+instPower_low_dBSPL = dbv2spl(instPower_low_dB,mic);
 
 instPower_mid = reshape(sum(ps_mean(fMid,:,:)),[nT,nUStim]);
 instPower_mid_dB = 10*log10(instPower_mid);
-instPower_mid_dBSPL = dbv2spl(instPower_mid_dB);
+instPower_mid_dBSPL = dbv2spl(instPower_mid_dB,mic);
 
 instPower_high = reshape(sum(ps_mean(fHigh,:,:)),[nT,nUStim]);
 instPower_high_dB = 10*log10(instPower_high);
-instPower_high_dBSPL = dbv2spl(instPower_high_dB);
+instPower_high_dBSPL = dbv2spl(instPower_high_dB,mic);
 
 % 6. plot average
-figure('Position',[10,10,1300,1000]);
+figure('Position',[10,10,1900,1000]);
 clim = [-110,-60];
 freqRange = [0,10];%kHz
 %dBRange_pow = [-Inf,Inf];
@@ -192,7 +192,7 @@ nCols = ceil(nUStim / nRows);
 
 for ii = 1:nUStim
     ax1 = subplot(nRows,nCols,ii);
-    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   Amp:',num2str(UStim.VibAmp(ii),'%.2f')])
+    title([num2str(UStim.VibFreq(ii),'%d Hz'),'   a:',num2str(UStim.VibAmp(ii),'%.3f')])
     xlabel(ax1,'Time (s)')
 
     yyaxis(ax1,'left')
@@ -241,7 +241,7 @@ end
 
 % save and close average spectogram figure
 saveas(gcf,fullfile(filepath, [name_only,'_spectogram']), 'png')
-close(gcf)
+% close(gcf)
 
 % % plot individual subset
 % figure('Position',[10,10,1400,900]);
@@ -277,7 +277,7 @@ close(gcf)
 % saveas(gcf,fullfile(OutPath, [savename,'_spectogram_trials']), 'png')
 % %saveas(gcf,[filename,'_spectogram_trials.png'])
 
-close all
+% close all
 
 
 % %% plot all individual
@@ -352,11 +352,11 @@ disp('Spectogram figures done')
 % yyaxis(ax2,'left')
 
 %% local functions
-function dbspl = dbv2spl(dbv)
-mic = '7012';
+function dbspl = dbv2spl(dbv,mic)
+% mic = '7012';
 switch mic
     case '7012'
-        micSens = 16.4e-3;  % V / 1 Pa; 16.4mV/Pa ~ -35.7 dBV @ 1Pa
+        micSens = 16.4e-3;  % V / 1 Pa; 16.4mV/Pa ~ -35.7 dBV @ 1Pa i.e. 
     case '7016'
         micSens = 3.89e-3;  % V / 1 Pa; 3.89mV/Pa ~ -48.2 dBV @ 1Pa
     otherwise % 7016

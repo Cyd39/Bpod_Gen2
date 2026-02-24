@@ -16,6 +16,7 @@ amp_100hz = [0.2, 0.4, 0.6];
 amp_200hz = [0.02, 0.1, 0.15];
 amp_300hz = [0.02, 0.03, 0.04];
 amp_400_to_1000hz = [0.002, 0.004, 0.008, 0.016, 0.024, 0.03];
+numRepetitions = 10;
 
 % Vibration parameters
 vibtype = 'BiSine';  
@@ -43,15 +44,15 @@ T = table(amp_all', freq_all', ...
           repmat(ramp, length(freq_all), 1), ...
           'VariableNames', {'VibAmp', 'VibFreq', 'VibTypeName', 'MMType', 'Duration', 'RampDur'});
 
-% Repeat each row 10 times continuously
-T_repeated = repelem(T, 10, 1);
+% Repeat each row numRepetitions times continuously
+T_repeated = repelem(T, numRepetitions, 1);
 
-% Create 10 rows with amp = 0 and freq = 0
-zero_rows = table(zeros(10,1), zeros(10,1), ...
-                 repmat({vibtype}, 10, 1), ...
-                 repmat({mmtype}, 10, 1), ...
-                 repmat(dur, 10, 1), ...
-                 repmat(ramp, 10, 1), ...
+% Create numRepetitions rows with amp = 0 and freq = 0
+zero_rows = table(zeros(numRepetitions,1), zeros(numRepetitions,1), ...
+                 repmat({vibtype}, numRepetitions, 1), ...
+                 repmat({mmtype}, numRepetitions, 1), ...
+                 repmat(dur, numRepetitions, 1), ...
+                 repmat(ramp, numRepetitions, 1), ...
                  'VariableNames', {'VibAmp', 'VibFreq', 'VibTypeName', 'MMType', 'Duration', 'RampDur'});
 
 % Combine the tables
@@ -92,6 +93,7 @@ T = [zero_rows;T_repeated];
 %disp(T);
 
 %% setup TDT
+% Connect Microphone pre-amp output to Channel-A of RZ6
 DSP = 'RZ6';
 RPatten = '';
 RPpath      =   'tdt_circuits\RZ6_SomAud.rcx';
@@ -121,7 +123,7 @@ for n = 1:numTrials
     % LoopMode = 1 (on), LoopDuration = 0 (loop indefinitely until stopped)
     H.load(1, soundWave); 
     H.push();
-    disp(['Trial ' num2str(n) ': Sound loaded to buffer 1']);
+    disp(['Trial ' num2str(n),'/',num2str(numTrials), ': Sound loaded to buffer 1']);
 
     H.play(1);
     zBus.zBusTrigB(0,0,3);          %-- Triggering
@@ -131,13 +133,32 @@ for n = 1:numTrials
     try
         TotalDurSamp = RS.GetTagVal('TotalDurSamp');
         AudIn = RS.ReadTagV('DataOut', 0, TotalDurSamp);
+        Aud{n} = AudIn;
+
+        % plot raw trace
         tt = (1:length(AudIn)) ./ Fs;
         plot(ax1,tt,AudIn);
         ylabel(ax1,'V')
         if(n == 1);xlim(ax1,[min(tt),max(tt)]);end
-        plot(ax2,abs(fft(AudIn)));
-        ax2.YScale="log";
-        Aud{n} = AudIn;
+%         plot(ax2,abs(fft(AudIn)));
+%         ax2.YScale="log";
+
+        % plot spectrogram
+        clim = [-100,-60];
+        freqRange = [0,10];%kHz
+        window_dur = 0.02 ;% s
+        window = round(window_dur*Fs);
+        noverlap = round(0.9*window);
+        [s,f,t,ps] = spectrogram(AudIn,window,noverlap,[],Fs,'yaxis'); % [freqs x time bins] ps_all: power spectrum in t bins
+        imagesc(ax2, t,f./1000,squeeze(10*log10(ps)),clim);
+        ax2.YDir = 'normal';
+        ylim(freqRange);
+%         if n == 1
+            ylabel(ax2,'Frequency (kHz)')
+            cb = colorbar;
+            cb.Label.String = 'dBV';
+%         end
+        
     catch ME
         disp(ME)
         disp('error reading ADC.')
