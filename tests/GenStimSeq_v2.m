@@ -296,122 +296,176 @@ function StimTable = makeVibTable(StimParams)
     propCatch = StimParams.Behave.PropCatch;
     vibTypeName = StimParams.Vibration.TypeName;
     
-    % Check if separate amplitudes for high/low frequencies are specified
-    sameAmplitude = true;
-    if isfield(StimParams.Vibration, 'Amplitude')
-        vibAmp = StimParams.Vibration.Amplitude;
-    else
-        vibAmpHigh = StimParams.Vibration.HighFreqAmplitude;
-        vibAmpLow = StimParams.Vibration.LowFreqAmplitude;
-        sameAmplitude = false;
+    % Extract stimulus pairs from the new structure
+    if ~isfield(StimParams.Vibration, 'Stimulus') || isempty(StimParams.Vibration.Stimulus)
+        error('Vibration.Stimulus not found in StimParams or is empty');
     end
-    vibFreq = StimParams.Vibration.Frequency;
     
+    stimStruct = StimParams.Vibration.Stimulus;
+
+    % Convert struct array to arrays of freq and amp
+    vibFreq = [stimStruct.freq];
+    vibAmp = [stimStruct.amp];
+
     % Get reward probability and boundary frequency parameters
     rewardProbability = StimParams.Behave.RewardProbability; % 0-1
     boundaryRewardProbability = StimParams.Behave.BoundaryRewardProbability; % 0-1 - reward probability for boundary frequency
+    boundaryProb = StimParams.Behave.BoundaryProbability; % 0-1 - probability of boundary frequency trials
     boundaryFreq = StimParams.Vibration.BoundaryFreq; % Hz - frequency boundary for left/right decision
 
-    % Separate high and low frequency vibrations
-    highVibFreq = vibFreq(vibFreq > boundaryFreq);
-    lowVibFreq = vibFreq(vibFreq < boundaryFreq);
-    boundaryVibFreq = vibFreq(vibFreq == boundaryFreq);
+    % Separate high and low frequency vibrations based on boundary frequency
+    highVibFreqIdx = find(vibFreq > boundaryFreq);
+    lowVibFreqIdx = find(vibFreq < boundaryFreq);
+    boundaryVibFreqIdx = find(vibFreq == boundaryFreq);
     
-    % Create unique combinations of parameters
-    % For high frequency
+    % Calculate number of boundary frequency trials based on BoundaryProbability
+    nBoundaryTrials = round(nTrials * boundaryProb);
+    nRegularTrials = nTrials - nBoundaryTrials;
+    
+    % For high frequency (regular trials)
     highStimTableUnq = table();
-    if ~isempty(highVibFreq)
-        if sameAmplitude
-            [highVibAmp, highVibFreqGrid] = ndgrid(vibAmp, highVibFreq);
-        else
-            [highVibAmp, highVibFreqGrid] = ndgrid(vibAmpHigh, highVibFreq);
-        end
-        highStimTableUnq = table(highVibAmp(:), highVibFreqGrid(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+    if ~isempty(highVibFreqIdx)
+        highVibFreq = vibFreq(highVibFreqIdx);
+        highVibAmp = vibAmp(highVibFreqIdx);
+        
+        % Create table directly from the stimulus pairs
+        highStimTableUnq = table(highVibAmp(:), highVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+        
         % Remove invalid rows
         invalidRows = highStimTableUnq.VibAmp == 0 | highStimTableUnq.VibFreq == 0;
         highStimTableUnq = highStimTableUnq(~invalidRows, :);
     end
     
-    % For low frequency
+    % For low frequency (regular trials)
     lowStimTableUnq = table();
-    if ~isempty(lowVibFreq)
-        if sameAmplitude
-            [lowVibAmp, lowVibFreqGrid] = ndgrid(vibAmp, lowVibFreq);
-        else
-            [lowVibAmp, lowVibFreqGrid] = ndgrid(vibAmpLow, lowVibFreq);
-        end
-        lowStimTableUnq = table(lowVibAmp(:), lowVibFreqGrid(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+    if ~isempty(lowVibFreqIdx)
+        lowVibFreq = vibFreq(lowVibFreqIdx);
+        lowVibAmp = vibAmp(lowVibFreqIdx);
+        
+        % Create table directly from the stimulus pairs
+        lowStimTableUnq = table(lowVibAmp(:), lowVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+        
         % Remove invalid rows
         invalidRows = lowStimTableUnq.VibAmp == 0 | lowStimTableUnq.VibFreq == 0;
         lowStimTableUnq = lowStimTableUnq(~invalidRows, :);
     end
     
-    % For boundary frequency (use high amplitude if different amplitudes are specified)
-    boundaryStimTableUnq = table();
-    if ~isempty(boundaryVibFreq)
-        if sameAmplitude
-            [boundaryVibAmp, boundaryVibFreqGrid] = ndgrid(vibAmp, boundaryVibFreq);
+    % Combine high and low frequency tables for regular trials
+    regularStimTableUnq = table();
+    if ~isempty(highStimTableUnq)
+        regularStimTableUnq = highStimTableUnq;
+    end
+    if ~isempty(lowStimTableUnq)
+        if height(regularStimTableUnq) == 0
+            regularStimTableUnq = lowStimTableUnq;
         else
-            % For boundary frequency, use high frequency amplitude (or could use average, but using high for consistency)
-            [boundaryVibAmp, boundaryVibFreqGrid] = ndgrid(vibAmpHigh, boundaryVibFreq);
+            regularStimTableUnq = [regularStimTableUnq; lowStimTableUnq];
         end
-        boundaryStimTableUnq = table(boundaryVibAmp(:), boundaryVibFreqGrid(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+    end
+    
+    % For boundary frequency (only use exact matches)
+    boundaryStimTableUnq = table();
+    if ~isempty(boundaryVibFreqIdx) && nBoundaryTrials > 0
+        boundaryVibFreq = vibFreq(boundaryVibFreqIdx);
+        boundaryVibAmp = vibAmp(boundaryVibFreqIdx);
+        
+        % Create table from matching pairs
+        boundaryStimTableUnq = table(boundaryVibAmp(:), boundaryVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
+        
         % Remove invalid rows
         invalidRows = boundaryStimTableUnq.VibAmp == 0 | boundaryStimTableUnq.VibFreq == 0;
         boundaryStimTableUnq = boundaryStimTableUnq(~invalidRows, :);
     end
     
-    % Combine all frequency categories
-    stimTableUnq = table();
-    if ~isempty(highStimTableUnq)
-        if height(stimTableUnq) == 0
-            stimTableUnq = highStimTableUnq;
-        else
-            stimTableUnq = [stimTableUnq; highStimTableUnq];
-        end
+    % Check if we have valid stimulus combinations
+    if height(regularStimTableUnq) == 0 && nRegularTrials > 0
+        error('No valid regular stimulus combinations found. Please check your amplitude and frequency parameters.');
     end
-    if ~isempty(lowStimTableUnq)
-        if height(stimTableUnq) == 0
-            stimTableUnq = lowStimTableUnq;
-        else
-            stimTableUnq = [stimTableUnq; lowStimTableUnq];
+    
+    % Generate regular trials (high + low frequency)
+    if nRegularTrials > 0 && height(regularStimTableUnq) > 0
+        blockSize = height(regularStimTableUnq);
+        numBlocks = floor(nRegularTrials / blockSize);
+        remainingRows = mod(nRegularTrials, blockSize);
+
+        % Preallocate regularStimTable
+        regularStimTable = table('Size', [nRegularTrials, width(regularStimTableUnq)], ...
+                                'VariableTypes', varfun(@class, regularStimTableUnq, 'OutputFormat', 'cell'));
+        regularStimTable.Properties.VariableNames = regularStimTableUnq.Properties.VariableNames;
+        
+        % Fill with randomized blocks
+        currentRow = 1;
+        for i = 1:numBlocks
+            randomBlock = regularStimTableUnq(randperm(blockSize), :);
+            regularStimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
+            currentRow = currentRow + blockSize;
         end
+
+        % Add remaining rows
+        if remainingRows > 0
+            randomIndices = randi(blockSize, remainingRows, 1);
+            remainingBlock = regularStimTableUnq(randomIndices, :);
+            regularStimTable(currentRow:end, :) = remainingBlock;
+        end
+    else
+        regularStimTable = table('Size', [nRegularTrials, 0]);
     end
-    if ~isempty(boundaryStimTableUnq)
-        if height(stimTableUnq) == 0
-            stimTableUnq = boundaryStimTableUnq;
-        else
-            stimTableUnq = [stimTableUnq; boundaryStimTableUnq];
+    
+    % Generate boundary frequency trials
+    if nBoundaryTrials > 0 && height(boundaryStimTableUnq) > 0
+        boundaryBlockSize = height(boundaryStimTableUnq);
+        boundaryNumBlocks = floor(nBoundaryTrials / boundaryBlockSize);
+        boundaryRemainingRows = mod(nBoundaryTrials, boundaryBlockSize);
+
+        % Preallocate boundaryStimTable
+        boundaryStimTable = table('Size', [nBoundaryTrials, width(boundaryStimTableUnq)], ...
+                                 'VariableTypes', varfun(@class, boundaryStimTableUnq, 'OutputFormat', 'cell'));
+        boundaryStimTable.Properties.VariableNames = boundaryStimTableUnq.Properties.VariableNames;
+        
+        % Fill with randomized blocks
+        currentRow = 1;
+        for i = 1:boundaryNumBlocks
+            randomBlock = boundaryStimTableUnq(randperm(boundaryBlockSize), :);
+            boundaryStimTable(currentRow:currentRow+boundaryBlockSize-1, :) = randomBlock;
+            currentRow = currentRow + boundaryBlockSize;
+        end
+
+        % Add remaining rows
+        if boundaryRemainingRows > 0
+            randomIndices = randi(boundaryBlockSize, boundaryRemainingRows, 1);
+            remainingBlock = boundaryStimTableUnq(randomIndices, :);
+            boundaryStimTable(currentRow:end, :) = remainingBlock;
+        end
+    else
+        boundaryStimTable = table('Size', [nBoundaryTrials, 0]);
+        if ~isempty(boundaryVibFreqIdx) && boundaryProb > 0
+            disp(['Note: BoundaryProbability = ', num2str(boundaryProb), ...
+                  ', but no valid boundary frequency stimuli found. No boundary trials will be generated.']);
+        elseif boundaryProb > 0
+            disp(['Note: BoundaryProbability = ', num2str(boundaryProb), ...
+                  ', but no boundary frequency stimuli match the boundary frequency (', num2str(boundaryFreq), ' Hz).']);
         end
     end
     
-    % Check if stimTableUnq is empty
-    if height(stimTableUnq) == 0
+    % Concatenate regular and boundary trials with random interleaving
+    if height(regularStimTable) > 0 && height(boundaryStimTable) > 0
+        % Combine both tables
+        combinedTable = [regularStimTable; boundaryStimTable];
+        
+        % Create a random permutation of row indices
+        totalRows = height(combinedTable);
+        randomOrder = randperm(totalRows);
+        
+        % Shuffle the table using the random permutation
+        StimTable = combinedTable(randomOrder, :);
+        
+        disp(['Trials will be randomly interleaved (boundary trials: ' num2str(nBoundaryTrials) '/' num2str(totalRows) ')']);
+    elseif height(regularStimTable) > 0
+        StimTable = regularStimTable;
+    elseif height(boundaryStimTable) > 0
+        StimTable = boundaryStimTable;
+    else
         error('No valid stimulus combinations found. Please check your amplitude and frequency parameters.');
-    end
-    
-    % Calculate number of blocks needed
-    blockSize = height(stimTableUnq);
-    numBlocks = floor(nTrials / blockSize);
-    remainingRows = mod(nTrials, blockSize);
-
-    % Preallocate StimTable
-    StimTable = table('Size', [nTrials, width(stimTableUnq)], 'VariableTypes', varfun(@class, stimTableUnq, 'OutputFormat', 'cell'));
-    StimTable.Properties.VariableNames = stimTableUnq.Properties.VariableNames;
-    
-    % Fill StimTable with randomized blocks
-    currentRow = 1;
-    for i = 1:numBlocks
-        randomBlock = stimTableUnq(randperm(blockSize), :);
-        StimTable(currentRow:currentRow+blockSize-1, :) = randomBlock;
-        currentRow = currentRow + blockSize;
-    end
-
-    % Add remaining rows
-    if remainingRows > 0
-        randomIndices = randi(blockSize, remainingRows, 1);
-        remainingBlock = stimTableUnq(randomIndices, :);
-        StimTable(currentRow:end, :) = remainingBlock;
     end
 
     % Add CorrectSide column based on frequency boundary and user configuration
@@ -438,6 +492,10 @@ function StimTable = makeVibTable(StimParams)
     disp(['  High frequency (>' num2str(boundaryFreq) ' Hz) -> ' spoutNames{highFreqSpout} ' spout']);
     disp(['  Low frequency (<' num2str(boundaryFreq) ' Hz) -> ' spoutNames{lowFreqSpout} ' spout']);
     disp(['  Boundary frequency (' num2str(boundaryFreq) ' Hz) -> both spouts correct']);
+    if nBoundaryTrials > 0
+        disp(['  Expected boundary trials: ' num2str(nBoundaryTrials) ' out of ' num2str(nTrials) ' total trials (' ...
+              num2str(boundaryProb*100) '%)']);
+    end
 
     % Add in catch trials
     if propCatch > 0
@@ -464,6 +522,7 @@ function StimTable = makeVibTable(StimParams)
 
      % Add other parameters
      StimTable.VibTypeName = repmat({vibTypeName}, height(StimTable), 1);
+     StimTable.VibWaveform = repmat({StimParams.Vibration.TypeName}, height(StimTable), 1);
 end 
 
 % fill up blocks
