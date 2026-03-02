@@ -349,27 +349,33 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
     % get general parameters
     nTrials = StimParams.Behave.NumTrials;
     vibTypeName = StimParams.Vibration.TypeName;
-    sameAmplitude = true;
-    if isfield(StimParams.Vibration, 'Amplitude')
-        vibAmp = StimParams.Vibration.Amplitude;
-    else
-        vibAmpHigh = StimParams.Vibration.HighFreqAmplitude;
-        vibAmpLow = StimParams.Vibration.LowFreqAmplitude;
-        sameAmplitude = false;
+    
+    % Extract stimulus pairs
+    if ~isfield(StimParams.Vibration, 'Stimulus') || isempty(StimParams.Vibration.Stimulus)
+        error('Vibration.Stimulus not found in StimParams or is empty');
     end
-    vibFreq = StimParams.Vibration.Frequency;
-
-    % Separate high and low frequency vibrations
-    highVibFreq = vibFreq(vibFreq > frequencyBoundary);
-    lowVibFreq = vibFreq(vibFreq < frequencyBoundary);
+    
+    stimStruct = StimParams.Vibration.Stimulus;
+    
+    % Convert struct array to arrays of freq and amp
+    vibFreq = [stimStruct.freq];
+    vibAmp = [stimStruct.amp];
+    
+    % Validate that freq and amp arrays have the same length
+    if length(vibFreq) ~= length(vibAmp)
+        error('Frequency and amplitude arrays must have the same length');
+    end
+    
+    % Separate high and low frequency vibrations based on boundary
+    highVibFreqIdx = find(vibFreq > frequencyBoundary);
+    lowVibFreqIdx = find(vibFreq < frequencyBoundary);
     
     % Generate high frequency table
-    if ~isempty(highVibFreq)
-        if sameAmplitude
-            [highVibAmp, highVibFreq] = ndgrid(vibAmp, highVibFreq);
-        else
-            [highVibAmp, highVibFreq] = ndgrid(vibAmpHigh, highVibFreq);
-        end
+    if ~isempty(highVibFreqIdx)
+        highVibFreq = vibFreq(highVibFreqIdx);
+        highVibAmp = vibAmp(highVibFreqIdx);
+        
+        % Create table directly from the stimulus pairs (no ndgrid needed)
         highStimTableUnq = table(highVibAmp(:), highVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
         
         % Remove invalid rows
@@ -386,12 +392,11 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
     end
     
     % Generate low frequency table
-    if ~isempty(lowVibFreq)
-        if sameAmplitude
-            [lowVibAmp, lowVibFreq] = ndgrid(vibAmp, lowVibFreq);
-        else
-            [lowVibAmp, lowVibFreq] = ndgrid(vibAmpLow, lowVibFreq);
-        end
+    if ~isempty(lowVibFreqIdx)
+        lowVibFreq = vibFreq(lowVibFreqIdx);
+        lowVibAmp = vibAmp(lowVibFreqIdx);
+        
+        % Create table directly from the stimulus pairs (no ndgrid needed)
         lowStimTableUnq = table(lowVibAmp(:), lowVibFreq(:), 'VariableNames', {'VibAmp', 'VibFreq'});
         
         % Remove invalid rows
@@ -406,7 +411,7 @@ function [highFreqTable, lowFreqTable] = makeVibTable(StimParams, frequencyBound
     else
         lowFreqTable = table();
     end
-end 
+end
 
 % Helper function to add Rewarded column based on reward probability
 function tableWithRewarded = addRewardedColumn(inputTable, StimParams)
@@ -540,26 +545,42 @@ function boundaryFreqTable = makeBoundaryTable(StimParams, frequencyBoundary)
         case 'VibrationOnly'
             % For vibration only, create boundary frequency table with vibration at boundary frequency
             vibTypeName = StimParams.Vibration.TypeName;
-            if isfield(StimParams.Vibration, 'Amplitude')
-                vibAmp = StimParams.Vibration.Amplitude;
-            else
-                vibAmp = StimParams.Vibration.HighFreqAmplitude;
+
+            % Extract stimulus pairs
+            if ~isfield(StimParams.Vibration, 'Stimulus') || isempty(StimParams.Vibration.Stimulus)
+                error('Vibration.Stimulus not found in StimParams or is empty');
             end
+
+            stimStruct = StimParams.Vibration.Stimulus;
+            vibFreq = [stimStruct.freq];
+            vibAmp = [stimStruct.amp];
             
-            % Create combinations with boundary frequency
-            [vibAmp] = ndgrid(vibAmp);
-            boundaryStimTableUnq = table(vibAmp(:), repmat(frequencyBoundary, length(vibAmp(:)), 1), ...
-                'VariableNames', {'VibAmp', 'VibFreq'});
+            % Find exact matches for boundary frequency
+            boundaryVibIdx = find(vibFreq == frequencyBoundary);
             
-            % Remove invalid rows
-            invalidRows = boundaryStimTableUnq.VibAmp == 0 | boundaryStimTableUnq.VibFreq == 0;
-            boundaryStimTableUnq = boundaryStimTableUnq(~invalidRows, :);
-            
-            % Generate randomized sequence
-            boundaryFreqTable = generateRandomizedTable(boundaryStimTableUnq, nTrials);
-            
-            % Add other parameters
-            boundaryFreqTable.VibTypeName = repmat({vibTypeName}, height(boundaryFreqTable), 1);
+            if ~isempty(boundaryVibIdx)
+                % Only use vibration pairs that exactly match boundary frequency
+                boundaryVibAmp = vibAmp(boundaryVibIdx);
+                boundaryVibFreq = vibFreq(boundaryVibIdx);
+                
+                % Create table from matching pairs
+                boundaryStimTableUnq = table(boundaryVibAmp(:), boundaryVibFreq(:), ...
+                    'VariableNames', {'VibAmp', 'VibFreq'});
+                
+                % Remove invalid rows
+                invalidRows = boundaryStimTableUnq.VibAmp == 0 | boundaryStimTableUnq.VibFreq == 0;
+                boundaryStimTableUnq = boundaryStimTableUnq(~invalidRows, :);
+                
+                % Generate randomized sequence
+                boundaryFreqTable = generateRandomizedTable(boundaryStimTableUnq, nTrials);
+                
+                % Add other parameters
+                boundaryFreqTable.VibTypeName = repmat({vibTypeName}, height(boundaryFreqTable), 1);
+            else
+                % No exact match found - return empty table
+                boundaryFreqTable = table();
+                disp(['No vibration stimulus with exact boundary frequency (', num2str(frequencyBoundary), ' Hz) found. Boundary table will be empty.']);
+            end
             
         otherwise
             boundaryFreqTable = table();
