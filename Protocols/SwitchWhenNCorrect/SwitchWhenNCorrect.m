@@ -56,7 +56,7 @@ function SwitchWhenNCorrect()
     S.GUI.MaxQuietTime = StimParams.Behave.MaxQuietTime; % seconds
     S.GUI.RewardAmount = StimParams.Behave.RewardAmount; % µL
     S.GUI.ResWin = StimParams.Behave.ResWin; % seconds
-    S.GUI.NCorrectToSwitch = NumTrials; % Number of correct trials needed to switch sides；by default, it is the total number of trials
+    S.GUI.NCorrectToSwitch = 10; % Number of correct trials needed to switch sides；by default, it is the total number of trials
     S.GUI.CutOffPeriod = 60; % seconds
     CutOffPeriod = S.GUI.CutOffPeriod;
 
