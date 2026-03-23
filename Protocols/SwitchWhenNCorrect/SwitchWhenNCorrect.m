@@ -102,6 +102,25 @@ function SwitchWhenNCorrect()
     correctCount = 0; % Counter for correct trials on current side
     highFreqIndex = 1; % Index for high frequency table (continuous)
     lowFreqIndex = 1; % Index for low frequency table (continuous)
+
+    % Generate catch trial sequence based on PropCatch
+    propCatch = StimParams.Behave.PropCatch;
+    catchTrialSequence = false(1, NumTrials);
+    if propCatch > 0
+        % calculate grouping parameters
+        trialsPerBlock = round(1 / propCatch); % trials per block
+        nBlocks = floor(NumTrials / trialsPerBlock); % total number of blocks
+        if nBlocks > 0
+            % generate random positions for each block (vectorized operation)
+            blockOffsets = (0:nBlocks-1)' * trialsPerBlock;
+            randomPositions = randi(trialsPerBlock, nBlocks, 1);
+            % calculate all catch trial positions
+            catchTrialIndices = blockOffsets + randomPositions;
+            % Ensure indices don't exceed NumTrials
+            catchTrialIndices = catchTrialIndices(catchTrialIndices <= NumTrials);
+            catchTrialSequence(catchTrialIndices) = true;
+        end
+    end
     
     % Initialize data arrays
     BpodSystem.Data.CurrentSide = [];
@@ -144,7 +163,7 @@ function SwitchWhenNCorrect()
     
 
     %% Prepare and start first trial
-    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+    [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, catchTrialSequence(1));
     trialManager.startTrial(sma);
     
     %% Main loop, runs once per trial
@@ -282,7 +301,7 @@ function SwitchWhenNCorrect()
         
         % Prepare next trial's state machine if not the last trial
         if currentTrial < NumTrials
-            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp);
+            [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, catchTrialSequence(currentTrial + 1));
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
         end
         
@@ -364,21 +383,32 @@ function SwitchWhenNCorrect()
     SaveBpodSessionData;
 end
 
-function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp)
+function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, isCatchTrial)
     % Prepare state machine for the current trial
     
     % Sync parameters with GUI
     S = BpodParameterGUI('sync', S);
     
-    % Determine which stimulus table to use based on current side
-    if currentSide == 1 % Low frequency side
-        % Direct indexing (table length matches trial count)
-        currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
-        correctSide = lowFreqSpout; % Use configured low frequency spout
-    else % High frequency side
-        % Direct indexing (table length matches trial count)
-        currentStimRow = LeftRightSeq.HighFreqTable(highFreqIndex, :);
-        correctSide = highFreqSpout; % Use configured high frequency spout
+    % If catch trial, use CatchTrialTable
+    if isCatchTrial
+        currentStimRow = LeftRightSeq.CatchTrialTable(1, :);
+        % For catch trials, correctSide doesn't matter (no reward), but we'll use currentSide for consistency
+        if currentSide == 1
+            correctSide = lowFreqSpout;
+        else
+            correctSide = highFreqSpout;
+        end
+    else
+        % Determine which stimulus table to use based on current side
+        if currentSide == 1 % Low frequency side
+            % Direct indexing (table length matches trial count)
+            currentStimRow = LeftRightSeq.LowFreqTable(lowFreqIndex, :);
+            correctSide = lowFreqSpout; % Use configured low frequency spout
+        else % High frequency side
+            % Direct indexing (table length matches trial count)
+            currentStimRow = LeftRightSeq.HighFreqTable(highFreqIndex, :);
+            correctSide = highFreqSpout; % Use configured high frequency spout
+        end
     end
     
     % Generate sound&vibration waveform
@@ -412,7 +442,6 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     QuietTime = S.GUI.MinQuietTime + rand() * (S.GUI.MaxQuietTime - S.GUI.MinQuietTime);
     TimerDuration = ITIAfter+StimDur;
     RewardAmount = S.GUI.RewardAmount;
-    disp(['Liquid Volume = ' num2str(RewardAmount) ' µL']);
     % Get valve times for both left (valve 1) and right (valve 2) ports
     ValveTimes = BpodLiquidCalibration('GetValveTimes', RewardAmount, [1 2]);
     LeftValveTime = ValveTimes(1);
@@ -430,12 +459,10 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     else
         correctResponse = 'left'; % Default fallback
     end
-    
-    % Display the trial information
-    disp(['ITI = ' num2str(ThisITI) ' seconds, QuietTime = ' num2str(QuietTime) ' seconds']);  
+     
 
     % Check if it is a catch trial
-    isCatchTrial = false;
+    % isCatchTrial = false;
     if strcmp(char(currentStimRow.MMType), 'OO')
         isCatchTrial = true;
         disp('Catch trial');
