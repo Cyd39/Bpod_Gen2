@@ -168,6 +168,12 @@ function SwitchWhenNCorrect()
     
     %% Main loop, runs once per trial
     for currentTrial = 1:NumTrials
+        % === DEBUG: Trial start timestamp ===
+        trialStartTime = tic;
+        disp(['=== Trial ' num2str(currentTrial) '/' num2str(NumTrials) ' started at ' datestr(now, 'yyyy-mm-dd HH:MM:SS.FFF) ' ===']);
+        % === DEBUG: Trial start timestamp ===
+
+
         % Check if update button was pressed
         if updateFlag
             % Get parameters from GUI
@@ -175,14 +181,35 @@ function SwitchWhenNCorrect()
             updateFlag = false; % reset flag
         end
         
+        % === DEBUG: GUI check completed ===
+        guiTime = toc(trialStartTime);
+        if guiTime > 0.1  % Only show if takes more than 100ms
+            disp(['  [DEBUG] GUI check took ' num2str(guiTime*1000, '%.1f') ' ms']);
+        end
+        % === DEBUG: GUI check completed ===
+
+
         % Wait for trigger states (LeftReward, RightReward, WaitToFinish)
         trialManager.getCurrentEvents({'LeftReward', 'RightReward', 'WaitToFinish'});
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
         
+
+        % === DEBUG: Event wait completed ===
+        eventWaitTime = toc(trialStartTime);
+        disp(['  [DEBUG] Event wait took ' num2str(eventWaitTime*1000, '%.1f') ' ms']);
+        % === DEBUG: Event wait completed ===
+
         % Get trial data
         RawEvents = trialManager.getTrialData;
         if BpodSystem.Status.BeingUsed == 0; return; end % If user hit console "stop" button, end session
-        
+
+        % === DEBUG: Data retrieval completed ===
+        getDataTime = toc(trialStartTime);
+        if getDataTime - eventWaitTime > 0.1
+            disp(['  [DEBUG] getTrialData took ' num2str((getDataTime-eventWaitTime)*1000, '%.1f') ' ms']);
+        end
+        % === DEBUG: Data retrieval completed ===
+
         % Save all trial parameters from S BEFORE processing trial data (to avoid shift)
         % This ensures we save the values that were used for this trial
         % For first trial, S was set at line 147. For subsequent trials, S was set in previous iteration.
@@ -208,6 +235,15 @@ function SwitchWhenNCorrect()
             BpodSystem.Data.CutOff(currentTrial) = S.GUI.CutOffPeriod;
         end
         
+        
+        % === DEBUG: Parameter save completed ===
+        paramSaveTime = toc(trialStartTime);
+        if paramSaveTime - getDataTime > 0.1
+            disp(['  [DEBUG] Parameter save took ' num2str((paramSaveTime-getDataTime)*1000, '%.1f') ' ms']);
+        end
+        % === DEBUG: Parameter save completed ===
+
+
         % Process trial data if available
         if ~isempty(fieldnames(RawEvents))
             BpodSystem.Data = AddTrialEvents(BpodSystem.Data, RawEvents);
@@ -301,8 +337,28 @@ function SwitchWhenNCorrect()
         
         % Prepare next trial's state machine if not the last trial
         if currentTrial < NumTrials
+            % ================
+            prepStartTime = tic;
+            disp('  [DEBUG] Preparing next state machine...');
+            % ================
+
+
             [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, correctCount, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, catchTrialSequence(currentTrial + 1));
+            
+            
+            % ================
+            prepTime = toc(prepStartTime);
+            disp(['  [DEBUG] PrepareStateMachine took ' num2str(prepTime*1000, '%.1f') ' ms']);
+            sendStartTime = tic;
+            % ================
+
             SendStateMachine(sma, 'RunASAP'); % Send next trial's state machine during current trial
+
+
+            % ================
+            sendTime = toc(sendStartTime);
+            disp(['  [DEBUG] SendStateMachine took ' num2str(sendTime*1000, '%.1f') ' ms']);
+            % ================
         end
         
         % Handle pause condition
@@ -328,6 +384,17 @@ function SwitchWhenNCorrect()
                 % Silent error handling - don't let plot errors interrupt the protocol
                 disp(['Plot update error: ' ME.message]);
             end
+
+            % ====================================
+            totalPlotTime = toc(plotStartTime);
+            disp(['  [DEBUG] All plots updated in ' num2str(totalPlotTime*1000, '%.1f') ' ms']);
+            
+            % === DEBUG: Total trial time ===
+            totalTrialTime = toc(trialStartTime);
+            disp(['  [DEBUG] === Trial ' num2str(currentTrial) ' completed in ' num2str(totalTrialTime*1000, '%.1f') ' ms ===']);
+            disp(' ');
+            % ====================================
+
             
             SaveBpodSessionData;
         end
@@ -386,6 +453,11 @@ end
 function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, isCatchTrial)
     % Prepare state machine for the current trial
     
+    % === DEBUG: Function entry ===
+    prepStartTime = tic;
+    % === DEBUG: Function entry ===
+
+
     % Sync parameters with GUI
     S = BpodParameterGUI('sync', S);
     
@@ -414,7 +486,14 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     % Generate sound&vibration waveform
     soundWave = GenStimWave(currentStimRow, CalTable);
     soundWave = ApplySinRamp(soundWave, Ramp, H.SamplingRate);
+
+
+    % === DEBUG: Waveform generation completed ===
+    waveGenTime = toc(prepStartTime);
+    disp(['    [PREP] Waveform generation: ' num2str(waveGenTime*1000, '%.1f') ' ms']);
+    % === DEBUG: Waveform generation completed ===
     
+
     % Display trial info with configuration
     spoutNames = {'left', 'right'};
     if currentSide == 1
@@ -434,6 +513,14 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     H.load(1, soundWave); 
     H.push();
     disp('Sound loaded to buffer 1');
+
+    % === DEBUG: HiFi operations completed ===
+    hifiTime = toc(prepStartTime);
+    if hifiTime - waveGenTime > 0.1
+        disp(['    [PREP] HiFi load/push: ' num2str((hifiTime-waveGenTime)*1000, '%.1f') ' ms']);
+    end
+    % === DEBUG: HiFi operations completed ===
+
 
     % Generate random ITI and quiet time for this trial
     ITIBefore = S.GUI.MinITI/2;
@@ -582,5 +669,11 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
         'Timer', 0, ...  
         'StateChangeConditions', {'Condition7', 'exit'}, ...
         'OutputActions', {});
+
+
+    % === DEBUG: Total preparation time ===
+    totalPrepTime = toc(prepStartTime);
+    disp(['    [PREP] Total PrepareStateMachine time: ' num2str(totalPrepTime*1000, '%.1f') ' ms']);
+    % === DEBUG: Total preparation time ===
     
 end
