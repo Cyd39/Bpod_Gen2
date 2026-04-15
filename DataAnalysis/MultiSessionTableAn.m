@@ -1147,7 +1147,7 @@ for i = 1:nAnimals
     title(sprintf(currentAnimal), 'FontSize', 11, 'FontWeight', 'bold');
     xlabel('Session Number', 'FontSize', 9);
     ylabel('Response Latency Median(s)', 'FontSize', 9);
-    grid on；    
+    grid on;
     
     % only show legend in the first subplot
     if i == 1 && ~isempty(legendHandles)
