@@ -4,7 +4,7 @@ clearvars
 %load('')
 %% Data proccessiong
 T = resultsTable;
-bf = 250; % boundary frequency
+bf = 500; % boundary frequency
 amp_to_dis = 50.5; % amp: 0-1 displacement = amp_to_dis * amp
 T.Displacement = T.VibAmp * amp_to_dis;
 
@@ -140,8 +140,13 @@ sl.FalseAlarmRate = falseAlarm;
 sl.ResponseRate = resRate;
 sl.ResponseRateEasy = resRateEasy;
 sl.ResponseRateEasiest = resRateEasiest;
+sl.ResponseDPrime =  prob2zscore(resRate) - prob2zscore(falseAlarm);
+sl.ResponseBias =  0.5 * (prob2zscore(resRate) + prob2zscore(falseAlarm));
+sl.ResponseDPrimeEasiset =  prob2zscore(resRateEasiest) - prob2zscore(falseAlarm);
 sl.LeftRateLow = leftRateLow;
 sl.LeftRateHigh = leftRateHigh;
+sl.LeftRateDPrime =  prob2zscore(leftRateHigh) - prob2zscore(leftRateLow);
+sl.LeftBias =  0.5 * (prob2zscore(leftRateHigh) + prob2zscore(leftRateLow));
 
 % sorting and index sessions by time for each mouse 
 sl = sortrows(sl,{'AnimalID','DateTime'});
@@ -529,6 +534,237 @@ for o = 1:length(op)
     
     sgtitle('Left Rate Progression', 'FontSize', 14);
     saveFigAsPNG(['LeftRate_by_',plotBy]);
+end
+%% Left Rate DPrime by Session Number and Date
+% Left Rates are of the easiest stimulus on both sides
+op = {'DateTime', 'SessionNumber'}; % options for plotting
+for o = 1:length(op)
+    plotBy = op{o}; % 'DateTime'; 'SessionNumber'
+    figure('Position', [100, 100, 1300, 800]);
+    % colors for each animal
+    animalColors  = lines(nAnimals); 
+    
+    % subplot(2, 1, 1);
+    % hold on;
+    % 
+    % subplot(2, 1, 2);
+    % hold on;
+    
+    for i = 1:nAnimals
+        % if i == 1 || i == 3 
+        %     subplot(2,1,1);
+        % else
+        %     subplot(2,1,2);
+        % end
+        mask = strcmp(sl.AnimalID, animals{i});
+    
+        % LeftRateHighFreq
+        switch plotBy
+            case 'DateTime'
+                x = sl.DateTime(mask);
+            case 'SessionNumber'
+                x = sl.NumSession(mask);
+            otherwise
+                x = sl.NumSession(mask);
+        end
+
+        y_high = sl.LeftRateDPrime(mask);
+        valid_high = ~isnan(y_high);
+        
+        x_valid_high = x(valid_high);
+        y_valid_high = y_high(valid_high);
+        
+        [x_sorted_high, sort_idx_high] = sort(x_valid_high);
+        y_sorted_high = y_valid_high(sort_idx_high);
+
+        plot(x_sorted_high, y_sorted_high, 'o-', ...
+             'Color',animalColors(i, :),...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', animalColors(i, :), ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(HighFreq)']);
+        hold on;
+    end
+    
+    % xlabel
+    switch plotBy
+        case 'DateTime'
+            xLabel = "Date";
+        case 'SessionNumber'
+            xLabel = "Session Number";    
+        otherwise
+            xLabel = "Session Number";
+    end
+
+    % for i = 1:2
+        % subplot(2, 1, i);
+        xlabel(xLabel, 'FontSize', 14);
+        ylabel('Left Rate DPrime', 'FontSize', 14);
+        grid on;
+        legend('Location', 'eastoutside', 'FontSize', 10);
+        if strcmp(plotBy,'DateTime')
+            xticks(min(x_sorted_high(1)) + caldays(0:7:360));
+            xtickformat('MMM-dd')
+        end
+        hold off;
+    % end
+    
+    sgtitle('Left Rate DPrime Progression', 'FontSize', 14);
+    % saveFigAsPNG(['LeftRate_by_',plotBy]);
+end
+%% Left Bias by Session Number and Date
+% Left Rates are of the easiest stimulus on both sides
+op = {'DateTime', 'SessionNumber'}; % options for plotting
+for o = 1:length(op)
+    plotBy = op{o}; % 'DateTime'; 'SessionNumber'
+    figure('Position', [100, 100, 1300, 800]);
+    % colors for each animal
+    animalColors  = lines(nAnimals); 
+    
+    % subplot(2, 1, 1);
+    % hold on;
+    % 
+    % subplot(2, 1, 2);
+    % hold on;
+    
+    for i = 1:nAnimals
+        % if i == 1 || i == 3 
+        %     subplot(2,1,1);
+        % else
+        %     subplot(2,1,2);
+        % end
+        mask = strcmp(sl.AnimalID, animals{i});
+    
+        % LeftRateHighFreq
+        switch plotBy
+            case 'DateTime'
+                x = sl.DateTime(mask);
+            case 'SessionNumber'
+                x = sl.NumSession(mask);
+            otherwise
+                x = sl.NumSession(mask);
+        end
+
+        y_high = sl.LeftBias(mask);
+        valid_high = ~isnan(y_high);
+        
+        x_valid_high = x(valid_high);
+        y_valid_high = y_high(valid_high);
+        
+        [x_sorted_high, sort_idx_high] = sort(x_valid_high);
+        y_sorted_high = y_valid_high(sort_idx_high);
+
+        plot(x_sorted_high, y_sorted_high, 'o-', ...
+             'Color',animalColors(i, :),...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', animalColors(i, :), ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(HighFreq)']);
+        hold on;
+    end
+    
+    % xlabel
+    switch plotBy
+        case 'DateTime'
+            xLabel = "Date";
+        case 'SessionNumber'
+            xLabel = "Session Number";    
+        otherwise
+            xLabel = "Session Number";
+    end
+
+    % for i = 1:2
+        % subplot(2, 1, i);
+        xlabel(xLabel, 'FontSize', 14);
+        ylabel('LeftBias (c)', 'FontSize', 14);
+        grid on;
+        legend('Location', 'eastoutside', 'FontSize', 10);
+        if strcmp(plotBy,'DateTime')
+            xticks(min(x_sorted_high(1)) + caldays(0:7:360));
+            xtickformat('MMM-dd')
+        end
+        hold off;
+    % end
+    
+    sgtitle('Bias Progression', 'FontSize', 14);
+    % saveFigAsPNG(['LeftRate_by_',plotBy]);
+end
+%% Response Rate DPrime by Session Number and Date
+% Response Rate is for the whole session
+op = {'DateTime', 'SessionNumber'}; % options for plotting
+for o = 1:length(op)
+    plotBy = op{o}; % 'DateTime'; 'SessionNumber'
+    figure('Position', [100, 100, 1300, 800]);
+    % colors for each animal
+    animalColors  = lines(nAnimals); 
+    
+    % subplot(2, 1, 1);
+    % hold on;
+    % 
+    % subplot(2, 1, 2);
+    % hold on;
+    
+    for i = 1:nAnimals
+        % if i == 1 || i == 3 
+        %     subplot(2,1,1);
+        % else
+        %     subplot(2,1,2);
+        % end
+        mask = strcmp(sl.AnimalID, animals{i});
+    
+        % LeftRateHighFreq
+        switch plotBy
+            case 'DateTime'
+                x = sl.DateTime(mask);
+            case 'SessionNumber'
+                x = sl.NumSession(mask);
+            otherwise
+                x = sl.NumSession(mask);
+        end
+
+        y_high = sl.ResponseDPrime(mask);
+        valid_high = ~isnan(y_high);
+        
+        x_valid_high = x(valid_high);
+        y_valid_high = y_high(valid_high);
+        
+        [x_sorted_high, sort_idx_high] = sort(x_valid_high);
+        y_sorted_high = y_valid_high(sort_idx_high);
+
+        plot(x_sorted_high, y_sorted_high, 'o-', ...
+             'Color',animalColors(i, :),...
+             'MarkerSize', 3, ...
+             'MarkerFaceColor', animalColors(i, :), ...
+             'LineWidth', 2, ...
+             'DisplayName', [char(animals{i}),'(HighFreq)']);
+        hold on;
+    end
+    
+    % xlabel
+    switch plotBy
+        case 'DateTime'
+            xLabel = "Date";
+        case 'SessionNumber'
+            xLabel = "Session Number";    
+        otherwise
+            xLabel = "Session Number";
+    end
+
+    % for i = 1:2
+        % subplot(2, 1, i);
+        xlabel(xLabel, 'FontSize', 14);
+        ylabel('Response Rate DPrime', 'FontSize', 14);
+        grid on;
+        legend('Location', 'eastoutside', 'FontSize', 10);
+        if strcmp(plotBy,'DateTime')
+            xticks(min(x_sorted_high(1)) + caldays(0:7:360));
+            xtickformat('MMM-dd')
+        end
+        hold off;
+    % end
+    
+    sgtitle('Response Rate DPrime Progression', 'FontSize', 14);
+    % saveFigAsPNG(['LeftRate_by_',plotBy]);
 end
 %% Plot by DateTime
 % figure('Position', [100, 100, 1500, 800]);
