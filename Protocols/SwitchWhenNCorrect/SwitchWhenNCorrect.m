@@ -386,10 +386,6 @@ end
 
 function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSide, highFreqIndex, lowFreqIndex, ~, CutOffPeriod, StimDur, highFreqSpout, lowFreqSpout, Ramp, isCatchTrial)
     % Prepare state machine for the current trial
-    
-    % === DEBUG: Function entry ===
-    prepStartTime = tic;
-    % === DEBUG: Function entry ===
 
 
     % Sync parameters with GUI
@@ -420,12 +416,6 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     % Generate sound&vibration waveform
     soundWave = GenStimWave(currentStimRow, CalTable);
     soundWave = ApplySinRamp(soundWave, Ramp, H.SamplingRate);
-
-
-    % === DEBUG: Waveform generation completed ===
-    waveGenTime = toc(prepStartTime);
-    disp(['    [PREP] Waveform generation: ' num2str(waveGenTime*1000, '%.1f') ' ms']);
-    % === DEBUG: Waveform generation completed ===
     
 
     % Display trial info with configuration
@@ -447,13 +437,6 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
     H.load(1, soundWave); 
     H.push();
     disp('Sound loaded to buffer 1');
-
-    % === DEBUG: HiFi operations completed ===
-    hifiTime = toc(prepStartTime);
-    if hifiTime - waveGenTime > 0.1
-        disp(['    [PREP] HiFi load/push: ' num2str((hifiTime-waveGenTime)*1000, '%.1f') ' ms']);
-    end
-    % === DEBUG: HiFi operations completed ===
 
 
     % Generate random ITI and quiet time for this trial
@@ -612,10 +595,5 @@ function [sma, S] = PrepareStateMachine(S, LeftRightSeq, CalTable, H, currentSid
         'StateChangeConditions', {'Condition7', 'exit'}, ...
         'OutputActions', {});
 
-
-    % === DEBUG: Total preparation time ===
-    totalPrepTime = toc(prepStartTime);
-    disp(['    [PREP] Total PrepareStateMachine time: ' num2str(totalPrepTime*1000, '%.1f') ' ms']);
-    % === DEBUG: Total preparation time ===
     
 end
